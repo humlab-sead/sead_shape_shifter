@@ -638,6 +638,9 @@ class TestShapeShiftService:
         }
         shapeshift_service._warm_table_store = TableStore({"users": sample_dataframe})
         shapeshift_service._warm_validation_issues = {"users": [validation_issue]}
+        shapeshift_service._warm_project_name = "test_project"
+        shapeshift_service._warm_project_version = 1
+        shapeshift_service._warm_timestamp = time.time()
 
         with (
             patch.object(shapeshift_service.project_cache, "get_project", new=AsyncMock(return_value=sample_project)),
@@ -647,6 +650,63 @@ class TestShapeShiftService:
 
         assert result.cache_hit is True
         assert result.validation_issues == [validation_issue]
+
+    @pytest.mark.asyncio
+    async def test_warm_preview_is_ignored_after_project_version_changes(
+        self,
+        shapeshift_service: ShapeShiftService,
+        sample_project: ShapeShiftProject,
+        sample_dataframe: pd.DataFrame,
+    ):
+        """Warm data from an older project version must not be served as a preview."""
+        shapeshift_service._warm_table_store = TableStore({"users": sample_dataframe})
+        shapeshift_service._warm_project_version = 1
+        shapeshift_service._warm_timestamp = time.time()
+
+        mock_shapeshifter = MagicMock()
+        mock_shapeshifter.normalize = AsyncMock()
+        mock_shapeshifter.table_store = {"users": sample_dataframe}
+        mock_shapeshifter.unresolved_extra_columns = {}
+        mock_shapeshifter.linker.validators = []
+
+        with (
+            patch.object(shapeshift_service.project_cache, "get_project", new=AsyncMock(return_value=sample_project)),
+            patch.object(shapeshift_service, "get_project_version", return_value=2),
+            patch("backend.app.services.shapeshift_service.ShapeShifter", return_value=mock_shapeshifter),
+        ):
+            result = await shapeshift_service.preview_entity("test_project", "users", 50)
+
+        assert result.cache_hit is False
+        mock_shapeshifter.normalize.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_warm_preview_is_ignored_for_another_project_with_same_version(
+        self,
+        shapeshift_service: ShapeShiftService,
+        sample_project: ShapeShiftProject,
+        sample_dataframe: pd.DataFrame,
+    ):
+        """Warm data for one project must not be used by another project at the same version."""
+        shapeshift_service._warm_table_store = TableStore({"users": sample_dataframe})
+        shapeshift_service._warm_project_name = "other_project"
+        shapeshift_service._warm_project_version = 1
+        shapeshift_service._warm_timestamp = time.time()
+
+        mock_shapeshifter = MagicMock()
+        mock_shapeshifter.normalize = AsyncMock()
+        mock_shapeshifter.table_store = {"users": sample_dataframe}
+        mock_shapeshifter.unresolved_extra_columns = {}
+        mock_shapeshifter.linker.validators = []
+
+        with (
+            patch.object(shapeshift_service.project_cache, "get_project", new=AsyncMock(return_value=sample_project)),
+            patch.object(shapeshift_service, "get_project_version", return_value=1),
+            patch("backend.app.services.shapeshift_service.ShapeShifter", return_value=mock_shapeshifter),
+        ):
+            result = await shapeshift_service.preview_entity("test_project", "users", 50)
+
+        assert result.cache_hit is False
+        mock_shapeshifter.normalize.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_get_entity_sample(
@@ -1181,3 +1241,186 @@ class TestPreviewBuilder:
         assert code_column.derived_from is None
         assert label_column.is_derived is True
         assert label_column.derived_from == "extra_columns"
+
+
+class TestNormalizeProject:
+    """Tests for the project-wide normalization pass used by data validation."""
+
+    def _normalizer_mock(self, table_store: TableStore, incomplete_entities: dict[str, str] | None = None) -> MagicMock:
+        """Build a normalizer mock with the attributes ShapeShiftService reads."""
+        normalizer = MagicMock()
+        normalizer.table_store = table_store
+        normalizer.incomplete_entities = incomplete_entities or {}
+        normalizer.unresolved_extra_columns = {}
+        normalizer.linker.validators = []
+        return normalizer
+
+    @pytest.mark.asyncio
+    async def test_normalize_project_returns_all_entities_and_caches_them(
+        self,
+        shapeshift_service: ShapeShiftService,
+        sample_project: ShapeShiftProject,
+        sample_dataframe: pd.DataFrame,
+    ):
+        """One pass should produce every entity and write the results to the shared cache."""
+        table_store: TableStore = TableStore({"users": sample_dataframe, "orders": sample_dataframe})
+        normalizer = self._normalizer_mock(table_store)
+
+        with (
+            patch.object(shapeshift_service.project_cache, "get_project", new=AsyncMock(return_value=sample_project)),
+            patch.object(shapeshift_service, "get_project_version", return_value=3),
+            patch.object(shapeshift_service, "_normalize_batch", new=AsyncMock(return_value=normalizer)) as mock_normalize,
+        ):
+            result = await shapeshift_service.normalize_project("test_project")
+
+        mock_normalize.assert_awaited_once()
+        assert mock_normalize.await_args is not None
+        assert mock_normalize.await_args.kwargs["continue_on_error"] is True
+        assert result.project_version == 3
+        assert result.incomplete_entities == {}
+        assert "users" in result.table_store
+        assert "orders" in result.table_store
+        assert shapeshift_service._warm_project_version == 3
+        assert shapeshift_service.cache.get_dataframe("test_project", "users", project_version=3) is not None
+
+    @pytest.mark.asyncio
+    async def test_normalize_project_reports_incomplete_entities(
+        self,
+        shapeshift_service: ShapeShiftService,
+        sample_project: ShapeShiftProject,
+        sample_dataframe: pd.DataFrame,
+    ):
+        """Entities that fail normalization are reported with their reason."""
+        table_store: TableStore = TableStore({"users": sample_dataframe})
+        normalizer = self._normalizer_mock(table_store, {"orders": "missing value column"})
+
+        with (
+            patch.object(shapeshift_service.project_cache, "get_project", new=AsyncMock(return_value=sample_project)),
+            patch.object(shapeshift_service, "get_project_version", return_value=1),
+            patch.object(shapeshift_service, "_normalize_batch", new=AsyncMock(return_value=normalizer)),
+        ):
+            result = await shapeshift_service.normalize_project("test_project")
+
+        assert result.incomplete_entities == {"orders": "missing value column"}
+        assert "orders" not in result.table_store
+
+    @pytest.mark.asyncio
+    async def test_normalize_project_reuses_fresh_complete_result(
+        self,
+        shapeshift_service: ShapeShiftService,
+        sample_project: ShapeShiftProject,
+        sample_dataframe: pd.DataFrame,
+    ):
+        """A second call for the same project version must not normalize again."""
+        table_store: TableStore = TableStore({"users": sample_dataframe, "orders": sample_dataframe})
+        normalizer = self._normalizer_mock(table_store)
+
+        with (
+            patch.object(shapeshift_service.project_cache, "get_project", new=AsyncMock(return_value=sample_project)),
+            patch.object(shapeshift_service, "get_project_version", return_value=1),
+            patch.object(shapeshift_service, "_normalize_batch", new=AsyncMock(return_value=normalizer)) as mock_normalize,
+        ):
+            await shapeshift_service.normalize_project("test_project")
+            second = await shapeshift_service.normalize_project("test_project")
+
+        mock_normalize.assert_awaited_once()
+        assert second.table_store is table_store
+
+    @pytest.mark.asyncio
+    async def test_normalize_project_does_not_reuse_result_from_another_project(
+        self,
+        shapeshift_service: ShapeShiftService,
+        sample_project: ShapeShiftProject,
+        sample_dataframe: pd.DataFrame,
+    ):
+        """Projects with the same version number must not share warm normalization results."""
+        project_a_store = TableStore({"users": sample_dataframe})
+        project_b_dataframe = sample_dataframe.assign(username=["alice-b", "bob-b", "charlie-b", "david-b", "eve-b"])
+        project_b_store = TableStore({"users": project_b_dataframe})
+
+        with (
+            patch.object(shapeshift_service.project_cache, "get_project", new=AsyncMock(return_value=sample_project)),
+            patch.object(shapeshift_service, "get_project_version", return_value=1),
+            patch.object(
+                shapeshift_service,
+                "_normalize_batch",
+                new=AsyncMock(
+                    side_effect=[
+                        self._normalizer_mock(project_a_store),
+                        self._normalizer_mock(project_b_store),
+                    ]
+                ),
+            ) as mock_normalize,
+        ):
+            await shapeshift_service.normalize_project("project_a")
+            result = await shapeshift_service.normalize_project("project_b")
+
+        assert mock_normalize.await_count == 2
+        assert result.table_store["users"] is project_b_dataframe
+
+    @pytest.mark.asyncio
+    async def test_normalize_project_recomputes_when_warm_result_covers_only_requested_subset(
+        self,
+        shapeshift_service: ShapeShiftService,
+        sample_project: ShapeShiftProject,
+        sample_dataframe: pd.DataFrame,
+    ):
+        """A subset normalization must not satisfy a later request for the full project."""
+        subset_store = TableStore({"users": sample_dataframe})
+        full_store = TableStore({"users": sample_dataframe, "orders": sample_dataframe})
+
+        with (
+            patch.object(shapeshift_service.project_cache, "get_project", new=AsyncMock(return_value=sample_project)),
+            patch.object(shapeshift_service, "get_project_version", return_value=1),
+            patch.object(
+                shapeshift_service,
+                "_normalize_batch",
+                new=AsyncMock(
+                    side_effect=[
+                        self._normalizer_mock(subset_store),
+                        self._normalizer_mock(full_store),
+                    ]
+                ),
+            ) as mock_normalize,
+        ):
+            await shapeshift_service.normalize_project("test_project", ["users"])
+            result = await shapeshift_service.normalize_project("test_project")
+
+        assert mock_normalize.await_count == 2
+        assert set(result.table_store) == {"users", "orders"}
+
+    @pytest.mark.asyncio
+    async def test_normalize_project_renormalizes_allowed_after_version_change(
+        self,
+        shapeshift_service: ShapeShiftService,
+        sample_project: ShapeShiftProject,
+        sample_dataframe: pd.DataFrame,
+    ):
+        """A new project version must not reuse the warm result."""
+        table_store: TableStore = TableStore({"users": sample_dataframe})
+        normalizer = self._normalizer_mock(table_store)
+        versions = iter([1, 2])
+
+        with (
+            patch.object(shapeshift_service.project_cache, "get_project", new=AsyncMock(return_value=sample_project)),
+            patch.object(shapeshift_service, "get_project_version", side_effect=lambda _name: next(versions)),
+            patch.object(shapeshift_service, "_normalize_batch", new=AsyncMock(return_value=normalizer)) as mock_normalize,
+        ):
+            await shapeshift_service.normalize_project("test_project")
+            await shapeshift_service.normalize_project("test_project")
+
+        assert mock_normalize.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_normalize_project_rejects_unknown_entity(
+        self,
+        shapeshift_service: ShapeShiftService,
+        sample_project: ShapeShiftProject,
+    ):
+        """Requesting an entity the project does not configure must raise ValueError."""
+        with (
+            patch.object(shapeshift_service.project_cache, "get_project", new=AsyncMock(return_value=sample_project)),
+            patch.object(shapeshift_service, "get_project_version", return_value=1),
+        ):
+            with pytest.raises(ValueError, match="Entities not found in project"):
+                await shapeshift_service.normalize_project("test_project", ["no_such_entity"])

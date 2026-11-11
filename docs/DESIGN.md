@@ -150,8 +150,13 @@ Backend: POST /api/v1/validate → ValidationService
   ├─ Constraint validation
   │   ├─ FK definitions and cardinality
   │   └─ Functional dependencies
-  └─ Data validation (optional, sample rows)
-      └─ Column existence, FK values
+  └─ Data validation (optional)
+      ├─ complete (default): one full normalization, aborts when any entity cannot be produced
+      ├─ sample: preview fetch per entity (up to 1000 rows); link troubleshooting is turned
+      │            off for these results because a truncated frame cannot confirm a match
+      └─ single_pass: one full normalization, reports each entity that cannot be
+          produced and skips only its dependents
+          └─ used by task status (GET /projects/{name}/tasks)
   ↓
 Frontend: ValidationResult grouped by severity (error / warning / info)
 ```
@@ -277,6 +282,12 @@ The three-layer boundary (API → Mapper → Core) is the central architectural 
 
 All FK relationships use local `system_id` values (sequential integers assigned during pipeline processing), not external IDs. `keys` are business keys for deduplication. `public_id` is the target schema column name and also carries mapped external IDs after reconciliation. Child FK column name = parent's `public_id`; FK values = parent's `system_id` values.
 
+### Provider-scope business-key contract
+
+A SEAD Change Request run resolves the authorized saved project's provider-schema pair to a provider scope (`provider://<provider-code>/<provider-schema>`). Before any identity work, the backend adapter registers the project's ordered `keys` list for the entity types in that run's resolve request with SIMS (`POST /identity/scope-contracts`). SIMS stores one contract per scope and entity type, returns `existing` for an exact ordered match, and returns HTTP 409 for a different key list or order without writing. A rejected registration stops the batch before any resolve request, and every planned row is blocked with the registration error. Entity types the run does not resolve, such as the fixed `data_provider` row or derived child entities, are not declared, so their keys cannot block identity work.
+
+Project saves do not lock `keys` or compare them with other projects on disk. SIMS is the single enforcement point for a provider scope's ordered key contract, so a project edit no longer depends on unrelated local files. Delivery-key value validation still runs on the transformed tables before any SIMS call.
+
 ### Caching
 
 The backend uses a three-tier in-process cache for entity previews: TTL (300 s), project file modification time, and xxhash of entity configuration. Cache is invalidated on entity edit, project save, or TTL expiry. Because the cache is in-process, the backend must run with a single Uvicorn worker.
@@ -309,7 +320,7 @@ Data loaders are async (database I/O). Backend services mix sync and async; chec
 
 ## Constraints and Assumptions
 
-- **Single Uvicorn worker**: mandatory while ApplicationState and the preview cache are in-process singletons. Multiple workers require shared external state (Redis or database) first.
+- **Single Uvicorn worker**: mandatory while ApplicationState, the preview cache, and link-experiment dialog contexts are in-process singletons. Multiple workers require shared external state (Redis or database) first.
 - **No built-in TLS**: TLS termination is expected upstream.
 - **No real-time collaboration**: projects are not locked on open; concurrent edits by multiple users on the same project will produce last-write-wins behavior.
 - **Memory-bound processing**: all entity DataFrames are loaded into memory. Very large source datasets may exhaust available RAM.

@@ -75,6 +75,32 @@ class TargetModelEntityOptionsResponse(BaseModel):
     entities: list[TargetModelEntityOption] = Field(..., description="Target-model entities absent from the project")
 
 
+class TargetModelDirectForeignKeyOption(BaseModel):
+    """A direct target-model foreign key eligible for a direct target ID."""
+
+    target_entity: str = Field(..., description="Target-model entity the relationship points to")
+    public_id: str = Field(..., description="Target identity column name")
+    target_table: str = Field(..., description="Target database table")
+
+
+class TargetModelDirectForeignKeysResponse(BaseModel):
+    """Direct target-model foreign keys eligible for direct target IDs.
+
+    ``relationships`` is empty only when the target model is not configured, when
+    it cannot be resolved, or when the named entity declares no eligible direct
+    foreign key in a resolved model.
+    """
+
+    state: Literal["not_configured", "unresolvable", "resolved"] = Field(
+        ...,
+        description="Target model outcome: not configured, unresolvable, or resolved",
+    )
+    relationships: list[TargetModelDirectForeignKeyOption] = Field(
+        default_factory=list,
+        description="Direct target-model foreign keys eligible for a direct target ID",
+    )
+
+
 class ProjectMetadata(BaseModel):
     """Metadata about a project."""
 

@@ -11,6 +11,7 @@ from backend.app.exceptions import (
     DataIntegrityError,
     DependencyError,
     DomainException,
+    ReconciliationManifestError,
     ResourceConflictError,
     ResourceNotFoundError,
     ValidationError,
@@ -34,7 +35,8 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
     - 404: ResourceNotFoundError (and legacy exceptions)
     - 400: DataIntegrityError, ValidationError (and legacy exceptions)
     - 409: ResourceConflictError (and legacy exceptions)
-    - 500: DependencyError, unexpected exceptions
+    - 503: ReconciliationManifestError
+    - 500: Other DependencyError instances and unexpected exceptions
 
     Domain exceptions return structured responses with:
     - error_type: Exception class name
@@ -79,7 +81,12 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
             logger.warning(f"Resource conflict in {func.__name__}: {e}")
             raise HTTPException(status_code=409, detail=e.to_dict()) from e
 
-        # Handle 500 Dependency errors
+        # Handle unavailable or invalid reconciliation service metadata
+        except ReconciliationManifestError as e:
+            logger.error(f"Reconciliation manifest error in {func.__name__}: {e}")
+            raise HTTPException(status_code=503, detail=e.to_dict()) from e
+
+        # Handle 500 dependency errors
         except DependencyError as e:
             logger.error(f"Dependency error in {func.__name__}: {e}")
             raise HTTPException(status_code=500, detail=e.to_dict()) from e

@@ -19,8 +19,24 @@ class ProjectProviderBindingError(ConfigurationError):
 
     def __init__(self, errors: list[ValidationError]) -> None:
         self.errors = errors
+        grouped_errors: dict[tuple[str | None, str], list[ValidationError]] = {}
+        for error in errors:
+            grouped_errors.setdefault((error.code, error.message), []).append(error)
+
+        messages: list[str] = []
+        for (_, message), grouped in grouped_errors.items():
+            fields = list(dict.fromkeys(error.field for error in grouped if error.field))
+            if len(grouped) > 1:
+                details = "\nAffected settings:\n" + "\n".join(f"- {field}" for field in fields)
+                messages.append(f"{message}{details}")
+                continue
+
+            error = grouped[0]
+            prefix = f"{error.field}: " if error.field else ""
+            messages.append(f"{prefix}{error.message}")
+
         super().__init__(
-            message="; ".join(f"{error.field}: {error.message}" for error in errors),
+            message="\n\n".join(messages),
             specification="ProjectProviderBindingSpecification",
         )
 

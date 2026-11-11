@@ -50,6 +50,11 @@ class ShapeShiftCache:
         self._metadata: dict[str, CacheMetadata] = {}
         self._ttl: int = ttl_seconds
 
+    @property
+    def ttl_seconds(self) -> int:
+        """Return the configured time-to-live in seconds."""
+        return self._ttl
+
     def _generate_key(self, project_name: str, entity_name: str) -> str:
         """Generate cache key from config and entity name."""
         key_str = f"{project_name}:{entity_name}"

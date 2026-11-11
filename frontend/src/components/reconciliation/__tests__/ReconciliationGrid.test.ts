@@ -12,6 +12,7 @@ vi.mock('ag-grid-vue3', () => ({
     template: `
       <div data-testid="grid-stub">
         <div v-for="row in rowData.slice().reverse()" :key="row.local_key_value">
+          <span data-testid="row-class">{{ row.row_style_class }}</span>
           <span data-testid="row-status">{{ row.status_display }}</span>
           <span data-testid="row-confidence">{{ row.confidence_percent == null ? 'Unknown' : Math.round(row.confidence_percent) + '%' }}</span>
           <span data-testid="row-errors">{{ row.errors_display || '—' }}</span>
@@ -324,5 +325,47 @@ describe('PreviewMatchedDataDialog', () => {
     expect(rows[6]?.text()).toContain('Needs attention')
     expect(rows[6]?.text()).toContain('Invalid target value')
     expect(wrapper.text()).toContain('2 unresolved · 1 errors')
+  })
+
+  it('keeps row virtualization enabled and styles rows by class', () => {
+    const { wrapper } = mountGrid()
+
+    const grid = wrapper.get('[data-testid="grid-stub"]')
+    // autoHeight would disable virtualization and render every row at once.
+    expect(grid.attributes('domlayout')).toBe('normal')
+  })
+
+  it('assigns a row class name instead of a per-render style object', () => {
+    const previewData = [
+      { local_key_value: 'A', site_name: 'Same', status: 'accepted' as const, candidates: [] },
+      { local_key_value: 'B', site_name: 'Same', status: 'rejected' as const, candidates: [] },
+      { local_key_value: 'C', site_name: 'Same', status: 'proposed' as const, errors: ['Bad value'], candidates: [] },
+    ]
+    const wrapper = mount(ReconciliationGrid, {
+      props: {
+        entitySpec: {
+          source: null,
+          property_mappings: {},
+          remote: { service_type: 'site' },
+          auto_accept_threshold: 0.95,
+          review_threshold: 0.7,
+          mapping: [],
+        },
+        previewData,
+        mappingData: null,
+        projectName: 'project',
+        entityName: 'site',
+        targetField: 'site_name',
+        submitDecision: vi.fn().mockResolvedValue(undefined),
+      },
+      global: { plugins: [vuetify], stubs },
+    })
+
+    const rows = wrapper.findAll('[data-testid="grid-stub"] > div')
+    const classes = rows.map((row) => row.find('[data-testid="row-class"]').text())
+    expect(classes).toContain('row-accepted')
+    expect(classes).toContain('row-rejected')
+    // An error takes precedence over the decision status.
+    expect(classes).toContain('row-needs-attention')
   })
 })

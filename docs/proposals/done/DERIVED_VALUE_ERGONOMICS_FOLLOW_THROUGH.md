@@ -38,7 +38,7 @@ In practice this means the core mechanism exists, but the authoring experience i
 - Reframe this as a new SQL-oriented computation system by default
 - Solve branch topology, merged-parent semantics, or fact-versus-lookup intent in this proposal
 
-Those broader modeling concerns remain in [../BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](../BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md).
+Those broader modeling concerns remain in [../future/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](../future/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md).
 
 ## Expected Outcome
 
@@ -140,7 +140,7 @@ What was re-evaluated:
 - current real-world `extra_columns` usage in Arbodat-style test projects
 - current documentation and examples for copy, constant, interpolation, and formula patterns
 - implemented validation, preview, and editor support added through Phases 1 to 4
-- adjacent proposal work in [../BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](../BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md)
+- adjacent proposal work in [../future/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](../future/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md)
 
 What now appears sufficient:
 
@@ -159,7 +159,7 @@ What does not currently justify a second derived-value feature:
 Documented remaining gap:
 
 - a strong recurring gap for value derivation itself was not found
-- where authoring still feels awkward, the problem belongs to follow-up modeling work tracked in [../BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](../BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md), especially around branch-scoped consumers for mixed parents
+- where authoring still feels awkward, the problem belongs to follow-up modeling work tracked in [../future/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](../future/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md), especially around branch-scoped consumers for mixed parents
 
 Conclusion:
 
@@ -177,6 +177,6 @@ This proposal should be considered complete when:
 
 ## Relationship To Other Proposals
 
-- This proposal supports follow-up work on [../BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](../BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md).
+- This proposal supports follow-up work on [../future/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](../future/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md).
 - It should land before or alongside branch-scoping improvements where those improvements depend on authors creating branch markers or synthetic identifiers cleanly.
 - It does not replace that follow-up proposal; it narrows one part of the authoring problem into a more actionable track.

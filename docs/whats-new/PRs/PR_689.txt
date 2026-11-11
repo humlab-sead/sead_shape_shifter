@@ -1,0 +1,68 @@
+title: Add bounded row paging and AG Grid browsing to troubleshooters
+description:
+## Summary
+
+Affected source rows in both troubleshooters are now browsed in bounded server-side pages instead of
+being capped at a small fixed sample.
+
+ - A new POST /api/v1/projects/{project_name}/link-experiment-contexts/{context_id}/exception-rows
+endpoint returns one page of affected rows (side, group, offset, limit, max page 500). Baseline
+pages are sliced from the retained configured-key diagnostic; trial rows are not retained, so a
+trial page recomputes the trial from the retained inputs with the submitted controls and requires a
+trial payload (otherwise the page returns status: "unavailable", reason: "trial_required").
+Unknown/foreign contexts are concealed (404), expired contexts report 410, and an incomplete
+diagnostic returns reason: "diagnostic_incomplete".
+ - The context/trial response now carries only the first browse page (EXCEPTION_ROW_PAGE_SIZE = 100)
+per group, keeping responses bounded while total_count and the cap state remain available for
+paging.
+ - The fixed 100-row exception-group cap setting LINK_EXPERIMENT_GROUP_ROW_CAP is replaced by
+LINK_TROUBLESHOOT_BROWSE_ROW_CAP (default 10,000, max 10,000), shared by the link and integrity
+troubleshooters. The integrity troubleshooter request gains row_offset/row_limit (default 100, max
+500), replacing the internal 20-row sample, and its rows response reports offset, limit, browse_cap,
+and browse_cap_reached.
+ - Front end: a new TroubleshooterDataGrid (AG Grid, read-only, optional single-row selection)
+replaces the v-data-table/v-table markup in LinkTroubleshooterDialog.vue and
+IntegrityTroubleshooterBody.vue; useLinkTroubleshooter loads row pages through the new API and
+exposes rows, rowTotalCount, rowBrowseCap, rowBrowseCapReached, rowStatusMessage, rowsLoading, and
+rowsError. The dialog is resizable via pointer-drag handles (right edge, bottom edge, corner) and
+arrow-key handling, constrained to the viewport.
+ - Terminology: "saved link" is renamed "configured link" in UI labels, backend messages, comments,
+and tests (e.g. "Reset to configured link", "Configured relationship", refusal messages). Integrity
+counts are shown as stat cards with an explanatory tooltip, status/reason codes are formatted as
+human-readable labels, and inline help moved into tooltips.
+ - Docs: the new route is listed in docs/AUTHORIZATION_ROUTE_INVENTORY.md with project:read, the new
+setting is documented in docs/OPERATIONS.md, and docs/whats-new/PRs/PR_688.txt records the
+what's-new entry for promotion pull request #688.
+
+## User-facing release note
+
+Affected-row lists in the link troubleshooter and the integrity troubleshooter can now be paged
+through up to 10,000 rows instead of stopping at the first 100 (20 for integrity rows), with a
+message when a result set is larger than the browsable window. The troubleshooter dialog can be
+resized by dragging its edge or corner or with the arrow keys, integrity counts appear as
+at-a-glance stat cards with an explanatory tooltip, and the wording now says "configured link"
+instead of "saved link".
+
+## Upgrade notes
+
+Deployers must rename the environment variable SHAPE_SHIFTER_LINK_EXPERIMENT_GROUP_ROW_CAP to
+SHAPE_SHIFTER_LINK_TROUBLESHOOT_BROWSE_ROW_CAP; its default rises from 100 to 10,000 and its allowed
+maximum from 1,000 to 10,000. API consumers calling the integrity troubleshooter may send
+row_offset and row_limit (default 100, max 500) and will see the new offset, limit, browse_cap, and
+browse_cap_reached fields in its rows response; baseline/trial responses now include only the first
+100 rows per exception group, with remaining rows read from the new exception-rows endpoint, which
+requires project:read authorization.
+
+## Validation
+
+Backend tests added or updated in the diff cover the exception-rows route (page forwarding,
+concealment of unknown contexts, 410 on expiry, 422 for invalid bodies), service-level paging and
+browse-cap reporting (baseline slicing, trial recomputation, trial_required, diagnostic_incomplete,
+cap-reached and beyond-cap offsets), the mapper's first-page and page-construction behavior,
+integrity row-offset paging with the cap reported separately from the total, and the renamed
+setting's default/override/bounds. Front-end tests cover the AG Grid stub rendering, dialog resize
+by pointer and keyboard, stat cards and tooltips, and the renamed terminology.
+
+No execution results for these tests are available in the supplied evidence, so they are not
+reported as passed. The only CI records for this pull request are the Container Release validate and
+publish jobs, both SKIPPED.

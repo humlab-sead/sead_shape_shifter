@@ -1,0 +1,36 @@
+title: Document promotion provenance guard script in scripts README
+description:
+## Summary
+
+Adds a verify_promotion_provenance.sh section to scripts/README.md, documenting the promotion guard
+script and its workflow that shipped in #638 without documentation. The new section covers:
+
+ - Quick-start examples for checking a dev-into-staging promotion and an explicit commit range.
+ - How commits are classified on the first-parent chain: merge commits with a Merge pull request
+#<n> subject pass, and other commits pass only when GitHub associates them with a pull request whose
+base is not staging or main.
+ - The protected path list (scripts/, src/, backend/, frontend/, ingesters/, tests/,
+.github/workflows/) and the PROTECTED_PATHS override, reflecting the widened default list.
+ - Exit codes 0/1/2 and the advisory promotion-guard.yml workflow that runs the script on pull
+requests into staging and main.
+ - Known limitations: squash and rebase merges depend on a live commit-to-pull-request association,
+and a pull request cannot repair an earlier direct push because that association disappears once the
+branch is merged and deleted.
+
+The change is documentation only; no script or workflow behavior is modified.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - CI on this pull request: the Container Release workflow checks validate and publish both
+completed with conclusion SKIPPED (documentation-only change; the checks did not run).
+ - The pull request author reported that bash scripts/check_doc_links.sh reported all documentation
+links valid and that the documented path list matches DEFAULT_PROTECTED_PATHS in the script;
+execution of these checks could not be independently verified from the available evidence.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -36,6 +37,24 @@ def test_shared_target_model_directory_defaults_under_application_root(tmp_path)
 
     assert settings.GLOBAL_TARGET_MODEL_DIR == tmp_path / "shared/target-models"
     assert settings.GLOBAL_TARGET_MODEL_DIR.is_dir()
+
+
+def test_resolver_directory_vars_exported_to_environment(tmp_path, monkeypatch) -> None:
+    """Constructing Settings publishes the approved directory variables to os.environ.
+
+    The Core directive resolver expands ${GLOBAL_DATA_SOURCE_DIR} and friends from
+    os.environ, which pydantic-settings does not populate from .env. Without the
+    export step, a directory configured only in .env expands to an empty string.
+    """
+    for name in ("APPLICATION_ROOT", "GLOBAL_DATA_DIR", "GLOBAL_DATA_SOURCE_DIR", "GLOBAL_TARGET_MODEL_DIR"):
+        monkeypatch.delenv(name, raising=False)
+
+    settings = Settings(APPLICATION_ROOT=tmp_path)
+
+    assert os.environ["APPLICATION_ROOT"] == str(settings.APPLICATION_ROOT)
+    assert os.environ["GLOBAL_DATA_DIR"] == str(settings.GLOBAL_DATA_DIR)
+    assert os.environ["GLOBAL_DATA_SOURCE_DIR"] == str(settings.GLOBAL_DATA_SOURCE_DIR)
+    assert os.environ["GLOBAL_TARGET_MODEL_DIR"] == str(settings.GLOBAL_TARGET_MODEL_DIR)
 
 
 def test_global_data_provider_directory_defaults_under_application_root(tmp_path) -> None:
@@ -89,3 +108,47 @@ def test_link_trial_output_row_limit_must_be_positive(limit: int, tmp_path) -> N
     """The link-trial output-row limit must be greater than zero."""
     with pytest.raises(ValidationError):
         Settings(_env_file=None, APPLICATION_ROOT=tmp_path, LINK_TRIAL_MAX_OUTPUT_ROWS=limit)  # pyright: ignore[reportCallIssue]
+
+
+def test_link_experiment_memory_limit_defaults_to_one_hundred_mib(tmp_path) -> None:
+    """The link-experiment memory limit defaults to 100 MiB."""
+    settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path)  # pyright: ignore[reportCallIssue]
+
+    assert settings.LINK_EXPERIMENT_MAX_MEMORY_MB == 100
+
+
+def test_link_experiment_memory_limit_reads_environment_override(monkeypatch, tmp_path) -> None:
+    """The link-experiment memory limit can be overridden with its prefixed environment variable."""
+    monkeypatch.setenv("SHAPE_SHIFTER_LINK_EXPERIMENT_MAX_MEMORY_MB", "250")
+    settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path)  # pyright: ignore[reportCallIssue]
+
+    assert settings.LINK_EXPERIMENT_MAX_MEMORY_MB == 250
+
+
+@pytest.mark.parametrize("limit", [0, -1])
+def test_link_experiment_memory_limit_must_be_positive(limit: int, tmp_path) -> None:
+    """The link-experiment memory limit must be greater than zero."""
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, APPLICATION_ROOT=tmp_path, LINK_EXPERIMENT_MAX_MEMORY_MB=limit)  # pyright: ignore[reportCallIssue]
+
+
+def test_link_troubleshoot_browse_row_cap_defaults_to_twenty_five_thousand(tmp_path) -> None:
+    """The affected-row browse cap defaults to 25,000 rows."""
+    settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path)  # pyright: ignore[reportCallIssue]
+
+    assert settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP == 25_000
+
+
+def test_link_troubleshoot_browse_row_cap_reads_environment_override(monkeypatch, tmp_path) -> None:
+    """The affected-row browse cap can be overridden with its prefixed environment variable."""
+    monkeypatch.setenv("SHAPE_SHIFTER_LINK_TROUBLESHOOT_BROWSE_ROW_CAP", "250")
+    settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path)  # pyright: ignore[reportCallIssue]
+
+    assert settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP == 250
+
+
+@pytest.mark.parametrize("limit", [0, 25_001])
+def test_link_troubleshoot_browse_row_cap_stays_within_bounds(limit: int, tmp_path) -> None:
+    """The affected-row browse cap must be between 1 and 25,000 rows."""
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, APPLICATION_ROOT=tmp_path, LINK_TROUBLESHOOT_BROWSE_ROW_CAP=limit)  # pyright: ignore[reportCallIssue]

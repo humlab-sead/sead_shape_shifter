@@ -25,7 +25,7 @@ Rules here apply when working in `src/`. Also read the root `AGENTS.md` for cros
 - **Extra columns**: four modes in order: DSL formula (`=`), column copy, interpolated string (`{col}`), constant. If a referenced column doesn't exist, defer — do not raise.
 - **Replace**: three forms: advanced rule list, mapping, legacy scalar/list. Never mix forms per column. `ffill` applies only to the legacy form.
 - **Unnest**: `id_vars` and `value_vars` must exist at unnest time — raises `ValueError` if missing. Skips silently if `value_name` already exists as a column.
-- DSL functions allowlist: `concat`, `upper`, `lower`, `trim`, `substr`, `coalesce` — no others.
+- DSL functions allowlist: `concat`, `upper`, `lower`, `trim`, `substr`, `coalesce`, `map_value` — no others.
 
 ## Specifications (`src/specifications/`)
 

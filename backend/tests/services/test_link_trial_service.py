@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from backend.app.core.config import Settings
+from backend.app.exceptions import ProjectedBudgetExceeded
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.services.link_baseline_service import LinkBaselineResult
 from backend.app.services.link_trial_service import LinkTrialService
@@ -108,6 +109,7 @@ def assert_no_trial_data(result) -> None:
     assert result.unmatched_a_rows is None
     assert result.multiply_matched_a_rows is None
     assert result.a_rows is None
+    assert result.exception_groups is None
     assert result.issues == ()
 
 
@@ -413,3 +415,303 @@ def test_baseline_context_fields_are_required_for_trials(tmp_path) -> None:
     assert result.status == "failed"
     assert result.reason == "baseline_not_reproduced"
     assert_no_trial_data(result)
+
+
+def minimal_baseline(
+    local_rows: pd.DataFrame,
+    remote_rows: pd.DataFrame,
+    *,
+    local_keys: list[str],
+    remote_keys: list[str],
+    how: str = "inner",
+) -> LinkBaselineResult:
+    """Build a baseline whose project holds metadata only, so frames can be large."""
+    local_columns: list[str] = [column for column in local_rows.columns if column != "system_id"]
+    remote_columns: list[str] = [column for column in remote_rows.columns if column != "system_id"]
+    config: dict[str, Any] = {
+        "entities": {
+            "orders": {
+                "type": "fixed",
+                "public_id": "order_id",
+                "columns": local_columns,
+                "values": [local_columns],
+                "foreign_keys": [{"entity": "customers", "local_keys": local_keys, "remote_keys": remote_keys, "how": how}],
+            },
+            "customers": {
+                "type": "fixed",
+                "public_id": "customer_id",
+                "columns": remote_columns,
+                "values": [remote_columns],
+            },
+        }
+    }
+    saved_project = ShapeShiftProject(cfg=config)
+    fk: ForeignKeyConfig = saved_project.get_table("orders").foreign_keys[0]
+    return LinkBaselineResult(
+        status="reproduced",
+        reason="reproduced",
+        message="The test baseline is reproduced.",
+        entity_name="orders",
+        remote_entity="customers",
+        fk_index=0,
+        link_pass="initial",
+        local_rows=local_rows.copy(deep=True),
+        remote_rows=remote_rows.copy(deep=True),
+        _saved_project=saved_project,
+        _foreign_key=fk,
+    )
+
+
+def service_with_memory_limit(limit_mb: int, tmp_path) -> LinkTrialService:
+    """Build a trial service with the configured memory limit in MiB."""
+    settings = Settings(
+        _env_file=None,
+        APPLICATION_ROOT=tmp_path,
+        LINK_EXPERIMENT_MAX_MEMORY_MB=limit_mb,
+    )  # pyright: ignore[reportCallIssue]
+    return LinkTrialService(settings=settings)
+
+
+def service_with_group_cap(cap: int, tmp_path) -> LinkTrialService:
+    """Build a trial service with a small affected-row browse cap."""
+    settings = Settings(
+        _env_file=None,
+        APPLICATION_ROOT=tmp_path,
+        LINK_TROUBLESHOOT_BROWSE_ROW_CAP=cap,
+    )  # pyright: ignore[reportCallIssue]
+    return LinkTrialService(settings=settings)
+
+
+def test_over_budget_retained_inputs_raise_before_any_merge(tmp_path) -> None:
+    """Retained inputs above the limit are rejected without running the join."""
+    rows = 20_000
+    local_rows = pd.DataFrame({"customer_code": ["x" * 40] * rows})
+    remote_rows = pd.DataFrame({"system_id": [1], "code": ["x" * 40]})
+    baseline = minimal_baseline(local_rows, remote_rows, local_keys=["customer_code"], remote_keys=["code"])
+
+    with patch.object(ForeignKeyLinker, "link_foreign_key") as link:
+        with pytest.raises(ProjectedBudgetExceeded) as raised:
+            service_with_memory_limit(1, tmp_path).run_trial(baseline, local_keys=["customer_code"], remote_keys=["code"])
+
+    assert raised.value.code == "PROJECTED_BUDGET_EXCEEDED"
+    assert raised.value.context["stage"] == "link trial"
+    link.assert_not_called()
+
+
+def test_over_budget_projected_merge_raises_before_the_join(tmp_path) -> None:
+    """A duplicate-key expansion above the limit is rejected before materializing it."""
+    local_rows = pd.DataFrame({"customer_code": ["same"] * 500})
+    remote_rows = pd.DataFrame({"system_id": range(500), "code": ["same"] * 500})
+    baseline = minimal_baseline(local_rows, remote_rows, local_keys=["customer_code"], remote_keys=["code"])
+
+    with patch.object(ForeignKeyLinker, "link_foreign_key") as link:
+        with pytest.raises(ProjectedBudgetExceeded):
+            service_with_memory_limit(1, tmp_path).run_trial(baseline, local_keys=["customer_code"], remote_keys=["code"])
+
+    link.assert_not_called()
+
+
+def test_trial_completes_when_the_projection_fits_the_limit(tmp_path) -> None:
+    """The same inputs complete under a limit that covers the projected peak."""
+    local_rows = pd.DataFrame({"customer_code": ["same"] * 50})
+    remote_rows = pd.DataFrame({"system_id": range(50), "code": ["same"] * 50})
+    baseline = minimal_baseline(local_rows, remote_rows, local_keys=["customer_code"], remote_keys=["code"])
+
+    result = service_with_memory_limit(100, tmp_path).run_trial(baseline, local_keys=["customer_code"], remote_keys=["code"])
+
+    assert result.status == "complete"
+    assert result.output_rows == 2500
+
+
+# ---------------------------------------------------------------------------
+# Trial controls, resolved settings, and bounded exception groups
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(("how_override", "expected_output"), [("inner", 2), ("left", 3)])
+def test_trial_applies_only_the_supported_join_type_override(how_override: str, expected_output: int, tmp_path) -> None:
+    local_rows = pd.DataFrame({"customer_code": ["missing", "duplicate"]})
+    remote_rows = pd.DataFrame({"system_id": [1, 2], "code": ["duplicate", "duplicate"]})
+    baseline = make_baseline(local_rows, remote_rows, local_keys=["customer_code"], remote_keys=["code"], how="left")
+
+    result = service_with_limit(10, tmp_path).run_trial(
+        baseline,
+        local_keys=["customer_code"],
+        remote_keys=["code"],
+        how=how_override,  # type: ignore[arg-type]
+    )
+
+    assert result.status == "complete"
+    assert result.output_rows == expected_output
+    assert result.settings is not None
+    assert result.settings.join_type.requested == how_override
+    assert result.settings.join_type.source == "explicit"
+    assert result.settings.join_type.effective == how_override
+
+
+@pytest.mark.parametrize(
+    ("overrides", "expected_policy"),
+    [
+        ({}, (False, True)),
+        ({"allow_null_keys": False}, (True, False)),
+        ({"allow_null_keys": True}, (False, True)),
+        ({"null_keys_equal": True}, (False, False)),
+        ({"null_keys_equal": True, "allow_null_keys": False}, (False, False)),
+    ],
+)
+def test_trial_reports_the_production_resolved_null_policy(
+    overrides: dict[str, Any],
+    expected_policy: tuple[bool, bool],
+    tmp_path,
+) -> None:
+    local_rows = pd.DataFrame({"customer_code": ["matched"]})
+    remote_rows = pd.DataFrame({"system_id": [1], "code": ["matched"]})
+    baseline = make_baseline(local_rows, remote_rows, local_keys=["customer_code"], remote_keys=["code"], how="left")
+
+    result = service_with_limit(10, tmp_path).run_trial(
+        baseline,
+        local_keys=["customer_code"],
+        remote_keys=["code"],
+        **overrides,
+    )
+
+    assert result.status == "complete"
+    assert result.settings is not None
+    assert (
+        result.settings.resolved_null_policy.enforce_strict_null_keys,
+        result.settings.resolved_null_policy.prevent_null_key_matches,
+    ) == expected_policy
+
+
+def test_trial_reports_inherited_and_explicit_sources_for_saved_and_requested_settings(tmp_path) -> None:
+    local_rows = pd.DataFrame({"customer_code": ["matched"]})
+    remote_rows = pd.DataFrame({"system_id": [1], "code": ["matched"]})
+    baseline = make_baseline(
+        local_rows,
+        remote_rows,
+        local_keys=["customer_code"],
+        remote_keys=["code"],
+        omit_how=True,
+        constraints={"allow_null_keys": False},
+    )
+    service = service_with_limit(10, tmp_path)
+
+    saved = service.run_trial(
+        baseline,
+        local_keys=["customer_code"],
+        remote_keys=["code"],
+        settings_source="saved",
+    )
+    inherited = service.run_trial(baseline, local_keys=["customer_code"], remote_keys=["code"])
+    explicit = service.run_trial(
+        baseline,
+        local_keys=["customer_code"],
+        remote_keys=["code"],
+        allow_null_keys=True,
+        how="left",  # type: ignore[arg-type]
+    )
+
+    assert saved.status == "complete" and saved.settings is not None
+    assert saved.settings.join_type.source == "inherited"
+    assert saved.settings.join_type.requested is None
+    assert saved.settings.join_type.effective == "inner"
+    assert saved.settings.allow_null_keys.source == "explicit"
+    assert saved.settings.allow_null_keys.requested is False
+
+    assert inherited.settings is not None
+    assert inherited.settings.allow_null_keys.source == "inherited"
+    assert inherited.settings.allow_null_keys.requested is None
+    assert inherited.settings.join_type.source == "inherited"
+
+    assert explicit.settings is not None
+    assert explicit.settings.allow_null_keys.source == "explicit"
+    assert explicit.settings.allow_null_keys.requested is True
+    assert explicit.settings.join_type.source == "explicit"
+    assert explicit.settings.join_type.requested == "left"
+    assert explicit.settings.join_type.effective == "left"
+
+
+def test_trial_keeps_other_constraints_and_extra_columns_when_overriding_null_settings(tmp_path) -> None:
+    local_rows = pd.DataFrame({"customer_code": ["matched"]})
+    remote_rows = pd.DataFrame({"system_id": [1], "code": ["matched"]})
+    baseline = make_baseline(
+        local_rows,
+        remote_rows,
+        local_keys=["customer_code"],
+        remote_keys=["code"],
+        constraints={"allow_row_decrease": True, "allow_unmatched_left": True},
+    )
+    saved_fk = baseline._foreign_key
+    assert saved_fk is not None
+    saved_data = copy.deepcopy(saved_fk.fk_cfg)
+    captured: list[dict[str, Any]] = []
+    original_link = ForeignKeyLinker.link_foreign_key
+
+    def capture_trial_fk(linker, local_df, fk, remote_df):
+        captured.append(copy.deepcopy(fk.fk_cfg))
+        return original_link(linker, local_df, fk, remote_df)
+
+    with patch.object(ForeignKeyLinker, "link_foreign_key", capture_trial_fk):
+        result = service_with_limit(10, tmp_path).run_trial(
+            baseline,
+            local_keys=["customer_code"],
+            remote_keys=["code"],
+            allow_null_keys=True,
+        )
+
+    assert result.status == "complete"
+    assert captured[0]["constraints"] == {
+        "allow_row_decrease": True,
+        "allow_unmatched_left": True,
+        "allow_null_keys": True,
+    }
+    assert saved_fk.fk_cfg == saved_data
+
+
+def test_trial_caps_each_exception_group_independently_in_input_order(tmp_path) -> None:
+    local_rows = pd.DataFrame({"customer_code": ["m1", "m2", "m3", "dup", "dup", "dup"]})
+    remote_rows = pd.DataFrame({"system_id": [1, 2], "code": ["dup", "dup"]})
+    baseline = make_baseline(local_rows, remote_rows, local_keys=["customer_code"], remote_keys=["code"])
+
+    result = service_with_group_cap(2, tmp_path).run_trial(
+        baseline,
+        local_keys=["customer_code"],
+        remote_keys=["code"],
+    )
+
+    assert result.status == "complete"
+    assert result.exception_groups is not None
+    assert result.exception_groups.unmatched.total_count == 3
+    assert [row.input_position for row in result.exception_groups.unmatched.rows] == [0, 1]
+    assert result.exception_groups.multiply_matched.total_count == 3
+    assert [row.input_position for row in result.exception_groups.multiply_matched.rows] == [3, 4]
+    assert result.unmatched_a_rows == 3
+    assert result.multiply_matched_a_rows == 3
+
+
+def test_trial_returns_empty_groups_when_every_row_matches_once(tmp_path) -> None:
+    local_rows = pd.DataFrame({"customer_code": ["a", "b"]})
+    remote_rows = pd.DataFrame({"system_id": [1, 2], "code": ["a", "b"]})
+    baseline = make_baseline(local_rows, remote_rows, local_keys=["customer_code"], remote_keys=["code"])
+
+    result = service_with_limit(10, tmp_path).run_trial(baseline, local_keys=["customer_code"], remote_keys=["code"])
+
+    assert result.status == "complete"
+    assert result.exception_groups is not None
+    assert result.exception_groups.unmatched.total_count == 0
+    assert result.exception_groups.unmatched.rows == ()
+    assert result.exception_groups.multiply_matched.total_count == 0
+    assert result.exception_groups.multiply_matched.rows == ()
+
+
+def test_trial_left_join_unmatched_rows_contribute_one_output_row(tmp_path) -> None:
+    local_rows = pd.DataFrame({"customer_code": ["missing", "matched"]})
+    remote_rows = pd.DataFrame({"system_id": [1], "code": ["matched"]})
+    baseline = make_baseline(local_rows, remote_rows, local_keys=["customer_code"], remote_keys=["code"], how="left")
+
+    result = service_with_limit(10, tmp_path).run_trial(baseline, local_keys=["customer_code"], remote_keys=["code"])
+
+    assert result.status == "complete"
+    assert result.exception_groups is not None
+    assert result.exception_groups.unmatched.total_count == 1
+    assert result.exception_groups.unmatched.rows[0].output_row_contribution == 1

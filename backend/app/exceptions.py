@@ -244,6 +244,12 @@ class DependencyError(DomainException):
     error_code = "DEPENDENCY_ERROR"
 
 
+class ReconciliationManifestError(DependencyError):
+    """Reconciliation service metadata is unavailable or invalid."""
+
+    error_code = "RECONCILIATION_MANIFEST_ERROR"
+
+
 class CircularDependencyError(DependencyError):
     """
     Circular dependency detected in entity relationships.
@@ -389,6 +395,16 @@ class ConfigurationError(ValidationError):
 # ============================================================================
 # Resource Errors
 # ============================================================================
+
+
+class ProjectedBudgetExceeded(ValidationError):
+    """A link experiment input or projected merge exceeds the memory limit.
+
+    The message carries only sizes and the configured limit. It never includes
+    retained row values.
+    """
+
+    error_code = "PROJECTED_BUDGET_EXCEEDED"
 
 
 class ResourceError(DomainException):

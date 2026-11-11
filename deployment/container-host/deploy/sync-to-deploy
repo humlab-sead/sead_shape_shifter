@@ -27,8 +27,10 @@ container directory and install/reload its systemd user unit. With no DEPLOY_HOS
 With DEPLOY_HOST, use DEPLOY_SSH_USER for SSH transport. Files removed
 locally are removed from the target. The target files are owned by
 DEPLOY_USER and grouped to that user's primary group; the source group is
-not copied. A lib/ directory is never copied and any earlier copy on the
-target is removed: the Containerfile downloads UCanAccess at build time.
+not copied. Source owners and modification times are not preserved; file
+content is compared by checksum. A lib/ directory is never copied and any
+earlier copy on the target is removed: the Containerfile downloads UCanAccess
+at build time.
 
 Defaults:
   owner: no default, must be specified as TARGET_USER
@@ -134,13 +136,9 @@ refuse_managed_target() {
 # UCanAccess copy off the target: the Containerfile downloads and pins the JARs
 # at build time, so the build context no longer needs them. Because --delete
 # skips excluded paths, the stale target directory is removed explicitly below.
-if [[ "$g_verbose" = true ]]; then
-  VERBOSE_ARG="--itemize-changes"
-else
-  VERBOSE_ARG="--itemize-changes"
-  # VERBOSE_ARG="--out-format='%n%L'"
-fi
-RSYNC_ARGS=(--archive --no-group --delete --delete-delay "$VERBOSE_ARG" --human-readable --exclude=/.env --exclude=/lib --exclude="deployment-verification")
+# The post-sync chown sets target ownership. Checksums detect content changes
+# without using source timestamps to decide whether files need updating.
+RSYNC_ARGS=(--archive --no-owner --no-group --no-times --checksum --delete --delete-delay --itemize-changes --human-readable --exclude=/.env --exclude=/lib --exclude="deployment-verification")
 if [[ "$g_dry_run" = true ]]; then
   RSYNC_ARGS+=(--dry-run)
 fi

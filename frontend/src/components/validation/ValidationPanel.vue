@@ -190,18 +190,29 @@
             <validation-message-list
               :messages="allMessages"
               :empty-message="'No validation issues found. Project looks good!'"
+              v-bind="messageListProps"
               v-on="listEvents"
             />
           </v-window-item>
 
           <!-- Errors Only -->
           <v-window-item value="errors">
-            <validation-message-list :messages="errors" :empty-message="'No errors found'" v-on="listEvents" />
+            <validation-message-list
+              :messages="errors"
+              :empty-message="'No errors found'"
+              v-bind="messageListProps"
+              v-on="listEvents"
+            />
           </v-window-item>
 
           <!-- Warnings Only -->
           <v-window-item value="warnings">
-            <validation-message-list :messages="warnings" :empty-message="'No warnings found'" v-on="listEvents" />
+            <validation-message-list
+              :messages="warnings"
+              :empty-message="'No warnings found'"
+              v-bind="messageListProps"
+              v-on="listEvents"
+            />
           </v-window-item>
 
           <!-- By Category -->
@@ -222,7 +233,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="structuralIssues" v-on="listEvents" />
+                  <validation-message-list :messages="structuralIssues" v-bind="messageListProps" v-on="listEvents" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
 
@@ -241,7 +252,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="dataIssues" v-on="listEvents" />
+                  <validation-message-list :messages="dataIssues" v-bind="messageListProps" v-on="listEvents" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
 
@@ -260,7 +271,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="performanceIssues" v-on="listEvents" />
+                  <validation-message-list :messages="performanceIssues" v-bind="messageListProps" v-on="listEvents" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
 
@@ -279,7 +290,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="conformanceIssues" v-on="listEvents" />
+                  <validation-message-list :messages="conformanceIssues" v-bind="messageListProps" v-on="listEvents" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>
@@ -309,6 +320,7 @@
                     v-if="group.entityMessages.length > 0"
                     :messages="group.entityMessages"
                     :empty-message="'No entity-level issues found'"
+                    v-bind="messageListProps"
                     v-on="listEvents"
                   />
 
@@ -328,7 +340,11 @@
                         </div>
                       </v-expansion-panel-title>
                       <v-expansion-panel-text>
-                        <validation-message-list :messages="branchGroup.messages" v-on="listEvents" />
+                        <validation-message-list
+                          :messages="branchGroup.messages"
+                          v-bind="messageListProps"
+                          v-on="listEvents"
+                        />
                       </v-expansion-panel-text>
                     </v-expansion-panel>
                   </v-expansion-panels>
@@ -348,6 +364,7 @@ import { useNotification } from '@/composables/useNotification'
 import {
   groupByEntityScope,
   type EntityDataValidationStatus,
+  type ValidationEntityFocus,
   type ValidationError,
   type ValidationResult,
 } from '@/types'
@@ -373,7 +390,7 @@ interface Emits {
   (e: 'validate'): void
   (e: 'validate-data', config?: ValidationConfig): void
   (e: 'validate-target-model'): void
-  (e: 'open-entity', entityName: string): void
+  (e: 'open-entity', entityName: string, focus?: ValidationEntityFocus): void
   (e: 'troubleshoot', message: ValidationError): void
 }
 
@@ -385,6 +402,10 @@ const listEvents = {
   'open-entity': handleOpenEntity,
   troubleshoot: (message: ValidationError) => emit('troubleshoot', message),
 }
+
+// Link troubleshooting replays a configured link on complete data, so it is offered only
+// for results that were not built from truncated sample data.
+const messageListProps = computed(() => ({ validationMode: props.validationResult?.validation_mode ?? null }))
 
 const activeTab = ref('all')
 const showDataConfig = ref(false)
@@ -411,9 +432,16 @@ watch(hasDataValidationExecution, (hasExecution) => {
     activeTab.value = 'all'
   }
 })
-const dataValidationModeLabel = computed(() =>
-  props.validationResult?.validation_mode === 'sample' ? 'Sample' : 'Complete'
-)
+const dataValidationModeLabel = computed(() => {
+  switch (props.validationResult?.validation_mode) {
+    case 'sample':
+      return 'Sample'
+    case 'single_pass':
+      return 'Single pass'
+    default:
+      return 'Complete'
+  }
+})
 const dataValidationStatusColor = computed(() => {
   switch (props.validationResult?.status) {
     case 'completed':
@@ -496,7 +524,12 @@ function handleDataValidationRun(config: ValidationConfig) {
   emit('validate-data', config)
 }
 
-function handleOpenEntity(entityName: string) {
+function handleOpenEntity(entityName: string, focus?: ValidationEntityFocus) {
+  if (focus) {
+    emit('open-entity', entityName, focus)
+    return
+  }
+
   emit('open-entity', entityName)
 }
 

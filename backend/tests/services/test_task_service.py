@@ -8,7 +8,7 @@ import pytest
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
 from backend.app.models.task import TaskPriority, TaskStatus
-from backend.app.models.validation import ValidationError, ValidationResult
+from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
 from backend.app.services.task_service import TaskService
 from src.model import ShapeShiftProject
 from src.sidecars import TaskList
@@ -360,6 +360,24 @@ class TestTaskServiceMarkComplete:
                 entity_name="site",
                 limit=1,
             )
+
+    @pytest.mark.asyncio
+    async def test_compute_status_uses_single_pass_data_validation(
+        self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result
+    ):
+        """Task status should validate from one project-wide pass, not per-entity previews."""
+        task_service.project_service.load_project = Mock(return_value=mock_api_project)
+        task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
+        task_service.shapeshift_service.get_project_version = Mock(return_value=1)
+        task_service.shapeshift_service.cache = MagicMock()
+        task_service.shapeshift_service.cache.get_dataframe = Mock(return_value=None)
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
+            await task_service.compute_status("test-project")
+
+        task_service.validation_service.validate_project_data.assert_awaited_once_with(
+            "test-project", validation_mode=DataValidationMode.SINGLE_PASS
+        )
 
     @pytest.mark.asyncio
     async def test_compute_status_uses_project_name_for_cache_lookups(

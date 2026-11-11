@@ -47,6 +47,17 @@ class TestDSLIntegration:
         assert list(result["initials"]) == ["JD", "JS", "BJ"]
         assert len(deferred) == 0
 
+    def test_map_value_produces_typed_key_column(self, evaluator):
+        """map_value adds typed key values through the extra_columns evaluator."""
+        df = pd.DataFrame({"code": ["A", "B", None]})
+        extra_cols = {"lookup_id": "=map_value(code, 'A', 1, 'B', 2)"}
+
+        result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "test")
+
+        assert result["lookup_id"].tolist() == [1, 2, None]
+        assert type(result["lookup_id"].iloc[0]) is int
+        assert deferred == {}
+
     def test_dsl_with_string_functions(self, evaluator, sample_df):
         """Test DSL with string manipulation functions."""
         extra_cols = {
@@ -322,3 +333,66 @@ class TestDSLIntegrationEdgeCases:
 
         assert result["upper_Name"].iloc[0] == "ALICE"
         assert result["upper_name"].iloc[0] == "BOB"
+
+
+class TestNewFormulaFunctionsIntegration:
+    """Test split_part, concat_ws, regex_replace, and named-group regex_extract end to end."""
+
+    @pytest.fixture
+    def evaluator(self):
+        """Create evaluator instance."""
+        return ExtraColumnEvaluator()
+
+    def test_split_part_replaces_prefix_regex(self, evaluator):
+        """split_part reads the third comma-separated field where a prefix regex was used before."""
+        df = pd.DataFrame({"site_id": ["A, B,C", "X,Y", None]})
+
+        extra_cols = {"lamningsnummer_3": "=trim(split_part(site_id, ',', 3))"}
+
+        result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "test")
+
+        values = result["lamningsnummer_3"].tolist()
+        assert values[0] == "C"
+        assert pd.isna(values[1]) and pd.isna(values[2])
+        assert len(deferred) == 0
+
+    def test_concat_ws_skips_null_parts(self, evaluator):
+        """concat_ws builds a delimited list from optional parts without empty segments."""
+        df = pd.DataFrame(
+            {
+                "part1": ["A", None, "G", None],
+                "part2": [None, "B", "H", None],
+                "part3": ["C", None, None, None],
+            }
+        )
+
+        extra_cols = {"joined": "=concat_ws(',', part1, part2, part3)"}
+
+        result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "test")
+
+        values = result["joined"].tolist()
+        assert values[0] == "A,C" and values[1] == "B" and values[2] == "G,H"
+        assert pd.isna(values[3])
+        assert len(deferred) == 0
+
+    def test_regex_replace_collapses_alternation(self, evaluator):
+        """regex_replace removes case-insensitive alternations in one call."""
+        df = pd.DataFrame({"lab_id": ["OKÄND-1", "okänd 2", "keep"]})
+
+        extra_cols = {"lab_id_stripped": "=regex_replace(lab_id, '(?i)okänd', '')"}
+
+        result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "test")
+
+        assert result["lab_id_stripped"].tolist() == ["-1", " 2", "keep"]
+        assert len(deferred) == 0
+
+    def test_regex_extract_named_group(self, evaluator):
+        """regex_extract selects a named capture group instead of a trailing index."""
+        df = pd.DataFrame({"code": ["SITE-042", "SITE-7", "none"]})
+
+        extra_cols = {"site_code": "=regex_extract(code, 'SITE-(?P<num>[0-9]+)', 'num')"}
+
+        result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "test")
+
+        assert result["site_code"].tolist() == ["042", "7", None]
+        assert len(deferred) == 0

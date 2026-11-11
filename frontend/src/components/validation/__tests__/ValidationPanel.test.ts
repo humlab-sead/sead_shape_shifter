@@ -40,6 +40,29 @@ function mountValidationPanel(validationResult: ValidationResult | null) {
 }
 
 describe('ValidationPanel', () => {
+  it('forwards the column focus from a direct-FK issue', async () => {
+    const message = {
+      severity: 'error' as const,
+      entity: 'sample',
+      field: 'dataset_id',
+      code: 'DIRECT_FK_OUTPUT_COLUMN_MISSING',
+      message: "Entity 'sample' must output target FK column 'dataset_id'.",
+    }
+    const wrapper = mountValidationPanel({
+      is_valid: false,
+      errors: [message],
+      warnings: [],
+      info: [],
+      error_count: 1,
+      warning_count: 0,
+    })
+
+    await wrapper.find('tbody > tr.v-data-table__tr').trigger('click')
+    await wrapper.find('.direct-fk-column-action').trigger('click')
+
+    expect(wrapper.emitted('open-entity')?.[0]).toEqual(['sample', { field: 'columns', column: 'dataset_id' }])
+  })
+
   it('forwards troubleshooter actions from validation messages', async () => {
     const warning = {
       severity: 'warning' as const,
@@ -66,6 +89,35 @@ describe('ValidationPanel', () => {
     await wrapper.find('.link-troubleshooter-action').trigger('click')
 
     expect(wrapper.emitted('troubleshoot')?.[0]).toEqual([warning])
+  })
+
+  it('turns off link troubleshooting for sample data results', async () => {
+    const warning = {
+      severity: 'warning' as const,
+      entity: 'orders',
+      message: 'Link changed the row count.',
+      code: 'ROW_COUNT_MISMATCH',
+      metadata: {
+        fk_index: 0,
+        fk_signature: 'saved-signature',
+        link_pass: 'initial',
+        join_type: 'inner',
+      },
+    }
+    const wrapper = mountValidationPanel({
+      is_valid: true,
+      errors: [],
+      warnings: [warning],
+      info: [],
+      error_count: 0,
+      warning_count: 1,
+      validation_mode: 'sample',
+    })
+
+    await wrapper.find('tbody > tr.v-data-table__tr').trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
+    expect(wrapper.find('.integrity-troubleshoot-refusal').text()).toContain('turned off for sample data')
   })
 
   it('renders merged-entity issues grouped by entity and branch', async () => {

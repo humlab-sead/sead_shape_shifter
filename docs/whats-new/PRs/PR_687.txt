@@ -1,0 +1,37 @@
+title: Replace comparison table with single-result toggle view
+description:
+## Summary
+
+Replaces the stacked Measure / Saved link / Last trial / Change comparison table in the link
+troubleshooter results pane with a single-result display toggled by "Saved link" and "Last trial"
+buttons. The selected result shows Source rows and Output rows as large count cards; when the trial
+result is shown, each card adds a ±n delta against the saved link. The redundant summary block
+restating the unmatched count is removed and replaced by a single line explaining what the shown
+join does with unmatched source rows. A completed trial automatically becomes the shown result (and
+clearing it returns to the saved link); a failed trial shows dashes instead of stale totals. The
+stale-trial alert wording is updated to match the single-result layout, and the result-source select
+is replaced by the toggle buttons. Bounded row tables, pagination, truncation alerts, diagnostic
+warnings, and collapsed technical details are preserved. Unit tests in
+LinkTroubleshooterDialog.test.ts are updated accordingly. A promotion PR document for dev into
+staging carrying #685 is also added as a chore (docs/whats-new/PRs/PR_686.txt).
+
+## User-facing release note
+
+The link troubleshooter results pane now shows one result at a time, with "Saved link" and "Last
+trial" buttons to switch between them instead of a side-by-side comparison table. Count cards show
+source and output row totals at a glance, with a delta against the saved link when viewing trial
+results.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - Unit tests in frontend/src/components/validation/__tests__/LinkTroubleshooterDialog.test.ts were
+updated to cover the new toggle behavior, count-card rendering, delta display, auto-switch on trial
+completion, stale-trial handling, failed-trial dashes, and exception-row switching. No test-run
+output is available in the supplied evidence, so their results are unknown.
+ - The validate and publish checks in the "Container Release" workflow were reported as SKIPPED for
+this pull request.
+ - The pull request was merged into dev (merge commit c473ac6).

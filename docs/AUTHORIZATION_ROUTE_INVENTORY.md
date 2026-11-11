@@ -77,6 +77,7 @@ Every row above except the health check requires an authenticated principal thro
 | `GET`    | `/api/v1/projects/{name}/target-model-yaml`          | `project:read`                               |
 | `PUT`    | `/api/v1/projects/{name}/target-model-yaml`          | `project:edit`                               |
 | `GET`    | `/api/v1/projects/{name}/target-model-entities`      | `project:read`                               |
+| `GET`    | `/api/v1/projects/{name}/target-model-direct-foreign-keys/{entity_name}` | `project:read`                               |
 | `GET`    | `/api/v1/projects/{name}/target-model-docs`          | `project:read`                               |
 | `GET`    | `/api/v1/projects/{name}/target-models`              | `project:read`                               |
 | `GET`    | `/api/v1/projects/{name}/layout`                     | `project:read`                               |
@@ -173,6 +174,14 @@ Every row above except the health check requires an authenticated principal thro
 | `POST`   | `/api/v1/projects/{project_name}/entities/{entity_name}/sample`                                              | `project:read` |
 | `DELETE` | `/api/v1/projects/{project_name}/preview-cache`                                                              | `project:edit` |
 | `POST`   | `/api/v1/projects/{project_name}/entities/{entity_name}/foreign-keys/{fk_index}/test`                        | `project:read` |
+| `POST`   | `/api/v1/projects/{project_name}/link-experiment-contexts`                                                  | `project:read` |
+| `GET`    | `/api/v1/projects/{project_name}/link-experiment-contexts/{context_id}`                                     | `project:read` |
+| `POST`   | `/api/v1/projects/{project_name}/link-experiment-contexts/{context_id}/trials`                              | `project:read` |
+| `POST`   | `/api/v1/projects/{project_name}/link-experiment-contexts/{context_id}/exception-rows`                      | `project:read` |
+| `DELETE` | `/api/v1/projects/{project_name}/link-experiment-contexts/{context_id}`                                     | `project:read` |
+| `POST`   | `/api/v1/projects/{project_name}/integrity-troubleshooter`                                                   | `project:read` |
+| `POST`   | `/api/v1/projects/{project_name}/integrity-troubleshooter/{context_id}/page`                                 | `project:read` |
+| `DELETE` | `/api/v1/projects/{project_name}/integrity-troubleshooter/{context_id}`                                      | `project:read` |
 | `GET`    | `/api/v1/reconciliation/health`                                                                              | `authenticated` |
 | `GET`    | `/api/v1/reconciliation/manifest`                                                                            | `authenticated` |
 | `GET`    | `/api/v1/projects/{project_name}/reconciliation`                                                             | `project:read` |

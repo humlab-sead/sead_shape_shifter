@@ -29,30 +29,19 @@
           />
           <span class="text-body-2">{{ formatSeverityLabel(item.severity) }}</span>
         </div>
-        <span v-if="item.priority" class="text-caption text-medium-emphasis ml-6"> Priority: {{ item.priority }} </span>
       </div>
     </template>
 
     <template #item.message="{ item }">
       <div class="d-flex align-center ga-2">
-        <v-tooltip location="top">
-          <template #activator="{ props: tooltipProps }">
-            <span v-bind="tooltipProps" class="validation-message-summary text-body-2">{{ item.message }}</span>
-          </template>
-          <span class="text-body-2">{{ item.message }}</span>
-        </v-tooltip>
-        <v-tooltip v-if="item.suggestion" location="top">
-          <template #activator="{ props: tooltipProps }">
-            <v-icon
-              v-bind="tooltipProps"
-              icon="mdi-lightbulb-outline"
-              color="info"
-              size="small"
-              aria-label="Suggestion available"
-            />
-          </template>
-          <span><strong>Suggestion:</strong> {{ item.suggestion }}</span>
-        </v-tooltip>
+        <span class="validation-message-summary text-body-2">{{ item.message }}</span>
+        <v-icon
+          v-if="suggestionFor(item)"
+          icon="mdi-lightbulb-outline"
+          color="info"
+          size="small"
+          aria-label="Suggestion available"
+        />
       </div>
     </template>
 
@@ -105,7 +94,7 @@
               <p class="text-body-2 mb-0 validation-message-full-text">{{ item.message }}</p>
             </div>
 
-            <div class="d-flex flex-wrap ga-x-6 ga-y-2 mb-3">
+            <div class="d-flex flex-wrap gc-6 gr-2 mb-3">
               <div v-if="item.priority">
                 <span class="text-caption text-medium-emphasis">Priority</span>
                 <div class="text-body-2">{{ item.priority }}</div>
@@ -127,18 +116,18 @@
             </div>
 
             <v-alert
-              v-if="item.suggestion"
+              v-if="suggestionFor(item)"
               type="info"
               variant="tonal"
               density="compact"
               class="validation-message-suggestion"
               @click.stop
             >
-              <span class="text-body-2"><strong>Suggestion:</strong> {{ item.suggestion }}</span>
+              <span class="text-body-2"><strong>Suggestion:</strong> {{ suggestionFor(item) }}</span>
             </v-alert>
 
             <v-btn
-              v-if="isLinkTroubleshootCandidate(item)"
+              v-if="canTroubleshoot(item)"
               class="link-troubleshooter-action mt-3"
               size="small"
               variant="outlined"
@@ -146,6 +135,23 @@
               @click.stop="handleTroubleshoot(item)"
             >
               Troubleshoot link
+            </v-btn>
+            <p
+              v-else-if="troubleshootRefusal(item)"
+              class="integrity-troubleshoot-refusal text-body-2 text-medium-emphasis mt-3 mb-0"
+            >
+              {{ troubleshootRefusal(item) }}
+            </p>
+
+            <v-btn
+              v-if="columnSettingsFocus(item)"
+              class="direct-fk-column-action mt-3"
+              size="small"
+              variant="outlined"
+              prepend-icon="mdi-table-cog"
+              @click.stop="handleOpenColumnSettings(item)"
+            >
+              Open column settings
             </v-btn>
           </div>
         </td>
@@ -156,12 +162,20 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { ValidationError, ValidationSeverity } from '@/types'
-import { isLinkTroubleshootCandidate } from '@/utils/linkTroubleshooter'
+import type { DataValidationMode, ValidationEntityFocus, ValidationError, ValidationSeverity } from '@/types'
+import {
+  integrityTroubleshootRefusal,
+  isIntegrityTroubleshootCandidate,
+  isLinkTroubleshootCandidate,
+  isSampleDataValidation,
+  sampleDataTroubleshootRefusal,
+} from '@/utils/linkTroubleshooter'
+import { distinctSuggestion } from '@/utils/validationSuggestion'
 
 interface Props {
   messages: ValidationError[]
   emptyMessage?: string
+  validationMode?: DataValidationMode | null
 }
 
 interface ValidationTableMessage extends ValidationError {
@@ -169,12 +183,13 @@ interface ValidationTableMessage extends ValidationError {
 }
 
 interface Emits {
-  (e: 'open-entity', entityName: string): void
+  (e: 'open-entity', entityName: string, focus?: ValidationEntityFocus): void
   (e: 'troubleshoot', message: ValidationError): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
   emptyMessage: 'No messages',
+  validationMode: null,
 })
 
 const emit = defineEmits<Emits>()
@@ -215,6 +230,10 @@ function formatSeverityLabel(severity: ValidationSeverity): string {
   return `${severity.charAt(0).toUpperCase()}${severity.slice(1)}`
 }
 
+function suggestionFor(item: ValidationTableMessage): string | null {
+  return distinctSuggestion(item.message, item.suggestion)
+}
+
 function handleOpenEntity(entityName: string | null | undefined) {
   if (!entityName) {
     return
@@ -223,11 +242,42 @@ function handleOpenEntity(entityName: string | null | undefined) {
   emit('open-entity', entityName)
 }
 
+// A direct target-ID declaration without a produced column is fixable in the
+// entity's column settings, so offer that path for exactly that issue.
+function columnSettingsFocus(item: ValidationTableMessage): ValidationEntityFocus | null {
+  if (item.code !== 'DIRECT_FK_OUTPUT_COLUMN_MISSING' || !item.entity) {
+    return null
+  }
+
+  return { field: 'columns', column: item.field ?? null }
+}
+
+function handleOpenColumnSettings(item: ValidationTableMessage) {
+  const focus = columnSettingsFocus(item)
+  if (!focus || !item.entity) {
+    return
+  }
+
+  emit('open-entity', item.entity, focus)
+}
+
 function handleTroubleshoot(item: ValidationTableMessage) {
   const message = props.messages[Number(item.rowKey)]
   if (message) {
     emit('troubleshoot', message)
   }
+}
+
+function canTroubleshoot(item: ValidationTableMessage): boolean {
+  if (isSampleDataValidation(props.validationMode)) {
+    return false
+  }
+
+  return isLinkTroubleshootCandidate(item) || isIntegrityTroubleshootCandidate(item)
+}
+
+function troubleshootRefusal(item: ValidationTableMessage): string | null {
+  return sampleDataTroubleshootRefusal(item, props.validationMode) ?? integrityTroubleshootRefusal(item)
 }
 
 function formatBranchLabel(branchName: string | null | undefined, branchSource: string | null | undefined): string {
@@ -244,9 +294,15 @@ function formatBranchLabel(branchName: string | null | undefined, branchSource: 
 </script>
 
 <style scoped>
+.validation-message-table :deep(.v-table__wrapper > table) {
+  width: 100%;
+  table-layout: fixed;
+}
+
 .validation-message-summary {
   display: block;
-  max-width: min(38rem, 100%);
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

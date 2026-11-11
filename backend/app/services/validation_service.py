@@ -1,6 +1,6 @@
 """Validation service for project validation."""
 
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Sequence
 
 from loguru import logger
 
@@ -12,6 +12,7 @@ from backend.app.models.project import Project
 from backend.app.models.validation import (
     DataValidationMode,
     DataValidationStatus,
+    DataValidatorKey,
     EntityDataValidationResult,
     EntityDataValidationStatus,
     ValidationCategory,
@@ -29,7 +30,7 @@ from src.validation_messages import format_validation_message_with_context
 from src.validators.data_validators import ValidationIssue
 
 if TYPE_CHECKING:
-    from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
+    from backend.app.validators.data_validation_orchestrator import DataFetchStrategy, DataValidationOrchestrator
 
 # pylint: disable=unused-argument
 
@@ -162,7 +163,8 @@ class ValidationService:
         self,
         project_name: str,
         entity_names: list[str] | None = None,
-        validation_mode: DataValidationMode = DataValidationMode.SAMPLE,
+        validation_mode: DataValidationMode = DataValidationMode.COMPLETE,
+        validators: Sequence[DataValidatorKey] | None = None,
     ) -> ValidationResult:
         """
         Run data-aware validation on project.
@@ -170,12 +172,19 @@ class ValidationService:
         Args:
             project_name: Project name
             entity_names: Optional list of entity names to validate (None = all)
-            validation_mode: Validation mode (SAMPLE for preview data, COMPLETE for full normalization)
+            validation_mode: Validation mode (default: COMPLETE):
+                - COMPLETE: full normalization, aborts when any entity cannot be produced
+                - SAMPLE: preview data, one preview fetch per entity; foreign-key warnings from
+                  truncated samples can name values that exist outside the sample
+                - SINGLE_PASS: full normalization from one project-wide pass, reporting each
+                  entity that cannot be produced and skipping only its dependents
+            validators: Selectable data checks to run; None runs every selectable check.
 
         Returns:
             ValidationResult with data validation errors and warnings
         """
         use_full_data = validation_mode == DataValidationMode.COMPLETE
+        use_single_pass = validation_mode == DataValidationMode.SINGLE_PASS
         logger.debug(f"Running data validation for project: {project_name} (mode={validation_mode.value})")
 
         # Load and resolve project (convert directives to concrete values)
@@ -235,14 +244,18 @@ class ValidationService:
                 DataValidationOrchestrator,
                 FullDataFetchStrategy,
                 PreviewDataFetchStrategy,
+                SinglePassDataFetchStrategy,
             )
 
             # Use shared singleton cache (not a new instance)
             shapeshift_service: ShapeShiftService = get_shapeshift_service()
 
-            # Create appropriate strategy based on use_full_data flag
+            # Create appropriate strategy based on the requested validation mode
+            fetch_strategy: DataFetchStrategy
             if use_full_data:
                 fetch_strategy = FullDataFetchStrategy(project_service)
+            elif use_single_pass:
+                fetch_strategy = SinglePassDataFetchStrategy(shapeshift_service)
             else:
                 fetch_strategy = PreviewDataFetchStrategy(shapeshift_service)
 
@@ -254,6 +267,7 @@ class ValidationService:
             core_project=core_project,
             project_name=project_name,
             entity_names=entity_names,
+            validators=validators,
         )
 
         errors_list: list[ValidationError] = [ValidationMapper.to_api_error(issue) for issue in issues_list]

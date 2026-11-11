@@ -37,7 +37,7 @@
     </v-toolbar>
 
     <v-toolbar density="compact" color="transparent" flat class="mb-2">
-      <v-chip size="small" variant="text">Showing {{ filteredRowData.length }} of {{ previewData.length }} rows</v-chip>
+      <v-chip size="small" variant="text">Showing {{ displayedRowCount }} of {{ previewData.length }} rows</v-chip>
       <v-spacer />
       <v-chip size="small" variant="text"
         >Review threshold: {{ thresholdPercent(entitySpec?.review_threshold) }}%</v-chip
@@ -62,12 +62,15 @@
       <ag-grid-vue
         class="ag-theme-material reconciliation-ag-grid"
         :columnDefs="columnDefs"
-        :rowData="filteredRowData"
+        :rowData="gridData"
         :defaultColDef="defaultColDef"
-        :getRowStyle="getRowStyle"
+        :rowClassRules="rowClassRules"
+        :quickFilterText="appliedSearchQuery"
         :suppressRowClickSelection="true"
         @grid-ready="onGridReady"
-        :domLayout="'autoHeight'"
+        @filter-changed="onFilterChanged"
+        @model-updated="onFilterChanged"
+        :domLayout="'normal'"
       />
     </div>
 
@@ -162,9 +165,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
-import type { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-community'
+import type { ColDef, GridApi, GridReadyEvent, ICellRendererParams, IRowNode, RowClassParams } from 'ag-grid-community'
 import type {
   DecisionUpdateRequest,
   EntityResolutionSet,
@@ -198,6 +201,8 @@ const emit = defineEmits<{
 const gridApi = ref<GridApi | null>(null)
 const statusFilter = ref<'all' | 'proposed' | 'accepted' | 'rejected' | 'local-only' | 'unresolved' | 'errors'>('all')
 const searchQuery = ref('')
+const appliedSearchQuery = ref('')
+const displayedRowCount = ref(0)
 const actionError = ref<string | null>(null)
 const busyKeys = ref(new Set<string>())
 const selectedRow = ref<ReconciliationPreviewRow | null>(null)
@@ -238,6 +243,7 @@ const gridRows = computed(() =>
           : 'Sidecar unavailable',
       confidence_percent: row.confidence == null ? null : row.confidence * 100,
       errors_display: row.errors?.join('; ') ?? '',
+      row_style_class: rowStyleClass(row),
     }
   })
 )
@@ -311,40 +317,69 @@ const columnDefs = computed<ColDef[]>(() => {
   return columns
 })
 
-const filteredRowData = computed(() => {
-  let rows = gridRows.value
-  if (statusFilter.value === 'errors') rows = rows.filter((row) => Boolean(row.errors?.length))
-  else if (statusFilter.value === 'unresolved') {
-    rows = rows.filter(
+const rowClassRules: Record<string, (params: RowClassParams) => boolean> = {
+  'row-needs-attention': (params) => params.data?.row_style_class === 'row-needs-attention',
+  'row-accepted': (params) => params.data?.row_style_class === 'row-accepted',
+  'row-rejected': (params) => params.data?.row_style_class === 'row-rejected',
+  'row-local-only': (params) => params.data?.row_style_class === 'row-local-only',
+  'row-proposed': (params) => params.data?.row_style_class === 'row-proposed',
+}
+
+/** Status filter only. Text search is delegated to ag-Grid quick filtering. */
+const gridData = computed(() => {
+  const rows = gridRows.value
+  if (statusFilter.value === 'errors') return rows.filter((row) => Boolean(row.errors?.length))
+  if (statusFilter.value === 'unresolved') {
+    return rows.filter(
       (row) => !row.local_key_value || row.status == null || (row.status === 'proposed' && !row.candidates?.length)
     )
-  } else if (statusFilter.value !== 'all') rows = rows.filter((row) => row.status === statusFilter.value)
-
-  const query = searchQuery.value.trim().toLowerCase()
-  if (!query) return rows
-  return rows.filter((row) =>
-    Object.values(row).some((value) =>
-      String(value ?? '')
-        .toLowerCase()
-        .includes(query)
-    )
-  )
+  }
+  if (statusFilter.value !== 'all') return rows.filter((row) => row.status === statusFilter.value)
+  return rows
 })
 
-const stats = computed(() => ({
-  proposed: props.previewData.filter((row) => row.status === 'proposed').length,
-  accepted: props.previewData.filter((row) => row.status === 'accepted').length,
-  rejected: props.previewData.filter((row) => row.status === 'rejected').length,
-  localOnly: props.previewData.filter((row) => row.status === 'local-only').length,
-  unresolved: props.previewData.filter(
-    (row) => !row.local_key_value || row.status == null || (row.status === 'proposed' && !row.candidates?.length)
-  ).length,
-  errors: props.previewData.filter((row) => Boolean(row.errors?.length)).length,
-}))
+/** One pass over the rows instead of six separate filter passes. */
+const stats = computed(() => {
+  const counts = { proposed: 0, accepted: 0, rejected: 0, localOnly: 0, unresolved: 0, errors: 0 }
+  for (const row of props.previewData) {
+    if (row.status === 'proposed') counts.proposed += 1
+    else if (row.status === 'accepted') counts.accepted += 1
+    else if (row.status === 'rejected') counts.rejected += 1
+    else if (row.status === 'local-only') counts.localOnly += 1
+    if (!row.local_key_value || row.status == null || (row.status === 'proposed' && !row.candidates?.length)) {
+      counts.unresolved += 1
+    }
+    if (row.errors?.length) counts.errors += 1
+  }
+  return counts
+})
 
 function onGridReady(event: GridReadyEvent) {
   gridApi.value = event.api
+  displayedRowCount.value = event.api.getDisplayedRowCount()
 }
+
+function onFilterChanged() {
+  displayedRowCount.value = gridApi.value?.getDisplayedRowCount() ?? 0
+}
+
+// Debounce typed search so each keystroke does not start a filter pass.
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+watch(searchQuery, (value) => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    appliedSearchQuery.value = value
+  }, 250)
+})
+
+onBeforeUnmount(() => {
+  if (searchTimer) clearTimeout(searchTimer)
+})
+
+// Row count changes with the status filter, which is applied in Vue rather than the grid.
+watch(gridData, () => {
+  setTimeout(onFilterChanged)
+})
 
 function thresholdPercent(value: number | undefined): number {
   return Math.round((value ?? 0) * 100)
@@ -370,15 +405,14 @@ function formatStatus(row: ReconciliationPreviewRow | undefined): string {
   return 'Unreviewable'
 }
 
-function getRowStyle(params: { data?: ReconciliationPreviewRow }) {
-  const row = params.data
-  if (!row) return undefined
-  if (row.errors?.length) return { background: '#fff3e0' }
-  if (row.status === 'accepted') return { background: '#e8f5e9' }
-  if (row.status === 'rejected') return { background: '#ffebee' }
-  if (row.status === 'local-only') return { background: '#f5f5f5' }
-  if (row.status === 'proposed') return { background: '#fff8e1' }
-  return { background: '#fafafa' }
+/** Row background class. Computed once per row instead of a style object per render. */
+function rowStyleClass(row: ReconciliationPreviewRow): string {
+  if (row.errors?.length) return 'row-needs-attention'
+  if (row.status === 'accepted') return 'row-accepted'
+  if (row.status === 'rejected') return 'row-rejected'
+  if (row.status === 'local-only') return 'row-local-only'
+  if (row.status === 'proposed') return 'row-proposed'
+  return ''
 }
 
 function extractIdFromUri(uri: string): number | null {
@@ -399,7 +433,18 @@ function setBusy(localKeyValue: string, busy: boolean) {
   if (busy) next.add(localKeyValue)
   else next.delete(localKeyValue)
   busyKeys.value = next
-  gridApi.value?.refreshCells()
+  refreshRowCells(localKeyValue)
+}
+
+/** Refresh the cells of one row instead of every cell in the grid. */
+function refreshRowCells(localKeyValue: string) {
+  const api = gridApi.value
+  if (!api) return
+  const nodes: IRowNode[] = []
+  api.forEachNode((node) => {
+    if (node.data?.local_key_value === localKeyValue) nodes.push(node)
+  })
+  if (nodes.length > 0) api.refreshCells({ rowNodes: nodes, force: true })
 }
 
 async function persistDecision(
@@ -464,7 +509,7 @@ function handleGridClick(event: MouseEvent) {
   const encodedKey = button.getAttribute('data-local-key')
   if (!encodedKey) return
   const key = decodeURIComponent(encodedKey)
-  const row = filteredRowData.value.find((item) => item.local_key_value === key)
+  const row = gridRows.value.find((item) => item.local_key_value === key)
   if (!row) return
 
   switch (button.getAttribute('data-action')) {
@@ -519,9 +564,31 @@ async function confirmLocalOnly() {
 }
 
 .reconciliation-ag-grid {
-  height: 100%;
   width: 100%;
+  /* Fixed height keeps ag-Grid row virtualization enabled, so only the visible
+     rows are rendered. An auto height would render every row at once. */
+  height: 68vh;
   min-height: 400px;
+}
+
+:deep(.reconciliation-ag-grid .ag-row.row-needs-attention) {
+  background-color: #fff3e0;
+}
+
+:deep(.reconciliation-ag-grid .ag-row.row-accepted) {
+  background-color: #e8f5e9;
+}
+
+:deep(.reconciliation-ag-grid .ag-row.row-rejected) {
+  background-color: #ffebee;
+}
+
+:deep(.reconciliation-ag-grid .ag-row.row-local-only) {
+  background-color: #f5f5f5;
+}
+
+:deep(.reconciliation-ag-grid .ag-row.row-proposed) {
+  background-color: #fff8e1;
 }
 
 :deep(.candidate-btn),

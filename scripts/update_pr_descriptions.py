@@ -1326,7 +1326,9 @@ def main() -> int:
         for number in numbers:
             path = draft_file_path(number)
             if not path.is_file():
-                raise ValueError(f"Draft file not found: {display_path(path)}")
+                # raise ValueError(f"Draft file not found: {display_path(path)}")
+                print(f"Draft file not found: {display_path(path)}", file=sys.stderr)
+                continue
             drafts_to_publish.append((number, parse_draft_file(path.read_text(encoding="utf-8"))))
     except (OSError, ValueError) as error:
         print(f"Cannot publish drafts: {error}", file=sys.stderr)

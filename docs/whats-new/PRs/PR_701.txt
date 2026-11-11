@@ -1,0 +1,51 @@
+title: Add DSL functions: split_part, concat_ws, regex_replace, named groups
+description:
+## Summary
+
+Adds three new formula-DSL functions and extends one existing one in src/transforms/dsl.py, each
+registered as a FunctionSpec in DEFAULT_FUNCTIONS with a matching PandasStringBackend
+implementation:
+
+ - split_part(value, separator, n) — returns the 1-based n-th field of a string split on a literal
+separator; out-of-range indexes return null and fields are not trimmed. Indexes below 1 and
+column-reference separators raise DSLEvaluationError.
+ - concat_ws(separator, ...) — joins the string form of non-null arguments with a literal separator,
+skipping nulls (unlike concat, which renders them empty); returns null when all arguments are null
+for a row.
+ - regex_replace(value, pattern, replacement) — replaces all regex matches; a null replacement
+deletes matches. Pattern and replacement must be string literals.
+ - regex_extract(value, pattern, group) — the group argument now also accepts a (?P<name>...)
+capture-group name in addition to an integer index; an unknown group name raises DSLEvaluationError.
+
+docs/CONFIGURATION_GUIDE.md documents the new functions with usage examples, and
+.github/instructions/features/transforms.instructions.md was updated to describe deferred
+extra-column entries being retried after initial FK linking, after unnesting, and after the
+post-unnest FK link. Unit tests in tests/transforms/test_dsl.py and end-to-end tests in
+tests/transforms/test_extra_columns_dsl_integration.py cover the new behavior, including
+literal-argument enforcement and arity validation.
+
+## User-facing release note
+
+Formula expressions in extra_columns can now read a numbered field from delimited strings with
+split_part(), join optional parts while skipping nulls with concat_ws(), replace text by regex with
+regex_replace(), and extract named capture groups by name with regex_extract() — keeping expressions
+short where they previously needed deeply nested replace/coalesce chains or hand-built positional
+regexes.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - Unit tests added in tests/transforms/test_dsl.py cover null handling, out-of-range and
+non-positive split_part indexes, no implicit trim, all-null and single-value concat_ws,
+case-insensitive regex_replace, invalid patterns, named/unknown capture groups, literal-argument
+enforcement, and arity validation through FormulaEngine. Execution results for these tests are not
+available in the provided evidence.
+ - Integration tests added in tests/transforms/test_extra_columns_dsl_integration.py exercise all
+four functions through ExtraColumnEvaluator.evaluate_extra_columns. Execution results are not
+available in the provided evidence.
+ - CI: the Container Release workflow checks validate and publish completed with conclusion SKIPPED
+(2026-11-08). No other CI check results were available, and no test-run output was included, so test
+outcomes are unknown rather than confirmed passed.

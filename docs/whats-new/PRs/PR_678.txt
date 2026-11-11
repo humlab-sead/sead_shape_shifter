@@ -1,0 +1,75 @@
+title: Use retained snapshots for link troubleshooting experiments
+description:
+## Summary
+
+Replace the stateless link-troubleshooter replay with a server-retained experiment context, and move
+the row-count dialog onto it.
+
+ - The backend reproduces the warning once, keeps an owner- and project-scoped snapshot of the link
+inputs for a fixed 15 minutes, and runs trials against that snapshot. A trial never becomes the
+baseline, and results from different contexts are never compared.
+ - Context operations return bounded exception groups (unmatched and multiply matched A rows) with
+full counts, a row cap, budget and truncation labels, and the resolved join and missing-key
+settings, instead of server-paged preview rows.
+ - The dialog initializes key pairs, join type, and missing-key controls from the retained settings.
+Run trial is explicit; any control edit discards the displayed trial and in-flight trial responses,
+and out-of-order responses cannot undo a newer edit, Reset, or refresh.
+ - Exception groups are browsed entirely in the browser. Changing snapshot side, group, page, or
+page size sends no request.
+ - Reset restores the latest received complete or incomplete baseline and the original controls
+without recomputing or extending the snapshot lifetime. Close clears client state and best-effort
+deletes its owned context.
+ - An expired snapshot is detected from the structured 410 response, and the next context operation
+reopens the original warning, replaces the baseline, clears the trial, and announces the refresh. A
+failed reproduction is reported explicitly.
+ - Retained inputs and each projected merge are checked against a new per-computation memory budget
+(SHAPE_SHIFTER_LINK_EXPERIMENT_MAX_MEMORY_MB, default 100 MiB) before materializing; excess work
+fails with PROJECTED_BUDGET_EXCEEDED and no partial metrics. Exception groups are capped by
+SHAPE_SHIFTER_LINK_EXPERIMENT_GROUP_ROW_CAP (default 100).
+ - The stateless route, its service and mapper path, and its paging DTOs and TypeScript types are
+removed. The authorization route inventory, the user guide, the operations settings table, and the
+single-worker design note are updated. The Core gains a read-only null_keys_equal_is_explicit
+property with no link behavior change.
+
+This pull request also carries the Phase 1 and Phase 2 context lifecycle and trial contract that the
+dialog depends on, because they are not yet on dev.
+
+## User-facing release note
+
+Link troubleshooting keeps a 15-minute snapshot of the reproduced link. Opening the dialog, or
+refreshing after the snapshot expires, reads current data, while changing the exception group,
+snapshot side, page, or page size reads nothing new. Run trial, Reset, and Close are explicit
+actions, and Reset restores the latest baseline without recomputing it.
+
+## Upgrade notes
+
+The stateless POST /api/v1/projects/{project_name}/link-troubleshooter route and its request and
+response models are removed. API consumers must migrate to POST
+/api/v1/projects/{project_name}/link-experiment-contexts (open), POST .../{context_id}/trials
+(trial), GET .../{context_id} (read the retained baseline), and DELETE .../{context_id} (release).
+
+ - Paging fields (page, page_size, row_filter) now return 422 on open and trial requests because the
+request models reject unknown fields.
+ - An expired context returns 410 with detail.reason=context_expired and must be reopened from the
+original warning request; unknown or foreign identifiers return a concealed 404.
+ - Optional environment overrides: SHAPE_SHIFTER_LINK_EXPERIMENT_MAX_MEMORY_MB (default 100) and
+SHAPE_SHIFTER_LINK_EXPERIMENT_GROUP_ROW_CAP (default 100, max 1000).
+ - Retained contexts live in process memory, so the backend still requires a single Uvicorn worker,
+as now recorded in docs/DESIGN.md.
+
+## Validation
+
+ - .venv/bin/pytest backend/tests/api/v1/test_link_troubleshooter.py
+backend/tests/services/test_link_troubleshooter_service.py
+backend/tests/mappers/test_link_troubleshooter_mapper.py
+backend/tests/authorization/test_route_authentication.py -q: exit 0.
+ - pnpm --dir frontend exec vitest run on the link client, composable, utils, dialog,
+ValidationMessageList, ValidationPanel, and IntegrityTroubleshooterBody suites: 111 passed across 7
+files.
+ - pnpm --dir frontend exec vue-tsc --noEmit: 0 errors.
+ - pnpm --dir frontend exec eslint on the changed frontend files: 0 errors.
+ - make lint-changed (isort, black, pylint): exit 0, pylint 10.00/10.
+ - Not run: the full make test suite and a whole-repository pylint pass, so the PR reports only the
+focused backend and frontend suites above.
+ - GitHub CI ran no test workflows on this pull request: the only checks were the Container Release
+validate and publish jobs, both SKIPPED.
