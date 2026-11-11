@@ -1,0 +1,31 @@
+title: Add disposable PostgreSQL container management for integration tests
+description:
+## Summary
+
+Adds tooling to run backend integration tests that need a real PostgreSQL server against a throwaway
+container instead of a shared database. The new scripts/spinup_disposable_postgres.py manages a
+disposable PostgreSQL 16 container via podman with up, env, status, and down subcommands: up starts
+(or reuses) the container, binds it to loopback only, waits until pg_isready reports the server
+ready, and prints export lines for the SEAD_DISPOSABLE_POSTGRES_* environment variables that the
+tests read; down removes the container together with all of its data. The script rejects any
+non-loopback host, matching the tests' refusal of non-loopback connections. Four Makefile targets
+(pg-disposable-up, pg-disposable-env, pg-disposable-status, pg-disposable-down) wrap the script for
+convenience.
+
+## User-facing release note
+
+Developers can now spin up a temporary, loopback-only PostgreSQL database for integration tests with
+make pg-disposable-up and tear it down with make pg-disposable-down, so tests that create and drop
+schemas no longer need a persistent database instance.
+
+## Upgrade notes
+
+None - no user action required. The new Makefile targets are optional and require podman on PATH to
+use.
+
+## Validation
+
+ - The only CI checks reported for this PR — validate and publish in the Container Release workflow
+— completed with conclusion SKIPPED; they did not exercise this change.
+ - No test or lint results for the new script or Makefile targets are available in the provided
+evidence; execution of the project test suite is unknown.

@@ -1,0 +1,70 @@
+title: Register provider-scope business-key contracts with SIMS
+description:
+## Summary
+
+Moves provider-scope business-key enforcement from Shape Shifter's save-time checks to SIMS. A SEAD
+Change Request run now registers the saved project's ordered entities.*.keys declarations with SIMS
+before any identity work, and SIMS becomes the single enforcement point for the provider-scope key
+contract.
+
+ - SimsClient gains register_scope_contracts() (POST /identity/scope-contracts), sending
+X-SIMS-Caller and X-SIMS-Caller-Token headers built from the new SHAPE_SHIFTER_SIMS_CONTRACT_CALLER
+(default shape-shifter) and SHAPE_SHIFTER_SIMS_CONTRACT_REGISTRATION_TOKEN settings; an unset token
+keeps registration closed. New Pydantic models cover the request, per-entity created/existing state,
+and the HTTP 409 conflict detail.
+ - SeadChangeRequestSimsAdapter registers the ordered key lists for the entity types in the current
+resolve request before allocate_entity or resolve_batch. An exact ordered match proceeds; a rejected
+registration (e.g. 409 key conflict, 403 unauthorized caller) raises SimsContractRegistrationError,
+blocks every row in the batch with the conflict detail, and sends no resolve request. Entities that
+declare no keys keep the earlier field-based identity value, and entities not named in the request
+are not declared, so unrelated key differences cannot block identity work.
+ - ProjectService no longer locks keys on saves of a bound project and no longer compares key
+declarations with sibling projects on disk; provider-schema pair immutability is unchanged. Delivery
+key-value validation still runs on the transformed tables before any SIMS call.
+ - ProjectProviderBindingError now groups identical messages and lists the affected settings; the
+entity form dialog renders such errors with white-space: pre-line so the grouped lines display.
+ - Adds backend/tests/test_sims_client.py, adapter registration/conflict tests, and updates boundary
+tests to expect key edits to save; documents the contract flow, the two new settings, and a
+conflict runbook (restore the registered keys or move to a new provider schema, since SIMS exposes
+no update or retire call) in docs/DESIGN.md, docs/OPERATIONS.md, docs/USER_GUIDE.md,
+docs/CONFIGURATION_GUIDE.md, and tests/test.env.
+
+## User-facing release note
+
+A SEAD Change Request run now registers the project's ordered business keys with SIMS before
+resolving identities: if the keys or their order differ from what is already registered for the
+provider scope, the run stops with a conflict message and no identity data is sent. Business-key
+edits on a bound project now save without a warning and are checked by the next run instead of at
+save time.
+
+## Upgrade notes
+
+ - Set SHAPE_SHIFTER_SIMS_CONTRACT_REGISTRATION_TOKEN to the secret matching the caller entry under
+identity.contract_registration.callers in the SIMS configuration; keep
+SHAPE_SHIFTER_SIMS_CONTRACT_CALLER at its shape-shifter default unless the SIMS caller entry uses
+another name. Registration stays closed while the token is unset, so Change Request runs stop before
+any identity work.
+ - This client change requires a SIMS (sead_authority_service) deployment that exposes POST
+/identity/scope-contracts and the caller registration configuration.
+ - Behavior change: key edits on a bound project now save and are confirmed only by the next Change
+Request run. Projects that share a provider scope must declare the same key names in the same order
+before either can send identity work; on a 409 conflict, either restore the registered key list or
+move the project to a new metadata.provider_schema value from the reviewed provider registry (see
+docs/OPERATIONS.md).
+
+## Validation
+
+ - No CI test results are available for this pull request: the only checks in the rollup are the
+Container Release workflow's validate and publish jobs, both SKIPPED.
+ - Author-reported in the pull request body, not confirmed by CI: uv run pytest backend/tests
+--ignore=backend/tests/integration passed (the unfiltered run fails only the live-PostgreSQL
+integration test); targeted suites passed, including backend/tests/test_sims_client.py,
+backend/tests/ingesters/test_sead_change_request_runtime.py,
+backend/tests/ingesters/test_sead_change_request_ingester.py, and
+backend/tests/services/test_project_service_boundary.py; isort, black, ruff, pylint,
+scripts/check_doc_links.sh, and npx vitest run
+src/components/entities/__tests__/EntityFormDialog.test.ts passed. Execution of these commands is
+unverified.
+ - Not verified per the author: end-to-end registration against a running authority service; the
+disposable-SIMS integration test requires SIMS_DISPOSABLE_INTEGRATION_URL, which was not set.
+ - No checks were run while preparing this description.
