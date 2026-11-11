@@ -18,8 +18,12 @@ ExceptionRowSide = Literal["baseline", "trial"]
 EXCEPTION_ROW_PAGE_SIZE: int = 100
 """Rows returned by one exception-row page request."""
 
-EXCEPTION_ROW_PAGE_LIMIT: int = 500
-"""Largest page a caller may request for exception rows."""
+EXCEPTION_ROW_PAGE_LIMIT: int = 25_000
+"""Largest page a caller may request for exception rows.
+
+This matches the affected-row browse cap, so one request can ask for every
+retained row of a group.
+"""
 
 
 class LinkTroubleshootKeys(BaseModel):

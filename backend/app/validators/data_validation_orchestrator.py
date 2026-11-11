@@ -7,7 +7,7 @@ This orchestrator:
 """
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Collection
 
 import pandas as pd
 from loguru import logger
@@ -17,6 +17,7 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.validation import (
     DataValidationStatus,
+    DataValidatorKey,
     EntityDataValidationResult,
     EntityDataValidationStatus,
 )
@@ -252,6 +253,7 @@ class DataValidationOrchestrator:
         """
         self.fetch_strategy: DataFetchStrategy = fetch_strategy
         self.target_model: TargetModel | None = target_model
+        self.enabled_validators: frozenset[str] | None = None
         self.status: DataValidationStatus = DataValidationStatus.COMPLETED
         self.status_reason: str | None = None
         self.entity_statuses: dict[str, EntityDataValidationResult] = {}
@@ -262,6 +264,7 @@ class DataValidationOrchestrator:
         core_project: ShapeShiftProject,
         project_name: str,
         entity_names: list[str] | None = None,
+        validators: Collection[DataValidatorKey] | None = None,
     ) -> list[ValidationIssue]:
         """
         Validate all or specified entities.
@@ -270,11 +273,14 @@ class DataValidationOrchestrator:
             core_project: Resolved core project (with directives expanded)
             project_name: Name of project (for data fetching)
             entity_names: Optional list of entities to validate (None = all)
+            validators: Selectable checks to run; None runs every selectable check.
+                Checks outside the selectable set always run.
 
         Returns:
             List of domain validation issues (consumer converts to API models if needed)
         """
         issues: list[ValidationIssue] = []
+        self.enabled_validators = None if validators is None else frozenset(validators)
         self.status = DataValidationStatus.COMPLETED
         self.status_reason = None
         self.entity_statuses = {}
@@ -373,6 +379,10 @@ class DataValidationOrchestrator:
             return set()
         return core_project.get_table(entity_name).depends_on
 
+    def _validator_enabled(self, key: DataValidatorKey) -> bool:
+        """Return whether one selectable check should run for this request."""
+        return self.enabled_validators is None or key in self.enabled_validators
+
     def _dependency_order(self, core_project: ShapeShiftProject, entity_names: list[str]) -> list[str]:
         """Order entity checks so prerequisite previews run before dependent previews."""
         allowed = set(entity_names)
@@ -456,19 +466,21 @@ class DataValidationOrchestrator:
             if issue not in reported_additional_issues:
                 issues.append(issue)
                 reported_additional_issues.append(issue)
-        issues.extend(NonEmptyResultValidator.validate(df, entity_name))
+        if self._validator_enabled("non_empty_result"):
+            issues.extend(NonEmptyResultValidator.validate(df, entity_name))
 
         if df.empty:
             return
 
         columns: list[str] = entity_cfg.get("columns", [])
-        if columns:
+        if columns and self._validator_enabled("column_exists"):
             issues.extend(ColumnExistsValidator.validate(df, columns, entity_name, entity_cfg))
 
         keys: list[str] = entity_cfg.get("keys", [])
         if keys:
             issues.extend(BusinessKeyProducedValidator.validate(df, keys, entity_name))
-            issues.extend(NaturalKeyUniquenessValidator.validate(df, keys, entity_name))
+            if self._validator_enabled("natural_key_uniqueness"):
+                issues.extend(NaturalKeyUniquenessValidator.validate(df, keys, entity_name))
 
         fk_configs: list[dict[str, Any]] = entity_cfg.get("foreign_keys", [])
         saved_foreign_keys: list[ForeignKeyConfig] = self._saved_foreign_keys(core_project, entity_name)

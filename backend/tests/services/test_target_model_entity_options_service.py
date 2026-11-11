@@ -140,3 +140,104 @@ def test_reports_configured_model_resolution_failure(project_service: Mock, monk
 
     mapper.assert_called_once()
     project_service.save_project.assert_not_called()
+
+
+def _direct_fk_target_model() -> dict:
+    """Target model covering eligible, ineligible, and already-configured relationships."""
+    return {
+        "model": {"name": "Direct FK Model", "version": "1"},
+        "entities": {
+            "source_entity": {
+                # The source declares no target ID column, so every eligible relationship
+                # is included regardless of whether the source currently produces it.
+                "columns": {"source_name": {"required": True}},
+                "foreign_keys": [
+                    {"entity": "required_target", "required": True},
+                    {"entity": "required_target"},
+                    {"entity": "optional_target"},
+                    {"entity": "already_configured"},
+                    {"entity": "via_target", "via": "bridge", "required": True},
+                    {"entity": "public_id_only"},
+                    {"entity": "table_only"},
+                ],
+            },
+            "required_target": {"public_id": "required_target_id", "target_table": "required_target"},
+            "optional_target": {"public_id": "optional_target_id", "target_table": "optional_target"},
+            "already_configured": {"public_id": "already_configured_id", "target_table": "already_configured"},
+            "via_target": {"public_id": "via_target_id", "target_table": "via_target"},
+            "bridge": {"public_id": "bridge_id"},
+            "public_id_only": {"public_id": "public_id_only_id"},
+            "table_only": {"target_table": "table_only"},
+        },
+    }
+
+
+def test_reports_not_configured_state_for_direct_foreign_keys(project_service: Mock) -> None:
+    project_service.load_project.return_value = _project(None)
+    service = TargetModelEntityOptionsService(project_service)
+
+    response = service.get_direct_foreign_keys("test_project", "source_entity")
+
+    assert response.model_dump() == {"state": "not_configured", "relationships": []}
+    project_service.load_project.assert_called_once_with("test_project")
+
+
+@pytest.mark.parametrize(
+    "target_model",
+    [
+        {},
+        {
+            "model": {"name": "Invalid Model", "version": "1"},
+            "entities": {"broken": {"foreign_keys": [{"entity": "missing"}]}},
+        },
+    ],
+)
+def test_reports_unresolvable_state_for_invalid_models(project_service: Mock, target_model: dict) -> None:
+    project_service.load_project.return_value = _project(target_model)
+    service = TargetModelEntityOptionsService(project_service)
+
+    response = service.get_direct_foreign_keys("test_project", "source_entity")
+
+    assert response.model_dump() == {"state": "unresolvable", "relationships": []}
+    project_service.save_project.assert_not_called()
+
+
+def test_reports_unresolvable_state_for_model_resolution_failure(project_service: Mock, monkeypatch: pytest.MonkeyPatch) -> None:
+    project_service.load_project.return_value = _project("@load: missing.yml")
+    mapper = Mock(side_effect=FileNotFoundError("/private/project/missing.yml"))
+    monkeypatch.setattr(
+        "backend.app.services.target_model_entity_options_service.ProjectMapper.to_core",
+        mapper,
+    )
+    service = TargetModelEntityOptionsService(project_service)
+
+    response = service.get_direct_foreign_keys("test_project", "source_entity")
+
+    assert response.model_dump() == {"state": "unresolvable", "relationships": []}
+    mapper.assert_called_once()
+    project_service.save_project.assert_not_called()
+
+
+def test_returns_sorted_eligible_direct_foreign_keys(project_service: Mock) -> None:
+    project_service.load_project.return_value = _project(_direct_fk_target_model(), ("already_configured",))
+    service = TargetModelEntityOptionsService(project_service)
+
+    response = service.get_direct_foreign_keys("test_project", "source_entity")
+
+    assert response.state == "resolved"
+    assert [relationship.model_dump() for relationship in response.relationships] == [
+        {"target_entity": "already_configured", "public_id": "already_configured_id", "target_table": "already_configured"},
+        {"target_entity": "optional_target", "public_id": "optional_target_id", "target_table": "optional_target"},
+        {"target_entity": "required_target", "public_id": "required_target_id", "target_table": "required_target"},
+    ]
+    project_service.save_project.assert_not_called()
+    project_service.add_entity.assert_not_called()
+
+
+def test_returns_resolved_state_without_relationships_for_unknown_entity(project_service: Mock) -> None:
+    project_service.load_project.return_value = _project(_direct_fk_target_model())
+    service = TargetModelEntityOptionsService(project_service)
+
+    response = service.get_direct_foreign_keys("test_project", "unknown_entity")
+
+    assert response.model_dump() == {"state": "resolved", "relationships": []}

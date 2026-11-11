@@ -534,9 +534,11 @@ class TestDataValidation:
                 core_project,
                 project_name: str,
                 entity_names: list[str] | None = None,
+                validators=None,
             ):
 
                 captured["args"] = (core_project, project_name, entity_names)
+                captured["validators"] = validators
                 # Return domain ValidationIssues (not API models)
                 return [
                     ValidationIssue(severity="error", entity="a", field=None, message="err", code="E1", category="data", priority="high"),
@@ -592,6 +594,7 @@ class TestDataValidation:
         # Verify captured arguments (core_project is Mock object, project_name, entity_names)
         assert captured["args"][1] == "cfg-name"  # project_name # type: ignore
         assert captured["args"][2] == ["entity1"]  # entity_names # type: ignore
+        assert captured["validators"] is None
         assert isinstance(captured["orchestrator"], DummyDataValidationOrchestrator)
 
     def test_get_validation_service_singleton(self, reset_validation_singleton):

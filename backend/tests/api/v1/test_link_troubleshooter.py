@@ -146,7 +146,7 @@ def exception_rows_page() -> LinkExceptionRowsPage:
         offset=100,
         limit=100,
         total_count=250,
-        browse_cap=10_000,
+        browse_cap=25_000,
         browse_cap_reached=False,
         returned_count=1,
         rows=[
@@ -240,13 +240,14 @@ async def test_read_context_reports_expiry_explicitly(project_client, monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_read_context_conceals_an_unavailable_identifier(project_client, monkeypatch) -> None:
+async def test_read_context_reports_an_unknown_identifier_as_stale(project_client, monkeypatch) -> None:
     service = install_context_service(monkeypatch, read_result=LinkExperimentContextResult(state="unavailable"))
 
     response = await project_client.get(CONTEXT_ITEM_PATH)
 
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Resource not found"
+    assert response.status_code == 410
+    assert response.json()["detail"]["reason"] == "context_expired"
+    assert response.json()["detail"]["recoverable"] is True
     service.read_context.assert_awaited_once()
 
 
@@ -378,13 +379,14 @@ async def test_context_trial_reports_expiry_explicitly(project_client, monkeypat
 
 
 @pytest.mark.asyncio
-async def test_context_trial_conceals_an_unavailable_identifier(project_client, monkeypatch) -> None:
+async def test_context_trial_reports_an_unknown_identifier_as_stale(project_client, monkeypatch) -> None:
     service = install_context_service(monkeypatch, trial_result=LinkExperimentTrialResult(state="unavailable"))
 
     response = await project_client.post(TRIAL_PATH, json=TRIAL_REQUEST)
 
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Resource not found"
+    assert response.status_code == 410
+    assert response.json()["detail"]["reason"] == "context_expired"
+    assert response.json()["detail"]["recoverable"] is True
     service.run_context_trial.assert_awaited_once()
 
 
@@ -454,13 +456,14 @@ async def test_exception_rows_route_forwards_the_bounded_page(project_client, mo
 
 
 @pytest.mark.asyncio
-async def test_exception_rows_route_conceals_an_unknown_context(project_client, monkeypatch) -> None:
+async def test_exception_rows_route_reports_an_unknown_context_as_stale(project_client, monkeypatch) -> None:
     install_context_service(monkeypatch, rows_result=LinkExceptionRowsResult(state="unavailable"))
 
     response = await project_client.post(EXCEPTION_ROWS_PATH, json={"side": "baseline", "group": "unmatched"})
 
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Resource not found"
+    assert response.status_code == 410
+    assert response.json()["detail"]["reason"] == "context_expired"
+    assert response.json()["detail"]["recoverable"] is True
 
 
 @pytest.mark.asyncio
@@ -480,7 +483,7 @@ async def test_exception_rows_route_reports_expiry_explicitly(project_client, mo
         {"side": "baseline", "group": "other"},
         {"side": "baseline", "group": "unmatched", "offset": -1},
         {"side": "baseline", "group": "unmatched", "limit": 0},
-        {"side": "baseline", "group": "unmatched", "limit": 501},
+        {"side": "baseline", "group": "unmatched", "limit": 25_001},
         {"side": "baseline", "group": "unmatched", "unknown": True},
     ],
 )

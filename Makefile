@@ -455,6 +455,31 @@ requirements.txt: pyproject.toml
 test-coverage:
 	@uv run pytest tests backend/tests --cov=src --cov=backend/app --cov-report=html --cov-report=term
 
+################################################################################
+# Disposable PostgreSQL (podman) for loopback integration tests
+#
+# These targets manage a throwaway PostgreSQL container that the
+# SEAD_DISPOSABLE_POSTGRES_* integration tests create and drop schemas in.
+# The container binds to loopback only and holds no real data.
+################################################################################
+
+.PHONY: pg-disposable-up
+pg-disposable-up:
+	@uv run python scripts/spinup_disposable_postgres.py up
+
+.PHONY: pg-disposable-env
+pg-disposable-env:
+	@echo 'Usage: eval $$(make pg-disposable-env)' >&2
+	@uv run python scripts/spinup_disposable_postgres.py env
+
+.PHONY: pg-disposable-status
+pg-disposable-status:
+	@uv run python scripts/spinup_disposable_postgres.py status
+
+.PHONY: pg-disposable-down
+pg-disposable-down:
+	@uv run python scripts/spinup_disposable_postgres.py down
+
 .PHONY: dead-code
 dead-code:
 	@uv run vulture src backend
@@ -511,6 +536,11 @@ release-notes-ai:
 	fi
 	@echo "Generating release notes for version $(VERSION) with AI..."
 	@uv run python scripts/generate_whats_new.py --version $(VERSION)
+
+# Create a draft dev-to-staging promotion PR and prepare its description.
+.PHONY: promote-dev-to-staging
+promote-dev-to-staging:
+	@scripts/promote_dev_to_staging.sh prepare
 
 # Fast-track: stage every pending change, let Copilot draft the commit subject and the PR
 # description, and merge into dev. The commit type comes from the drafted subject, so review

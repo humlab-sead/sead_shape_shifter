@@ -250,10 +250,10 @@ class ShapeShifter:
                 df=data,
                 extra_columns=table_cfg.extra_columns,
                 entity_name=entity,
-                defer_missing=True,  # Defer columns that reference FK-added columns
+                defer_missing=True,  # Defer columns until their input columns are available.
             )
             if deferred_extra_columns:
-                logger.trace(f"{entity}[extra_columns]: Deferred {len(deferred_extra_columns)} columns until after FK linking")
+                logger.trace(f"{entity}[extra_columns]: Deferred {len(deferred_extra_columns)} columns until their inputs are available")
 
         if table_cfg.filters:
             data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store, stage="extract")
@@ -289,9 +289,10 @@ class ShapeShifter:
                 self.table_store.pop(entity, None)
                 self.state.mark_incomplete(entity)
                 return
+            deferred_extra_columns = self._evaluate_deferred_extra_columns(entity, deferred_extra_columns)
             drop_empty_rows_applied = self._drop_empty_rows_if_ready(entity, table_cfg)
             self._link_entity(entity_name=entity, link_pass="after_unnest")
-            # Re-evaluate deferred extra_columns after unnesting (in case unnest added new columns)
+            # Re-evaluate formulas that depend on columns added by foreign-key linking.
             deferred_extra_columns = self._evaluate_deferred_extra_columns(entity, deferred_extra_columns)
 
             if table_cfg.filters:

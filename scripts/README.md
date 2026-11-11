@@ -2,6 +2,28 @@
 
 This directory contains CLI scripts for Shape Shifter workflows.
 
+## Disposable PostgreSQL Container
+
+`spinup_disposable_postgres.py` starts a throwaway PostgreSQL container with podman
+for the loopback integration tests that read `SEAD_DISPOSABLE_POSTGRES_*`. The
+container binds to loopback only, holds no real data, and the tests create and drop
+their own schemas in it.
+
+```bash
+# Start (or reuse) the container and print the export lines
+uv run python scripts/spinup_disposable_postgres.py up
+
+# Print only the export lines, for eval
+eval "$(uv run python scripts/spinup_disposable_postgres.py env)"
+
+# Check container readiness, then remove the container and its data
+uv run python scripts/spinup_disposable_postgres.py status
+uv run python scripts/spinup_disposable_postgres.py down
+```
+
+The same actions are available as Make targets: `make pg-disposable-up`,
+`pg-disposable-env`, `pg-disposable-status`, and `pg-disposable-down`.
+
 ## Profiling Project Normalization
 
 `profile_normalization.py` profiles normalization for `data/projects/copy_strucke_MS`
@@ -314,11 +336,15 @@ A pull request cannot repair an earlier direct push. Opening a pull request from
 
 ## Promoting `dev` to `staging`
 
-Use `promote_dev_to_staging.sh` to verify commit provenance, create a draft
-promotion pull request, and prepare its description from branch history:
+Use `make promote-dev-to-staging` or `promote_dev_to_staging.sh` to verify
+commit provenance, create a draft promotion pull request, and prepare its
+description from branch history:
 
 ```bash
 # Create the draft PR and generate its local description
+make promote-dev-to-staging
+
+# Or run the script directly
 scripts/promote_dev_to_staging.sh prepare
 
 # Review or edit docs/whats-new/PRs/PR_<number>.txt, then publish it

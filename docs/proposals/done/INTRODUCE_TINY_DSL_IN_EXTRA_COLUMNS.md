@@ -6,7 +6,7 @@
 
 - Scope: configuration ergonomics for derived values in `extra_columns`
 - Goal: extend the current interpolation-based `extra_columns` feature with a small, safe expression language for common transforms
-- Relationship to later branch-scoping work: this supports follow-up authoring improvements tracked in [docs/proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](../BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md), not as a competing feature
+- Relationship to later branch-scoping work: this supports follow-up authoring improvements tracked in [docs/proposals/future/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](../future/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md), not as a competing feature
 - **Implementation**: Hand-written recursive descent parser in [src/transforms/dsl.py](../../../src/transforms/dsl.py)
 - **Tests**: 73 comprehensive tests in [tests/transforms/test_dsl.py](../../../tests/transforms/test_dsl.py) with 91% coverage
 - **Documentation**: DSL syntax documented in [docs/CONFIGURATION_GUIDE.md](../../CONFIGURATION_GUIDE.md)

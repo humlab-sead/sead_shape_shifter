@@ -302,9 +302,18 @@ function mountProjectDetailView() {
         VWindowItem: { template: '<div><slot /></div>' },
         VNavigationDrawer: { template: '<aside data-testid="navigation-drawer"><slot /></aside>' },
         VProgressCircular: { template: '<div data-testid="progress-circular" />' },
-        EntityListCard: { template: '<div data-testid="entity-list-card" />' },
+        EntityListCard: {
+          name: 'EntityListCard',
+          props: ['projectName', 'entityToEdit', 'entityEditFocus'],
+          template: '<div data-testid="entity-list-card" />',
+        },
         EntityFormDialog: { template: '<div data-testid="entity-form-dialog" />' },
-        ValidationPanel: { template: '<div data-testid="validation-panel" />' },
+        ValidationPanel: {
+          name: 'ValidationPanel',
+          emits: ['open-entity'],
+          template:
+            "<button data-testid=\"validation-panel\" @click=\"$emit('open-entity', 'sample', { field: 'columns', column: 'dataset_id' })\" />",
+        },
         PreviewFixesModal: { template: '<div data-testid="preview-fixes-modal" />' },
         ProjectDataSources: { template: '<div data-testid="project-data-sources" />' },
         SessionIndicator: { template: '<div data-testid="session-indicator" />' },
@@ -397,6 +406,17 @@ describe('ProjectDetailView', () => {
     await flushPromises()
 
     expect(mockProjectState.getRawYaml).toHaveBeenCalledWith('arbodat')
+  })
+
+  it('opens the entity with the column focus from a validation issue', async () => {
+    const wrapper = mountProjectDetailView()
+
+    await flushPromises()
+    await wrapper.get('[data-testid="validation-panel"]').trigger('click')
+
+    const card = wrapper.findComponent({ name: 'EntityListCard' })
+    expect(card.props('entityToEdit')).toBe('sample')
+    expect(card.props('entityEditFocus')).toEqual({ field: 'columns', column: 'dataset_id' })
   })
 
   it('renders load-time normalization warnings from the selected project', async () => {

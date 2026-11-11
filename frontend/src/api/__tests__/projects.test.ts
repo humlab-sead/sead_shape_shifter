@@ -17,6 +17,7 @@ import type {
   RestoreBackupRequest,
   MetadataUpdateRequest,
   TargetModelEntityOptionsResponse,
+  TargetModelDirectForeignKeysResponse,
 } from '../projects'
 
 // Mock the API client
@@ -149,6 +150,62 @@ describe('projectsApi', () => {
       vi.mocked(apiRequest).mockRejectedValue(error)
 
       await expect(projectsApi.getTargetModelEntityOptions('test-project')).rejects.toBe(error)
+    })
+  })
+
+  describe('getTargetModelDirectForeignKeys', () => {
+    it('should fetch direct target-model foreign keys for one entity', async () => {
+      const response: TargetModelDirectForeignKeysResponse = {
+        state: 'resolved',
+        relationships: [
+          {
+            target_entity: 'location_type',
+            public_id: 'location_type_id',
+            target_table: 'tbl_location_type',
+          },
+          {
+            target_entity: 'method',
+            public_id: 'method_id',
+            target_table: 'tbl_method',
+          },
+        ],
+      }
+      vi.mocked(apiRequest).mockResolvedValue(response)
+
+      const result = await projectsApi.getTargetModelDirectForeignKeys('test-project', 'location')
+
+      expect(apiRequest).toHaveBeenCalledWith({
+        method: 'GET',
+        url: '/projects/test-project/target-model-direct-foreign-keys/location',
+      })
+      expect(result).toEqual(response)
+    })
+
+    it('should return a non-resolved direct-FK state without reshaping it', async () => {
+      const response: TargetModelDirectForeignKeysResponse = { state: 'not_configured', relationships: [] }
+      vi.mocked(apiRequest).mockResolvedValue(response)
+
+      const result = await projectsApi.getTargetModelDirectForeignKeys('test-project', 'location')
+
+      expect(result).toEqual(response)
+    })
+
+    it('should encode the entity name in the direct-FK URL', async () => {
+      vi.mocked(apiRequest).mockResolvedValue({ state: 'resolved', relationships: [] })
+
+      await projectsApi.getTargetModelDirectForeignKeys('test-project', 'location type')
+
+      expect(apiRequest).toHaveBeenCalledWith({
+        method: 'GET',
+        url: '/projects/test-project/target-model-direct-foreign-keys/location%20type',
+      })
+    })
+
+    it('should reject when the direct-FK request fails', async () => {
+      const error = new Error('Direct target IDs could not be loaded')
+      vi.mocked(apiRequest).mockRejectedValue(error)
+
+      await expect(projectsApi.getTargetModelDirectForeignKeys('test-project', 'location')).rejects.toBe(error)
     })
   })
 

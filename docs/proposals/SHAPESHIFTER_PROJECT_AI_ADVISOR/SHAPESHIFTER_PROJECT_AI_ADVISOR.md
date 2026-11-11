@@ -1,11 +1,11 @@
 # AI Project Advisor
 
 **Date:** March 15, 2026
-**Revised:** October 22, 2026
+**Revised:** November 8, 2026
 **Status:** Feature proposal
 **Scope:** Project-level advisory chat for Shape Shifter, with SEAD as the target system.
 
-This revision separates review scope from evidence access. It defines how each finding is supported and what the Advisor may store, tightens privacy and execution limits, and moves the explanation MVP ahead of investigation tools. The `review-shapeshifter-configuration` skill provides comparison runs, but its answers alone do not prove correctness; maintainer-reviewed fixtures set the expected results. The earlier phase plan and readiness assessment are archived in [archived/](./archived/) and should be rewritten from this proposal.
+This revision binds results to the inputs actually checked, constrains claim support labels, identifies existing investigation services for reuse, and requires enforceable execution limits before pipeline probes are enabled. It preserves the explanation MVP ahead of investigation tools. The `review-shapeshifter-configuration` skill provides comparison runs, but its answers alone do not prove correctness; maintainer-reviewed fixtures set the expected results. The earlier phase plan and readiness assessment are archived in [archived/](./archived/) and should be rewritten from this proposal.
 
 ---
 
@@ -40,7 +40,7 @@ This creates common problems:
 4. A modeling choice may create identity or reconciliation problems later.
 5. The editor can report errors, but it does not always explain them in domain terms.
 6. An AI coding agent may hallucinate SEAD rules or invent YAML patterns it was not given, because it has no grounded project context.
-7. A reported error may be wrong. Validators can report false positives when their assumptions do not match a supported configuration, and the application currently offers no way to check that.
+7. A reported error may be wrong. Validators can report false positives when their assumptions do not match a supported configuration. Existing troubleshooters reproduce selected foreign-key warnings, but there is no general grounded advisory workflow for investigating validator correctness.
 8. A reported error may understate the problem. A check reports what its own comparison observed, which can be a small part of a wider defect in the data.
 9. Advice produced in the development environment — by a maintainer or a coding agent running the configuration skill — cannot be reproduced or continued inside the product, and vice versa. The two settings answer the same question with different data.
 
@@ -50,7 +50,7 @@ Users currently need expertise across all these areas to connect the information
 
 Shape Shifter already provides much of the needed context. It can load and save project YAML, convert API models to Core models (including directive resolution), validate projects and data, analyze dependencies, preview and materialize projects, run reconciliation, suggest fixes, and manage project-level sessions.
 
-The current application does not provide two inputs. It cannot inspect framework source, so it cannot explain which check produced a message or whether the check is correct. It also cannot run the pipeline and inspect its stages. Without those results, it cannot show what happened to the data or how far a reported problem extends. Both inputs are needed to move from restating a report to investigating it.
+The application already executes the pipeline through preview, validation, and focused foreign-key troubleshooters. The remaining gap is an Advisor interface that connects those operations to framework-source retrieval, compatible input versions, claim-level citations, disclosure controls, and enforced execution budgets. Existing diagnostics provide a starting point for investigation; they do not yet provide that general interface.
 
 Users have no direct answers to the questions that matter most for project quality:
 
@@ -104,13 +104,17 @@ The skill can use the full codebase and both sibling repositories, a Python runt
 
 ### What the application provides today
 
-The following is the proposal’s current inventory. Confirm each capability, version, and access path during phase planning.
+The following behavior was checked against `staging` commit `95c56d8ccb779225ee3104c3035c192780519642`. Confirm availability in each supported deployment during grounding foundation.
 
 1. Editor-side validation messages without domain-level explanation.
 2. Validation workflows (structural, data, conformance) reachable through `scripts/validate_project.py` and the backend validation service.
 3. Provider-binding services (`backend/app/services/project_provider_binding_service.py`) that the editor enforces but never explains.
 4. Materialized entities that keep their original configuration in `materialized.source_state`, and a mapping sidecar that can supply public-ID links not visible in raw YAML. Core structural validation does not use those links.
-5. The UI and API do not provide access to framework source, pipeline execution, git history, or prior validation results.
+5. Preview and data validation execute the pipeline. `ValidationResult` records `sample`, `complete`, or `single_pass` mode, execution status, and per-entity status, but has no configuration digest or validation run identifier.
+6. `backend/app/services/integrity_troubleshooter_service.py` privately normalizes the saved project and recomputes unmatched foreign-key values without using shared pipeline caches.
+7. `backend/app/services/link_baseline_service.py` reproduces a selected linking pass; `link_trial_service.py` tests alternative keys against retained inputs. `link_experiment_context_store.py` retains owner/project-scoped snapshots for a fixed 15-minute lifetime. Trials include projected merge-memory and output-row checks.
+8. Those memory estimates are per computation. Baseline replay normalizes upstream data before checking retained-input memory, and the estimates do not provide hard limits across concurrent work. The general `ShapeShiftService.normalize_project()` path writes shared caches, so it cannot be reused unchanged for investigation.
+9. General Advisor access to framework source, git history, and governed validation history remains to be provided or verified. Existing editor sessions and temporary link snapshots must not be assumed to be a durable Advisor record store.
 
 ---
 
@@ -233,11 +237,21 @@ Every assembled context and evidence artifact records a manifest that identifies
 - project configuration digest (a hash identifying the exact configuration) and revision, including whether the configuration came from the editor or the saved project;
 - Shape Shifter application and relevant validator versions;
 - active target-model and knowledge-pack versions;
-- validation run ID, timestamp, and result version;
+- validation run ID, timestamp, and result version, linked to the inputs actually checked, validation mode, execution status, requested entities, and per-entity completion status;
 - identifiers and timestamps for available deployment, materialized-data, provider-registry, and mapping-sidecar snapshots;
 - source revision and data snapshot identifiers for any investigation.
 
 The Advisor marks a result stale (out of date) when a relevant input changes. It may claim exact reproduction only when it can load the original inputs again. Otherwise, it reports their identifiers and says the result is traceable but cannot be reproduced exactly.
+
+### Result Input Compatibility
+
+Each validation, preview, or investigation result carries an application-managed provenance record created when the result is produced. It identifies the exact configuration examined, whether it was saved or an editor snapshot, relevant resolved references and data/deployment inputs, application/check versions, run ID and time, and actual execution coverage. The record may wrap the existing API result without changing its original payload. A new Advisor manifest must not assign current input identifiers to an older result whose original inputs are unknown.
+
+Before assembling current-state advice, deterministic code compares each result's recorded inputs with the requested project snapshot. A saved-project result does not validate unsaved editor changes. An unchanged raw YAML digest does not establish compatibility when a relevant `@load:`, `@include:`, target model, mapping sidecar, or data input has changed. Identify relevant resolved inputs without disclosing credentials.
+
+A compatible result may support current-state claims within its recorded coverage. A mismatched result is excluded from those claims; the Advisor may refresh it through an enabled, authorized operation or show it explicitly as historical. If provenance is missing or compatibility cannot be established, label that limit and avoid treating the result as current verification. The explanation MVP must not silently run a post-MVP probe to refresh a result.
+
+Preserve validation mode and failed/skipped entity coverage. A successful sample check does not establish full-data correctness; a partial `single_pass` run does not establish that unproduced entities passed. Missing validation input provenance is an MVP concern; retaining inputs for exact replay remains a separate decision.
 
 ### Knowledge Pack
 
@@ -304,7 +318,7 @@ Cite observations and sources. Base each conclusion on those citations, not on t
 
 ### Investigation tools
 
-A fixed set of ordinary application service operations, exposed through in-process Pydantic AI function tools and an external MCP adapter (see [Tool Harness](#tool-harness)):
+A fixed set of ordinary application service operations, exposed through in-process Pydantic AI function tools and an external MCP adapter (see [Tool Harness](#tool-harness)). Reuse the integrity troubleshooter, link baseline, retained-context, and key-trial services where their behavior fits. Add the missing provenance, disclosure, authorization, artifact, and execution controls around those operations instead of implementing parallel diagnostics. Existing narrow link trials do not imply support for arbitrary pipeline changes:
 
 | Tool | Purpose |
 |------|---------|
@@ -344,7 +358,7 @@ An artifact records what happened; it does not prove that the validator or tool 
 3. **Caches:** Investigation disables pipeline caches or redirects them to an isolated per-session store; it must not write shared runtime caches.
 4. **Data reads:** Approved host tools may use read-only database roles and explicitly approved external sources. Authorization and project scope are checked on every call. Network access is allowed only through these host tools.
 5. **Generated code:** Tier 3 code receives no direct filesystem, environment, database, or network access. Any needed data is passed explicitly through approved host tools.
-6. **Resource limits:** Set limits for each call's time and memory, database query time and rows, output size, and concurrent work. Also set a total tool-call and pipeline-run budget for each question. Define the exact limits before enabling each probe.
+6. **Resource limits:** Enforce time and memory limits across loading, upstream normalization, trial execution, and result serialization; also limit database query time and rows, output size, concurrent work, and total work per question. Output truncation and projected merge estimates are useful admission checks, but do not establish hard execution limits. Before enabling a Tier 2 probe, demonstrate its execution mechanism, including termination of blocking work, query cancellation, cleanup, and limits across simultaneous requests. A disposable worker process is one option; select the mechanism and numerical limits before probe rollout.
 7. **Reproducibility:** Record the inputs, versions, and command needed to repeat each artifact. If the inputs are not saved, mark the result as traceable but not exactly reproducible.
 8. **Explicit failure:** Report inconclusive and failed experiments; do not omit them.
 9. **Bounded effort:** When the question budget is spent, report what was ruled out, what remains open, and offer a visible continuation choice.
@@ -535,7 +549,7 @@ The service follows existing backend layering: API models define shapes, service
 
 ### Deterministic Code and Model Responsibility
 
-**Deterministic code handles:** project loading and YAML parsing; schema and data validation; dependency graph extraction; preview summaries; authorized deployment-context reads; secret and sensitive-data policy enforcement; context assembly and manifest creation; citation object generation and allow-list checks; source retrieval; tool authorization and resource limits; sandbox execution and output capture; evidence artifact construction; and, in a future proposal phase, exact diff and digest creation, candidate validation, approval binding, deterministic freshness checks, apply, and recovery.
+**Deterministic code handles:** per-result input provenance and compatibility checks; construction of direct observations and validation of claim kind/status/source combinations; project loading and YAML parsing; schema and data validation; dependency graph extraction; preview summaries; authorized deployment-context reads; secret and sensitive-data policy enforcement; context assembly and manifest creation; citation object generation and allow-list checks; source retrieval; tool authorization and resource limits; sandbox execution and output capture; evidence artifact construction; and, in a future proposal phase, exact diff and digest creation, candidate validation, approval binding, deterministic freshness checks, apply, and recovery.
 
 **The model handles:** plain-language explanations; prioritization; concise summaries of the basis for a claim; suggested next actions; hypotheses; selecting from the fixed investigation tools; interpreting captured artifacts; and draft proposals in future phases. Interpretations must be tied to cited observations or rules and carry a claim-level support status and scope.
 
@@ -572,13 +586,26 @@ Pydantic AI approval/deferred-tool features may pause the interaction and collec
 A response contains an `answer`, a bounded `clarification`, or (post-MVP) an `investigation_offer` / `handoff_offer`. It also carries:
 
 - `claims`: individual findings, each with an ID, text, kind (`observation`, `curated_rule`, `hypothesis`, or `conclusion`), support status (`direct`, `rule_supported`, `supported`, `disputed`, `inconclusive`, or `unverified`), scope, citation IDs, and limitations;
-- `validation_result`: the original validator result and run identifier, preserved separately from any Advisor interpretation;
+- `validation_result`: the original validator result, preserved separately from any Advisor interpretation, with its application-managed provenance record, run identifier, input compatibility status, validation mode, and execution coverage;
 - `context_manifest_id`: the project, deployment, source, data, and knowledge versions used;
 - `reasoning_summary`: a concise user-facing explanation of how the cited inputs relate to the finding;
 - `suggested_next_actions`; and
 - `proposal_id`, in future phases only, referring to an application-managed proposal record. The model may draft the exact proposed diff, but the application stores its base digest, validation results, and approval state.
 
 Support and scope are per claim. A response may explain an unchecked report without claiming the whole project was verified. `direct` means a deterministic observation was returned; it does not mean an interpretation of that observation is correct. `disputed` means the Advisor presents evidence against the interpretation in the original report while preserving that report.
+
+### Claim Support Controls
+
+The application validates claim kind, support status, source type, input compatibility, and execution coverage before returning a response. The model cannot strengthen those recorded properties.
+
+| Kind and status | Required application check |
+|-----------------|----------------------------|
+| `observation` / `direct` | The application constructs the observation from a recorded field or binds it to a specific field whose value is returned unchanged. Source inputs and recorded coverage constrain its scope. A historical observation remains explicitly historical. |
+| `curated_rule` / `rule_supported` | The claim identifies an applicable versioned rule and preserves its status and caveats. Added interpretation is a separate hypothesis or conclusion. |
+| `hypothesis` / `unverified` | The text remains explicitly tentative. A hypothesis cannot be labeled `direct` or `rule_supported`. |
+| `conclusion` / `supported`, `disputed`, `inconclusive`, or `unverified` | Citations identify relevant supplied results or rules and retain their input and scope limits. `supported` and `disputed` require supporting references; neither status turns an interpretation into a direct observation. |
+
+Reject structurally invalid combinations or downgrade an interpretation to an explicitly unverified hypothesis/conclusion. Invalid citation IDs remain rejected. These mechanical checks establish provenance and allowed labels; evaluation and maintainer review still assess whether natural-language interpretations are justified.
 
 ### Citation Model
 
@@ -605,7 +632,7 @@ Validation citations retain the validator's stable issue code. When the same iss
 **Citation rules:**
 
 1. The backend assembles the allowed IDs before calling the model and adds IDs returned by authorized investigation tools.
-2. The response parser rejects IDs outside that set and verifies that each referenced citation exists.
+2. The response parser rejects IDs outside that set, verifies that each referenced citation exists, and enforces the claim-support checks above. A valid citation ID alone cannot confer a `direct` or `rule_supported` label.
 3. Citation existence proves only that a source was supplied. Whether the source supports the associated claim is checked with claim-level evaluation scenarios and maintainer review.
 4. Each citation and claim is persisted with the session in the designated store, under its access and retention policy.
 5. The UI renders citations as clickable references to the relevant entity, validation occurrence, code location, artifact, or knowledge-pack rule.
@@ -621,7 +648,7 @@ Define the evaluation suite before implementation so Advisor quality can be meas
 | Validation-error explanation | Can the Advisor explain a real validation message in plain language? |
 | Dependency-cycle explanation | Can the Advisor explain why a cycle exists and how to break it? |
 | Entity and project scope | Does each finding state which entity/project scope and inputs it covers? |
-| Claim support and mixed findings | Are observations, rules, hypotheses, and conclusions distinguished with per-claim support and citations? |
+| Claim support and mixed findings | Are observations, rules, hypotheses, and conclusions distinguished with per-claim support and citations? Are invalid kind/status/source combinations rejected or downgraded, and are direct values bound to recorded result fields? |
 | Citation support | Does the cited source support the claim, beyond merely existing in the allow-list? |
 | Tracked/shared/value-object classification | Does the Advisor correctly distinguish entity types? |
 | SIMS responsibility split | Does the Advisor avoid claiming that Shape Shifter allocates official identities? |
@@ -629,14 +656,15 @@ Define the evaluation suite before implementation so Advisor quality can be meas
 | Provider-binding correctness | Does the Advisor respect registry bindings and the fixed provider pair when advising? |
 | Materialized/sidecar awareness | Does the Advisor avoid false identity findings on materialized projects with sidecar links? |
 | Clarification instead of refusal | Given an ambiguous question, does the Advisor ask the right bounded question rather than refuse or guess? |
-| Stale context | Does the Advisor detect changed configuration, validator, knowledge, or deployment snapshots and label stale findings? |
+| Stale context and input compatibility | Do unsaved edits, changed referenced files with unchanged YAML, and mismatched saved/editor results prevent current-state verification claims? Is missing provenance handled explicitly? |
+| Validation coverage | Are `sample`, `complete`, and `single_pass` mode, selected entities, and failed/skipped entities preserved when limiting claims? |
 | Unverified labeling | Does an explanation-only answer preserve the original report and qualify unchecked interpretations? |
 | False-positive investigation | Post-MVP: does the Advisor investigate a validator complaint and distinguish evidence from its interpretation? |
 | Severity and scope discovery | Post-MVP: does the Advisor find when a reported problem affects more than reported, with evidence for that scope? |
 | Discriminating experiment | Post-MVP: does the Advisor design a run that separates candidate causes? |
 | Negative result reporting | Post-MVP: can the Advisor state that a candidate cause was tested and ruled out? |
 | Pre-existing versus introduced failure | Post-MVP: with retained history, does the Advisor compare snapshots; without it, does it limit its claim to current-session data? |
-| Budget and resource limits | Are time, memory, query, row, concurrency, output, and per-question limits enforced and reported? |
+| Budget and resource limits | Do limits cover upstream normalization, intermediate joins, blocking queries, serialization, and simultaneous requests? Do termination, query cancellation, and cleanup work, including after failure? Output caps and memory estimates alone do not pass this check. |
 | Authorization and injection | Are cross-project access and prompt-injection attempts in project content rejected for in-process and MCP callers? |
 | Provider disclosure and retention | Do questions, histories, tool outputs, logs, and exports obey the provider-specific policy? |
 | YAML patch proposal | Later: are proposed patches valid and minimal? |
@@ -698,7 +726,7 @@ MVP scenarios can omit investigation evidence, but must require the preserved va
 2. Run the minimal evaluation runner against fixtures before the MVP backend is considered ready; keep the runner and fixture versions reproducible.
 3. Complete backend MVP scenarios before beginning the frontend user evaluation.
 4. Skill runs provide supporting comparison provenance; maintainer-reviewed fixtures, not agreement with a skill conclusion, determine correctness.
-5. Investigation must pass false-positive, scope, materialized-awareness, authorization, privacy, resource-limit, and relevant reproducibility scenarios before the corresponding tools are enabled.
+5. Investigation must pass false-positive, scope, materialized-awareness, authorization, privacy, resource-limit, and relevant reproducibility scenarios before the corresponding tools are enabled. Tier 2 rollout additionally requires demonstrated termination, query cancellation, cleanup, and concurrent-request limits across the full operation, including reused troubleshooter paths.
 6. Add regression fixtures for earlier capabilities when a phase adds new behavior.
 7. Findings promoted from development-environment sessions enter the reviewed evaluation suite before the related rule enters the knowledge pack.
 
@@ -763,15 +791,15 @@ Matching the skill on every scenario immediately is impossible at MVP. The grid 
 ## Acceptance Criteria
 
 - `P-AC-1` The MVP answers entity-level and project-level explain and recommend questions (`S1`/`S2` × `G1`/`G4`) using grounded, redacted context, without changing project configuration.
-- `P-AC-2` Each claim has a kind, support status, scope, citation IDs, and limitations. The parser rejects unknown citations; validation citations preserve stable issue codes and distinguish duplicate occurrences.
+- `P-AC-2` Each claim has a kind, support status, scope, citation IDs, and limitations. The application enforces allowed kind/status/source combinations, binds direct observations to recorded result fields, and rejects or downgrades interpretations that claim an invalid support label. Unknown citations are rejected; validation citations preserve stable issue codes and distinguish duplicate occurrences.
 - `P-AC-3` When required input is missing or ambiguous, the Advisor returns a bounded clarification naming the missing input instead of guessing.
 - `P-AC-4` Provider-specific disclosure rules cover questions, history, project context, tool output, logs, and exports; local-only mode makes no outbound provider calls.
 - `P-AC-5` Context assembly includes authorized provider-binding state, materialized `source_state`, and mapping-sidecar links when present, and records their snapshot identifiers in the context manifest.
-- `P-AC-6` The original validation result remains available and separate from the Advisor's interpretation; an unchecked or disputed interpretation is labeled at claim level and scoped to its evidence.
+- `P-AC-6` The original validation result remains available and separate from the Advisor's interpretation. Each result has provenance for the inputs actually checked, or is explicitly marked as lacking that provenance. Context assembly refreshes, excludes, or labels incompatible results as historical and never treats them as current verification. Claim scope preserves validation mode and failed/skipped entity coverage; unchecked or disputed interpretations are labeled per claim.
 - `P-AC-7` Post-MVP: source retrieval, pipeline probes, differential runs, and scans return artifacts bound to a context manifest, with inputs, scope, limitations, and reproduction status.
 - `P-AC-8` Post-MVP: a ruled-out cause is reported with its evidence and scope, as are confirmed defects.
-- `P-AC-9` Post-MVP: ordinary Shape Shifter services own investigation operations, caller/project authorization, disclosure filtering, resource enforcement, and artifact creation. Pydantic AI functions and the external MCP server are thin adapters to those services; the embedded Advisor does not call itself over MCP.
-- `P-AC-10` Post-MVP: time, memory, query, row, concurrency, output, and per-question limits are enforced; budget exhaustion reports open questions and offers continuation.
+- `P-AC-9` Post-MVP: ordinary Shape Shifter services own investigation operations, caller/project authorization, disclosure filtering, resource enforcement, and artifact creation. The implementation reuses existing integrity/link diagnostics where compatible and records any replacement rationale. Pydantic AI functions and the external MCP server are thin adapters; the embedded Advisor does not call itself over MCP.
+- `P-AC-10` Post-MVP: time, memory, query, row, concurrency, output, and per-question limits cover loading, upstream normalization, trials, and serialization. Before a Tier 2 probe is enabled, tests demonstrate termination, query cancellation where applicable, cleanup, and concurrent-request limits. Output truncation and merge-memory estimates alone do not satisfy this criterion. Budget exhaustion reports open questions and offers continuation.
 - `P-AC-11` Evaluation uses frozen fixtures with maintainer-approved expected findings, acceptable alternatives, per-claim evidence requirements, recorded skill-run provenance, repeated runs, and predeclared pass thresholds. Skill agreement alone does not count as correctness.
 - `P-AC-12` Investigation cannot mutate project configuration, source data, provider bindings, materialized state, or shared runtime state. Advisor records are stored only in the designated governed store; pipeline caches are disabled or isolated. G6 uses a separate application-controlled proposal and deterministic apply path.
 - `P-AC-13` A session export includes its context manifest, question, claims, citations, artifacts, conclusions, and disclosure/retention handling.
@@ -784,30 +812,30 @@ Matching the skill on every scenario immediately is impossible at MVP. The grid 
 **Confirmed decisions:**
 
 1. Review scope and evidence access are separate axes: `S1` entity and `S2` project; evidence capabilities state what inputs are available. MVP covers `S1`/`S2` × `G1`/`G4` with `E1` and authorized `E2`.
-2. Claim support and scope are recorded per finding. The original validator result is preserved separately; an Advisor may present a supported dispute without rewriting that result.
+2. Claim support and scope are recorded per finding. Deterministic code binds direct observations to recorded result fields and enforces allowed kind/status/source combinations. The original validator result is preserved separately; an Advisor may present a supported dispute without rewriting that result.
 3. Citation IDs are assembled deterministically and allow-listed, but ID existence does not prove claim support. Frozen, maintainer-reviewed scenarios assess support.
-4. Context and artifacts carry a versioned manifest. Exact reproduction is claimed only when inputs are retained.
-5. Investigation calls are authorized and resource-bounded. Approved host tools may make explicit read-only calls; generated code has no direct network, filesystem, environment, or database access.
+4. Context and artifacts carry a versioned manifest. Each result separately records the inputs actually checked; assembly verifies compatibility with the requested saved/editor snapshot and preserves validation mode and execution coverage. Mismatched or unknown inputs cannot establish current-state verification. Exact reproduction is claimed only when inputs are retained.
+5. Investigation calls are authorized and resource-bounded across the full operation and simultaneous requests. Tier 2 requires a demonstrated execution mechanism with termination, query cancellation where applicable, and cleanup before rollout. Estimates and output caps alone are insufficient. Approved host tools may make explicit read-only calls; generated code has no direct network, filesystem, environment, or database access.
 6. Advisor conversation, audit, manifest, citation, and artifact persistence is allowed only in a designated governed store. Project/source/provider/shared runtime mutations remain prohibited during investigation; caches are isolated or disabled.
-7. Ordinary backend services are the authoritative tool layer. Pydantic AI function tools and the external MCP adapter call those services; each service enforces caller/project authorization and the shared disclosure, resource, and artifact rules.
+7. Ordinary backend services are the authoritative tool layer. Reuse the existing integrity and link investigation services where compatible, adding the required controls and artifacts. Pydantic AI function tools and the external MCP adapter call those services; each service enforces caller/project authorization and the shared disclosure, resource, and artifact rules.
 8. Pydantic AI is the preferred harness; LangGraph is the principal alternative. The framework spike validates agent loop, model/provider support, structured outputs, bounded service-backed tools, dependencies, and MCP adapters.
 9. Generated-code sandbox compatibility is a separate later spike. OSS Monty's third-party-library limitation means it is not assumed to run Shape Shifter validators.
 10. G6 apply remains a separate later path requiring an application-managed proposal, exact diff, base digest, current validation, explicit approval, deterministic authorization/freshness checks, and recovery.
 
 **Behavior and contracts to preserve:** API↔Core mapper and directive-resolution rules; existing validation workflows and stable issue codes; provider-binding enforcement; access controls on deployment state; provider-specific disclosure and retention rules.
 
-**Expected validation outcomes:** the minimal fixture runner and reviewed MVP scenarios precede backend delivery; the framework spike precedes tool-loop implementation; backend scenarios precede frontend user evaluation; service-backed tools and the MCP adapter pass authorization, privacy, and resource-limit scenarios; generated experiments follow their separate compatibility and isolation spike.
+**Expected validation outcomes:** the minimal fixture runner and reviewed MVP scenarios precede backend delivery, including mismatched editor/saved inputs, changed references, partial/sample coverage, and invalid support labels. The framework spike precedes tool-loop implementation; backend scenarios precede frontend user evaluation. Reused and new tools pass authorization, privacy, full-operation resource-limit, cancellation, cleanup, and concurrency scenarios before exposure. Generated experiments follow their separate compatibility and isolation spike.
 
 **Open questions with resolution points:** see [Open Questions](#open-questions).
 
 ## Recommended Delivery Order
 
-1. **Grounding foundation and fixtures:** confirm current product capabilities and access paths; curate the knowledge pack and source provenance; define context manifests, provider disclosure policy, and frozen maintainer-reviewed scenarios.
+1. **Grounding foundation and fixtures:** confirm deployment availability against the staging inventory and identify reusable diagnostics; curate the knowledge pack and source provenance; define per-result provenance, input compatibility, support-label checks, context manifests, provider disclosure policy, and frozen maintainer-reviewed scenarios.
 2. **Minimal evaluation runner:** run the fixtures with deterministic expected findings, acceptable alternatives, claim-level evidence requirements, and recorded skill provenance. Set repeat-run and pass thresholds before rollout.
 3. **Framework spike:** time-box the Pydantic AI check for project models, structured answers, bounded service-backed tools and injected dependencies, selected providers, and MCP adapter integration. Record whether Pydantic AI is preferred or LangGraph is needed before implementing the tool loop. Do not include a generated-code sandbox decision.
-4. **Explanation MVP backend:** implement `E1` and authorized `E2`, claim-level response and citation shapes, context-size policy, redaction, clarification, and preservation of validator results. Require the MVP scenarios to pass.
+4. **Explanation MVP backend:** implement `E1` and authorized `E2`, per-result provenance and compatibility checks, claim-support controls, response and citation shapes, context-size policy, redaction, clarification, and preservation of validator results and coverage. Require the MVP scenarios to pass.
 5. **Minimal frontend and user evaluation:** deliver answer, clarification, scope/support labels, citations, and context completeness indicators; evaluate with users before adding tool loops.
-6. **Bounded investigation tools and MCP adapter:** add source retrieval and approved host probes with per-call authorization, snapshot manifests, resource caps, and isolated caches. Confirm client and authentication support. Gate each tool by its scenarios.
+6. **Bounded investigation tools and MCP adapter:** reuse compatible integrity/link services and add source retrieval and approved host probes with per-call authorization, provenance, artifacts, and isolated caches. Select and demonstrate the full-operation execution mechanism and limits before enabling each Tier 2 probe. Confirm client and authentication support. Gate reused and new operations by their scenarios.
 7. **Generated-experiment sandbox spike:** independently test whether approved-host-tool orchestration is sufficient or an isolated runtime with Shape Shifter dependencies is needed. Demonstrate representative validator execution and enforce isolation before enabling Tier 3; this decision does not reopen the harness choice.
 8. **Proposal generation:** add application-managed proposals only after investigation and evaluation gates pass. Persist the exact diff, base digest, candidate digest, validation result, and approval lifecycle.
 9. **Apply:** add a deterministic endpoint that rechecks user/project authorization, approved state, exact diff binding, and configuration/validation freshness before applying. Keep recovery in the application flow. Data-to-configuration assistance may be considered alongside proposals after its scope and privacy rules are defined.
@@ -816,11 +844,11 @@ Matching the skill on every scenario immediately is impossible at MVP. The grid 
 
 1. **Current capability inventory:** which listed validation, deployment-state, source, and history paths exist in each supported deployment, and what versions identify them? Resolve during grounding foundation.
 2. **Provider disclosure and retention:** which data categories may each provider receive, what audit content is retained, and for how long? Resolve before any provider rollout.
-3. **Context manifest:** which source, data, deployment, and configuration snapshots can be retained for exact reproduction, and which can only be referenced? Resolve before investigation tools.
+3. **Input provenance and retention:** how are result input identifiers captured and compared, including resolved references and unsaved editor snapshots? Resolve before MVP backend implementation. Which snapshots can be retained for exact reproduction, and which can only be referenced? Resolve before investigation tools.
 4. **Evaluation standard:** who approves expected findings, acceptable alternatives, repeated-run count, and pass thresholds for each capability? Resolve before implementation.
 5. **Harness selection:** does Pydantic AI satisfy the framework spike, or does LangGraph's graph-level orchestration provide a necessary advantage? Resolve before tool-loop work.
 6. **Generated-code sandbox:** can the selected isolated runtime reproduce a representative validator with actual dependencies, or are approved host tools sufficient? Resolve separately before enabling Tier 3.
-7. **Resource limits:** what concrete time, memory, query, row, concurrency, output, and aggregate limits apply to each probe? Resolve before enabling that probe.
+7. **Probe execution and limits:** which execution mechanism enforces time and memory limits through loading, normalization, trials, and serialization, and how are blocking work, database cancellation, cleanup, and concurrent requests controlled? Which numerical limits apply? Resolve and demonstrate the mechanism before enabling each Tier 2 probe; record any differences for reused services.
 8. **MCP exposure and authorization:** which deployments expose MCP, which clients are supported, and how is project access checked on each call? Resolve before investigation rollout.
 9. **Validation history:** does project session storage retain earlier validation results with enough version and snapshot context, or is a governed snapshot store needed? Resolve before history comparisons.
 10. **SEAD source sync:** where does the pack fetch `sead_identity_system` and sibling-repository sources, and on what cadence? Which facts need live read-only calls? Resolve during knowledge foundation.
@@ -862,4 +890,4 @@ Three choices carry the design:
 2. **Prefer Pydantic AI over a custom agent loop.** Its function tools and MCP adapter call ordinary Shape Shifter services, where authorization, disclosure filtering, resource limits, and artifacts are enforced. LangGraph is the principal alternative if the spike establishes a need for explicit graph orchestration.
 3. **Keep proposals and apply under application control.** Store the exact diff, base digest, validation results, and approval state. A deterministic endpoint rechecks authorization and freshness before applying; framework approval only coordinates the user interaction.
 
-Delivery order, risks, and open questions above are sufficient to start phase planning from this document.
+Use these contracts for phase planning. Resolve input-provenance details before MVP backend implementation, and demonstrate enforceable execution limits before enabling each Tier 2 probe.

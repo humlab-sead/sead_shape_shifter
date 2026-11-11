@@ -474,6 +474,14 @@ def validate_arity(spec: FunctionSpec, argc: int, span: SourceSpan) -> None:
         )
 
 
+def _split_map_value_arguments(args: list[Any]) -> tuple[list[tuple[Any, Any]], Any, bool]:
+    has_fallback = len(args) % 2 == 0
+    mapping_end = len(args) - 1 if has_fallback else len(args)
+    pairs = [(args[index], args[index + 1]) for index in range(1, mapping_end, 2)]
+    fallback = args[-1] if has_fallback else None
+    return pairs, fallback, has_fallback
+
+
 @dataclass(frozen=True)
 class ValidationConfig:
     """Configuration for the validator."""
@@ -539,6 +547,8 @@ class Validator:
                     span=expr.span,
                 )
             validate_arity(spec, len(expr.args), expr.span)
+            if spec.impl_name == "map_value":
+                self._validate_map_value(expr)
             for arg in expr.args:
                 self._validate(arg, depth + 1)
             return
@@ -547,6 +557,44 @@ class Validator:
             f"Unsupported expression node type: {type(expr).__name__}",
             span=expr.span,
         )
+
+    def _validate_map_value(self, expr: Call) -> None:
+        pairs, fallback, has_fallback = _split_map_value_arguments(expr.args)
+        if not pairs:
+            raise DSLValidationError(
+                "Function 'map_value' requires at least one key/value pair",
+                span=expr.span,
+            )
+
+        seen_keys: list[Any] = []
+        for key_expr, mapped_expr in pairs:
+            if not isinstance(key_expr, Literal):
+                raise DSLValidationError(
+                    "Function 'map_value' mapping keys must be literal values",
+                    span=key_expr.span,
+                )
+            if key_expr.value is None:
+                raise DSLValidationError(
+                    "Function 'map_value' mapping keys cannot be null because null inputs pass through",
+                    span=key_expr.span,
+                )
+            if not isinstance(mapped_expr, Literal):
+                raise DSLValidationError(
+                    "Function 'map_value' mapped values must be literal values",
+                    span=mapped_expr.span,
+                )
+            if any(key_expr.value == seen_key for seen_key in seen_keys):
+                raise DSLValidationError(
+                    f"Function 'map_value' has duplicate mapping key {key_expr.value!r}",
+                    span=key_expr.span,
+                )
+            seen_keys.append(key_expr.value)
+
+        if has_fallback and not isinstance(fallback, Literal):
+            raise DSLValidationError(
+                "Function 'map_value' fallback must be a literal value",
+                span=fallback.span,
+            )
 
     def _count_nodes(self, expr: Expr) -> int:
         """Count the number of nodes in an expression."""
@@ -593,6 +641,7 @@ class PandasStringBackend:
             "trim": self._fn_trim,
             "substr": self._fn_substr,
             "coalesce": self._fn_coalesce,
+            "map_value": self._fn_map_value,
             "to_decimal": self._fn_to_decimal,
             "to_int": self._fn_to_int,
             "to_float": self._fn_to_float,
@@ -600,6 +649,9 @@ class PandasStringBackend:
             "to_date": self._fn_to_date,
             "replace": self._fn_replace,
             "regex_extract": self._fn_regex_extract,
+            "regex_replace": self._fn_regex_replace,
+            "split_part": self._fn_split_part,
+            "concat_ws": self._fn_concat_ws,
         }
 
     def get_column(self, name: str) -> pd.Series:
@@ -691,6 +743,49 @@ class PandasStringBackend:
             result = result.where(result.notna(), other)
         return result
 
+    def _fn_map_value(self, value: Any, *mapping_args: Any) -> pd.Series:
+        args = [value, *mapping_args]
+        pairs, fallback, has_fallback = _split_map_value_arguments(args)
+        if not pairs:
+            raise DSLEvaluationError("map_value requires at least one key/value pair")
+
+        mapping: dict[Any, Any] = {}
+        for key, mapped_value in pairs:
+            if isinstance(key, pd.Series) or isinstance(mapped_value, pd.Series):
+                raise DSLEvaluationError("map_value requires literal mapping keys and values")
+            if self._is_null_scalar(key):
+                raise DSLEvaluationError("map_value mapping keys cannot be null because null inputs pass through")
+            try:
+                if key in mapping:
+                    raise DSLEvaluationError(f"map_value has duplicate mapping key {key!r}")
+                mapping[key] = mapped_value
+            except TypeError as exc:
+                raise DSLEvaluationError(f"map_value mapping key {key!r} is not a scalar literal") from exc
+
+        if has_fallback and isinstance(fallback, pd.Series):
+            raise DSLEvaluationError("map_value fallback must be a literal value")
+
+        input_series = self._ensure_series(value)
+        result: list[Any] = []
+        for item in input_series.tolist():
+            if self._is_null_scalar(item):
+                result.append(None)
+                continue
+            try:
+                mapped_value = mapping[item]
+            except (KeyError, TypeError):
+                if not has_fallback:
+                    # pylint: disable=raise-missing-from
+                    raise DSLEvaluationError(f"map_value has no mapping for value {item!r}; provide a fallback as the final argument")
+                mapped_value = fallback
+            result.append(mapped_value)
+
+        return pd.Series(result, index=input_series.index, dtype=object, name=input_series.name)
+
+    @staticmethod
+    def _is_null_scalar(value: Any) -> bool:
+        return pd.api.types.is_scalar(value) and bool(pd.isna(value))
+
     def _fn_to_decimal(self, value: Any, precision: Any = 10) -> pd.Series:
         precision_i: int = self._require_scalar_int(precision, "to_decimal")
         if precision_i < 0:
@@ -770,16 +865,33 @@ class PandasStringBackend:
         return self._to_nullable_string_series(value).str.replace(old_s, new_s, regex=False)
 
     def _fn_regex_extract(self, value: Any, pattern: Any, group: Any = 0) -> pd.Series:
-        """Extract the first regex match, or the selected capture group."""
+        """Extract the first regex match, or the selected capture group.
+
+        *group* is either a 0-based integer (0 = full match) or the name of a
+        ``(?P<name>...)`` capture group in the pattern.
+        """
         if isinstance(pattern, pd.Series):
             raise DSLEvaluationError("Function 'regex_extract' requires a string literal for pattern")
-
-        group_i = self._require_scalar_int(group, "regex_extract")
 
         try:
             compiled = re.compile(str(pattern))
         except re.error as exc:
             raise DSLEvaluationError(f"regex_extract: invalid pattern {pattern!r}: {exc}") from exc
+
+        if isinstance(group, str):
+            group_name = group
+            if group_name not in compiled.groupindex:
+                raise DSLEvaluationError(f"regex_extract: pattern has no group {group_name!r}")
+
+            search = compiled.search
+
+            def _extract_named(v: Any) -> str | None:
+                match = search(str(v))
+                return None if match is None else match[group_name]
+
+            return self._ensure_series(value).map(_extract_named, na_action="ignore")
+
+        group_i = self._require_scalar_int(group, "regex_extract")
 
         if not 0 <= group_i <= compiled.groups:
             raise DSLEvaluationError(f"regex_extract: pattern has no group {group_i}")
@@ -791,6 +903,59 @@ class PandasStringBackend:
             return None if match is None else match[group_i]
 
         return self._ensure_series(value).map(_extract, na_action="ignore")
+
+    def _fn_regex_replace(self, value: Any, pattern: Any, replacement: Any) -> pd.Series:
+        """Replace all regex matches of *pattern* with *replacement* in each element.
+
+        A null *replacement* is treated as an empty string, so matches are deleted.
+        """
+        if isinstance(pattern, pd.Series) or isinstance(replacement, pd.Series):
+            raise DSLEvaluationError("Function 'regex_replace' requires string literal arguments for pattern and replacement")
+        try:
+            compiled = re.compile(str(pattern))
+        except re.error as exc:
+            raise DSLEvaluationError(f"regex_replace: invalid pattern {pattern!r}: {exc}") from exc
+        repl: str = "" if replacement is None else str(replacement)
+        return self._to_nullable_string_series(value).str.replace(compiled, repl, regex=True)
+
+    def _fn_split_part(self, value: Any, separator: Any, part: Any) -> Any:
+        """Return the 1-based *part*-th field of *value* split on the literal *separator*.
+
+        Out-of-range indexes return null. Fields are not trimmed, so wrap in
+        ``trim()`` when the source pads fields with whitespace.
+        """
+        if isinstance(separator, pd.Series):
+            raise DSLEvaluationError("Function 'split_part' requires a string literal for separator")
+        part_i = self._require_scalar_int(part, "split_part")
+        if part_i < 1:
+            raise DSLEvaluationError("Function 'split_part' requires a 1-based part index of at least 1")
+        sep = str(separator)
+
+        def _split(v: Any) -> str | None:
+            fields = str(v).split(sep)
+            return fields[part_i - 1] if part_i <= len(fields) else None
+
+        return self._ensure_series(value).map(_split, na_action="ignore")
+
+    def _fn_concat_ws(self, separator: Any, *args: Any) -> pd.Series:
+        """Join the string form of each non-null argument with the literal *separator*.
+
+        Null arguments are skipped rather than rendered as empty strings. When
+        every argument is null for a row, the result is null.
+        """
+        if not args:
+            raise DSLEvaluationError("concat_ws expects at least one value argument after the separator")
+        if isinstance(separator, pd.Series):
+            raise DSLEvaluationError("Function 'concat_ws' requires a string literal for separator")
+        sep = str(separator)
+        parts: list[pd.Series] = [self._to_nullable_string_series(arg) for arg in args]
+        frame: pd.DataFrame = pd.concat(parts, axis=1, keys=range(len(parts)), copy=False)
+
+        def _join(row: Any) -> str | None:
+            values = [item for item in row.tolist() if not pd.isna(item)]
+            return None if not values else sep.join(values)
+
+        return frame.apply(_join, axis=1).astype("string")  # type: ignore
 
 
 # ============================================================================
@@ -868,6 +1033,12 @@ DEFAULT_FUNCTIONS: dict[str, FunctionSpec] = {
         min_args=1,
         description="Return first non-null value",
     ),
+    "map_value": FunctionSpec(
+        name="map_value",
+        impl_name="map_value",
+        min_args=3,
+        description="Map exact input values to literal values with an optional fallback",
+    ),
     "to_decimal": FunctionSpec(
         name="to_decimal",
         impl_name="to_decimal",
@@ -911,7 +1082,25 @@ DEFAULT_FUNCTIONS: dict[str, FunctionSpec] = {
         impl_name="regex_extract",
         min_args=2,
         max_args=3,
-        description="Extract the first regex match (or capture group) from a string",
+        description="Extract the first regex match (or capture group, by index or name) from a string",
+    ),
+    "regex_replace": FunctionSpec(
+        name="regex_replace",
+        impl_name="regex_replace",
+        exact_args=3,
+        description="Replace all regex matches of a pattern with a replacement string",
+    ),
+    "split_part": FunctionSpec(
+        name="split_part",
+        impl_name="split_part",
+        exact_args=3,
+        description="Return the 1-based nth field of a string split on a literal separator (out-of-range returns null)",
+    ),
+    "concat_ws": FunctionSpec(
+        name="concat_ws",
+        impl_name="concat_ws",
+        min_args=2,
+        description="Join non-null arguments with a literal separator; skips nulls instead of rendering them empty",
     ),
 }
 
