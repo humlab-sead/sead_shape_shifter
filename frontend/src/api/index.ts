@@ -17,6 +17,7 @@ export * from './excel-metadata'
 export * from './tasks'
 export * from './logs'
 export * from './health'
+export * from './whats-new'
 
 // Convenience re-export of all API services
 import { projectsApi } from './projects'
@@ -33,6 +34,7 @@ import { excelMetadataApi } from './excel-metadata'
 import { tasksApi } from './tasks'
 import { logsApi } from './logs'
 import { healthApi } from './health'
+import { whatsNewApi } from './whats-new'
 
 export const api = {
   projects: projectsApi,
@@ -49,4 +51,5 @@ export const api = {
   tasks: tasksApi,
   logs: logsApi,
   health: healthApi,
+  whatsNew: whatsNewApi,
 }

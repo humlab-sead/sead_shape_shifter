@@ -31,6 +31,7 @@ class WhatsNewManifestResponse(BaseModel):
 
     latest_version: str | None
     items: list[WhatsNewManifestItem]
+    pending_available: bool = False
 
 
 def _version_key(version: str) -> tuple[int, ...]:
@@ -63,6 +64,7 @@ def _build_manifest() -> WhatsNewManifestResponse:
     return WhatsNewManifestResponse(
         latest_version=items[0].version if items else None,
         items=items,
+        pending_available=(WHATS_NEW_DIR / "PENDING.md").is_file(),
     )
 
 
@@ -71,6 +73,17 @@ def _build_manifest() -> WhatsNewManifestResponse:
 async def get_whats_new_manifest() -> WhatsNewManifestResponse:
     """Return metadata for available what's-new markdown files."""
     return _build_manifest()
+
+
+@router.get("/whats-new/pending", response_class=PlainTextResponse)
+@declare_authenticated_route
+async def get_pending_whats_new_content() -> PlainTextResponse:
+    """Return the rolling pending release note."""
+    pending_path = WHATS_NEW_DIR / "PENDING.md"
+    if not pending_path.exists() or not pending_path.is_file():
+        raise HTTPException(status_code=404, detail="Pending release note not found")
+
+    return PlainTextResponse(pending_path.read_text(encoding="utf-8"), media_type="text/markdown")
 
 
 @router.get("/whats-new/{version}/content", response_class=PlainTextResponse)

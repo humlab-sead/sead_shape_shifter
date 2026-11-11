@@ -13,7 +13,7 @@ Use one file per release. Start from [TEMPLATE.md](TEMPLATE.md), include a short
 Changes reach `main` through `dev`, `staging`, and `main`. A release note covers pull requests present in the current release ref but absent from the previous release ref. The generator reads pull request descriptions, so record direct commits against a following pull request.
 
 ```mermaid
-flowchart LR
+flowchart TB
     change["Change PR<br/>Write release and upgrade notes"]
     promotion["Promotion PR<br/>List carried PRs"]
     included["Use notes from included PRs"]
@@ -21,8 +21,8 @@ flowchart LR
     record["Record against the next PR<br/>with --include-orphaned"]
     notes["PR notes provide release content"]
     generate["Generate release draft"]
-    shipped["Shipped since previous ref"]
-    pending["Pending Release<br/>Not yet on main"]
+    shipped["Versioned note<br/>Shipped since previous ref"]
+    pending["PENDING.md<br/>Not yet on main"]
     review["Review and edit"]
     publish["Update GitHub Release notes"]
 
@@ -31,10 +31,9 @@ flowchart LR
     direct --> record --> notes
     notes --> generate
     generate --> shipped
-    generate --> pending
     shipped --> review
-    pending --> review
     review --> publish
+    generate --> pending
 
     classDef author fill:#eaf2ff,stroke:#6383b4,color:#1f2c3d;
     classDef generated fill:#e8f4ec,stroke:#57916b,color:#203526;
@@ -47,7 +46,7 @@ flowchart LR
 
 1. **Add notes to the change PR.** Complete `User-facing release note` and `Upgrade notes` in [the PR template](../../.github/pull_request_template.md). Use one or two plain-language sentences and the template's exact `None` text when a section does not apply.
 2. **List included PRs on promotions.** For `dev` to `staging` or `staging` to `main`, use [the promotion template](../../.github/promotion_pr_template.md), keep its `<!-- promotion-pr -->` marker, and list carried PRs under `Included PRs`. The release generator uses those PRs' notes instead of the promotion's.
-3. **Review the release draft.** At release, semantic-release runs `scripts/generate_whats_new.py`. It includes PRs shipped since the previous release and, for the latest version, lists PRs not yet on `main` under `Pending Release`. Check that shipped and pending changes are separate and upgrade actions are clear.
+3. **Review the release draft.** At release, semantic-release runs `scripts/generate_whats_new.py`. The versioned note includes PRs shipped since the previous release. Every run also refreshes [`PENDING.md`](PENDING.md) with merged PRs not yet on `main`; the What's New page displays this snapshot above the versioned release archive. It is not part of a versioned note or GitHub release body.
 
    To generate a draft manually:
 
@@ -58,7 +57,7 @@ flowchart LR
    See [the scripts guide](../../scripts/README.md) for prerequisites and options.
 
 4. **Publish corrections.** Edit `docs/whats-new/vX.Y.Z.md` and update the GitHub Release body with `gh release edit vX.Y.Z --notes-file docs/whats-new/vX.Y.Z.md`.
-5. **Refresh pending items when needed.** Rerunning the generator replaces the file. Review and reapply manual edits after regeneration.
+5. **Refresh pending items when needed.** Run the generator with any version to refresh `PENDING.md`; the requested version only determines the versioned note.
 
 ## Draft a changelog-based release note
 
