@@ -1,0 +1,26 @@
+title: Protect ingesters and root tests in promotion guard
+description:
+## Summary
+
+Widens the default protected paths in scripts/verify_promotion_provenance.sh to include ingesters/
+and the root tests/ directory. Previously the guard (introduced in 8e445c68) only required
+provenance for changes under scripts/, src/, backend/, frontend/, and .github/workflows/, so direct
+commits touching shipped ingester code or root-level tests passed unchecked. Both the
+DEFAULT_PROTECTED_PATHS constant and the --help usage text listing the defaults are updated; no
+other guard logic changes.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - The PR author reports bash -n and shellcheck pass on the modified script; this repository's CI
+did not confirm these commands.
+ - CI checks validate and publish (workflow "Container Release") were SKIPPED on this pull request,
+so no CI results validate the change.
+ - Execution status of any other test suites is unknown.

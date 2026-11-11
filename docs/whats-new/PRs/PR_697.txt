@@ -1,0 +1,35 @@
+title: Evaluate deferred extra columns before post-unnest FK linking
+description:
+## Summary
+
+Deferred extra_columns formulas are now evaluated before the post-unnest (after_unnest) foreign key
+linking pass in ShapeShifter, so columns created by those formulas exist when FK linking runs.
+Previously, re-evaluation happened only after linking.
+
+In ForeignKeyDataSpecification.is_satisfied_by, a missing local FK key no longer raises an error
+when every missing key is an extra-column formula that depends directly or transitively on a pending
+unnest output: the check is deferred instead (via the new _local_keys_depend_on_pending_unnest /
+_extra_column_depends_on_pending_unnest helpers, which use
+ExtraColumnEvaluator.get_unresolved_extra_columns to trace dependencies). This lets FKs whose local
+keys are computed from unnested columns link successfully once those columns resolve. The PR body
+states this fixes #695; the linked issue details were not available for review.
+
+## User-facing release note
+
+Foreign keys whose local key is a computed extra column based on an unnested column now link
+correctly during normalization instead of failing with a missing-column error, so values such as
+lookup keys and labels derived from unnested data resolve as expected.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - New tests were added but their execution results are unknown from the available evidence:
+  - tests/process/test_shapeshifter.py::TestShapeShifter::test_normalize_evaluates_unnest_dependent_
+fk_key_before_linking
+  - tests/specifications/test_foreign_key.py::TestForeignKeyDataSpecification::test_defers_local_key
+_formula_until_its_unnest_input_exists
+ - CI checks on the merged PR: validate and publish (Container Release workflow) both completed with
+conclusion SKIPPED; no unit-test suite results were reported in the available check data.

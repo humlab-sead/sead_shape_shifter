@@ -1,0 +1,37 @@
+title: chore(deps): upgrade dev tooling and adapt code to new checks
+description:
+## Summary
+
+Upgrades the development tooling in uv.lock and adapts source and test code to the new lint and
+format rules the updated tools enforce.
+
+ - Tooling bumped: black 25.12.0 → 26.10.1, pylint 4.0.4 → 4.1.3 (with astroid 4.0.2 → 4.3.4), ruff
+0.14.9 → 0.17.3, pre-commit 4.6.0 → 4.7.0, pyinstrument 5.1.2 → 5.1.3, pytokens 0.3.0 → 0.4.1,
+pathspec 0.12.1 → 1.1.1, vulture 2.14 → 2.16.
+ - Formatting adapted to the new black style: multi-line SQL/YAML string literals passed directly to
+executescript, execute, write_text, and yaml.safe_load are now inlined, and implicit string
+concatenations in tests/test_generate_whats_new.py are joined.
+ - New abstract members added to satisfy stricter pylint checks: test_connection on FileLoader and
+ExcelLoader (implemented by concrete CSV/Excel readers) and is_satisfied_by on ProjectSpecification.
+ - src/transforms/gis.py relaxes the pd.Series[str] annotations to bare pd.Series for src_crs and
+resolved_src_crs.
+
+No runtime behavior change is claimed beyond these adaptations.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - Reported by the PR author (independent execution could not be confirmed from available evidence):
+uv run pylint -j 0 src tests backend ingesters exited 0, and pytest tests/specifications
+tests/loaders scripts/tests passed.
+ - CI: the only checks in the status rollup were the validate and publish jobs of the Container
+Release workflow; both were SKIPPED, so they did not run.
+ - Other test suites (for example the backend tests touched by the formatting changes) are not known
+to have been run or skipped.

@@ -1,0 +1,26 @@
+title: Release 2.6.0: fix validation message layout, add push-fix-pr target
+description:
+## Summary
+
+Version bumped from 2.5.0 to 2.6.0 across pyproject.toml, uv.lock, and backend/app/__init__.py, with
+a corresponding 2.6.0 entry added to CHANGELOG.md. The ValidationMessageList.vue component gets CSS
+fixes so the validation message table uses a fixed layout at full width and the message summary
+cell can shrink and ellipsize instead of overflowing. The Makefile gains a new push-fix-pr target
+that creates a fix-type change pull request via scripts/create_change_pr.py --type fix, alongside
+the existing push-chore-pr target (which now passes --type chore explicitly).
+
+## User-facing release note
+
+Validation messages now display in a properly laid-out table, with long messages truncated with an
+ellipsis instead of breaking the layout.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - Container Release workflow checks validate and publish were SKIPPED for this pull request
+(completed 2026-11-03); they did not execute.
+ - No test-suite or lint results are available in the provided evidence; execution of unit or
+frontend tests is unknown.
