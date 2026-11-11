@@ -16,6 +16,10 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+          # Do not leave the workflow token in git config: the release commit must be
+          # pushed as the release bot, which is the only actor allowed to bypass the
+          # PR-only ruleset on main.
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -37,6 +41,16 @@ jobs:
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - name: Authenticate git with the release bot
+        env:
+          RELEASE_TOKEN: ${{ steps.release-token.outputs.token }}
+        run: |
+          # semantic-release/git runs a plain `git push`, so it authenticates through
+          # this header rather than GH_TOKEN. Without it the push runs as the
+          # workflow token and the main-branch ruleset rejects it.
+          git config --local http.https://github.com/.extraheader \
+            "AUTHORIZATION: basic $(printf 'x-access-token:%s' "$RELEASE_TOKEN" | base64 -w0)"
 
       - name: Run semantic-release
         env:
