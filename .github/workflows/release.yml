@@ -31,9 +31,16 @@ jobs:
             @semantic-release/git \
             @semantic-release/github \
             @semantic-release/exec
+      - name: Mint release bot token
+        id: release-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - name: Run semantic-release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.release-token.outputs.token }}
         run: semantic-release
 
       - name: Upload user-facing release notes
