@@ -13,7 +13,9 @@
               variant="flat"
               :prepend-icon="serviceStatus.status === 'online' ? 'mdi-check-circle' : 'mdi-alert-circle'"
             >
-              {{ serviceStatus.status === 'online' ? `Online (${availableEntityTypes} entities)` : 'Offline' }}
+              {{
+                serviceStatus.status === 'online' ? `Online (${availableEntityTypes} reconciliation types)` : 'Offline'
+              }}
             </v-chip>
 
             <!-- Configured Specifications Count -->
@@ -56,7 +58,11 @@
                 Configure reconciliation specifications for your entities. Click the reconcile button on any
                 specification to start.
               </p>
-              <specifications-list :project-name="projectName" @reconcile="handleReconcileSpec" />
+              <specifications-list
+                :project-name="projectName"
+                :manifest-result="manifestResult"
+                @reconcile="handleReconcileSpec"
+              />
             </div>
           </v-window-item>
 
@@ -129,6 +135,7 @@
                   color="primary"
                   prepend-icon="mdi-auto-fix"
                   :loading="loading"
+                  :disabled="!matchEligibility.canMatch"
                   @click="handleAutoReconcile"
                 >
                   Find Candidates
@@ -159,6 +166,16 @@
                   Export to Mapping
                 </v-btn>
               </div>
+
+              <v-alert
+                v-if="selectedEntity && entitySpec && !matchEligibility.canMatch"
+                data-testid="matching-blocked"
+                type="warning"
+                variant="tonal"
+                class="mb-4"
+              >
+                Candidate search is blocked: {{ matchEligibility.message }}
+              </v-alert>
 
               <v-alert type="info" variant="tonal" class="mb-4">
                 Export checks accepted candidates against SEAD and records local-only approvals separately. Missing or
@@ -210,6 +227,20 @@
                 :submit-decision="handleUpdateMapping"
                 @manual-link="openManualLinkDialog"
               />
+
+              <!-- Loading State - Preview Requested -->
+              <v-card
+                v-else-if="previewIsLoading"
+                data-testid="preview-loading"
+                variant="outlined"
+                class="pa-8 text-center"
+              >
+                <v-progress-circular indeterminate color="primary" size="48" />
+                <h3 class="text-h6 mt-4 mb-2">Loading Preview Rows</h3>
+                <p class="text-grey">
+                  Shape Shifter is normalizing the entity to build preview rows. This can take a few seconds.
+                </p>
+              </v-card>
 
               <!-- Empty State - No Data -->
               <v-card
@@ -294,8 +325,10 @@ import type {
   AutoReconcileResult,
   DecisionUpdateRequest,
   MappingEntityResponse,
+  ReconciliationManifestResult,
   ReconciliationPreviewRow,
 } from '@/types/reconciliation'
+import { getReconciliationCompatibility, parseReconciliationManifest } from '@/utils/reconciliationManifest'
 import yaml from 'js-yaml'
 
 interface Props {
@@ -328,7 +361,7 @@ const showResultSnackbar = ref(false)
 const resultMessage = ref('')
 const resultColor = ref('success')
 const serviceStatus = ref<{ status: string; service_name?: string; error?: string } | null>(null)
-const serviceManifest = ref<any>(null)
+const manifestResult = ref<ReconciliationManifestResult | null>(null)
 const availableEntityTypes = ref<number>(0)
 const autoReconcileResult = ref<AutoReconcileResult | null>(null)
 const autoReconcileError = ref<string | null>(null)
@@ -338,6 +371,7 @@ const manualTargetId = ref('')
 const manualNotes = ref('')
 const manualLinkError = ref<string | null>(null)
 const savingManualLink = ref(false)
+const previewLoadingKey = ref<string | null>(null)
 
 // YAML Editor state
 const yamlContent = ref('')
@@ -358,6 +392,21 @@ const entitySpec = computed(() => {
   return entityConfigs[selectedTarget.value] || null
 })
 
+const matchEligibility = computed(() =>
+  getReconciliationCompatibility(
+    manifestResult.value,
+    entitySpec.value?.remote?.service_type,
+    entitySpec.value?.property_mappings ?? {}
+  )
+)
+
+watch(matchEligibility, (eligibility) => {
+  if (!eligibility.canMatch) {
+    autoReconcileError.value = null
+    autoReconcileResult.value = null
+  }
+})
+
 const entityPreviewData = computed(() => {
   if (!selectedEntity.value || !selectedTarget.value) return []
   return previewData.value[props.projectName]?.[selectedEntity.value]?.[selectedTarget.value] || []
@@ -367,6 +416,11 @@ const previewError = computed(() => {
   if (!selectedEntity.value || !selectedTarget.value) return null
   return previewErrors.value[props.projectName]?.[selectedEntity.value]?.[selectedTarget.value] ?? null
 })
+
+// True only while the preview request for the current selection is running.
+const previewIsLoading = computed(
+  () => previewLoadingKey.value !== null && previewLoadingKey.value === currentPreviewKey()
+)
 
 const entityMappingData = computed<MappingEntityResponse | null>(() => {
   if (!selectedEntity.value) return null
@@ -408,6 +462,11 @@ async function handleAutoReconcile() {
 
   autoReconcileError.value = null
   autoReconcileResult.value = null
+  if (!matchEligibility.value.canMatch) {
+    autoReconcileError.value = matchEligibility.value.message ?? 'Reconciliation compatibility could not be verified.'
+    return
+  }
+
   try {
     const thresholdDecimal = autoAcceptThreshold.value / 100
     autoReconcileResult.value = await reconciliationStore.autoReconcile(
@@ -418,8 +477,10 @@ async function handleAutoReconcile() {
       entitySpec.value?.review_threshold
     )
 
+    const previewKey = currentPreviewKey()
     try {
       await reconciliationStore.loadPreviewData(props.projectName, selectedEntity.value, selectedTarget.value)
+      if (previewKey === currentPreviewKey()) previewLoadedKey = previewKey
     } catch (previewLoadError) {
       console.error('[ReconciliationView] Candidate search succeeded but preview reload failed:', previewLoadError)
     }
@@ -432,7 +493,7 @@ async function handleAutoReconcile() {
       activeTab.value = 'reconcile'
     }
   } catch (e: any) {
-    autoReconcileError.value = e.response?.data?.detail || e.message || 'The matching request could not be completed.'
+    autoReconcileError.value = getApiErrorMessage(e, 'The matching request could not be completed.')
     resultMessage.value = `Candidate search failed: ${autoReconcileError.value}`
     resultColor.value = 'error'
     showResultSnackbar.value = true
@@ -446,16 +507,18 @@ async function handleExportToMapping() {
     const entityName = selectedEntity.value
     const targetField = selectedTarget.value
     const result = await reconciliationStore.exportToMapping(props.projectName, entityName, targetField)
-    const summary = `${result.exported} link(s) exported; ${result.removed} stale link(s) removed; `
-      + `${result.exported_local_only_approvals} local-only approval(s) exported; `
-      + `${result.removed_local_only_approvals} stale local-only approval(s) removed; `
-      + `${result.skipped_manual} protected link(s) skipped.`
+    const summary =
+      `${result.exported} link(s) exported; ${result.removed} stale link(s) removed; ` +
+      `${result.exported_local_only_approvals} local-only approval(s) exported; ` +
+      `${result.removed_local_only_approvals} stale local-only approval(s) removed; ` +
+      `${result.skipped_manual} protected link(s) skipped.`
 
     try {
       await reconciliationStore.loadMappingData(props.projectName, entityName)
     } catch (refreshError) {
-      resultMessage.value = `${summary} Export succeeded, but mapping status could not be refreshed: `
-        + getApiErrorMessage(refreshError, 'The mapping sidecar could not be reloaded.')
+      resultMessage.value =
+        `${summary} Export succeeded, but mapping status could not be refreshed: ` +
+        getApiErrorMessage(refreshError, 'The mapping sidecar could not be reloaded.')
       resultColor.value = 'error'
       showResultSnackbar.value = true
       return
@@ -543,21 +606,25 @@ async function saveManualLink() {
 
 async function checkServiceHealth() {
   try {
-    const response = await reconciliationStore.checkServiceHealth()
-    serviceStatus.value = response
+    serviceStatus.value = await reconciliationStore.checkServiceHealth()
+  } catch (error: unknown) {
+    console.error('Failed to check reconciliation service health:', error)
+    serviceStatus.value = { status: 'offline', error: getApiErrorMessage(error, 'Health check failed.') }
+  }
 
-    // Also fetch the manifest to get available entity types
-    const manifest = await reconciliationStore.getServiceManifest()
-    serviceManifest.value = manifest
-
-    // Extract entity types count from manifest
-    if (manifest.defaultTypes && Array.isArray(manifest.defaultTypes)) {
-      availableEntityTypes.value = manifest.defaultTypes.length
-      console.log(`[ReconciliationView] Service has ${availableEntityTypes.value} entity types available`)
+  try {
+    manifestResult.value = parseReconciliationManifest(await reconciliationStore.getServiceManifest())
+    availableEntityTypes.value =
+      manifestResult.value.status === 'valid' ? manifestResult.value.manifest.supportedTypes.length : 0
+    if (manifestResult.value.status === 'error') {
+      console.error('Failed to validate reconciliation service manifest:', manifestResult.value.error)
     }
-  } catch (e: any) {
-    console.error('Failed to check service health:', e)
-    serviceStatus.value = { status: 'offline', error: e.message }
+  } catch (error: unknown) {
+    console.error('Failed to load reconciliation service manifest:', error)
+    manifestResult.value = {
+      status: 'error',
+      error: getApiErrorMessage(error, 'The service manifest could not be loaded.'),
+    }
     availableEntityTypes.value = 0
   }
 }
@@ -687,30 +754,74 @@ watch(
   { immediate: true }
 )
 
-// Watch for target changes and load preview data
+// Load preview data only while the review tab is open. Loading it on mount runs a
+// full entity normalization for a result the operator may never look at.
+let previewLoadedKey = ''
+let previewInFlightKey: string | null = null
+
+function currentPreviewKey(): string {
+  return JSON.stringify([props.projectName, selectedEntity.value, selectedTarget.value])
+}
+
+function reportPreviewFailure(e: any) {
+  console.error('[ReconciliationView] Failed to load preview data:', e)
+  resultMessage.value = `Failed to load preview data: ${e.message}`
+  resultColor.value = 'error'
+  showResultSnackbar.value = true
+}
+
+/** Request the preview once per selection, and only for the review tab. */
+async function ensurePreviewLoaded() {
+  if (activeTab.value !== 'reconcile') return
+  if (!selectedEntity.value || !selectedTarget.value || !entitySpec.value) return
+
+  const key = currentPreviewKey()
+  if (key === previewLoadedKey || key === previewInFlightKey) return
+
+  previewInFlightKey = key
+  previewLoadingKey.value = key
+  try {
+    await reconciliationStore.loadPreviewData(props.projectName, selectedEntity.value, selectedTarget.value)
+    // A newer selection may have started while this request ran; only record the
+    // loaded key if the operator is still looking at the same selection.
+    if (key === currentPreviewKey()) previewLoadedKey = key
+  } catch (e: any) {
+    if (key === currentPreviewKey()) reportPreviewFailure(e)
+  } finally {
+    if (previewInFlightKey === key) previewInFlightKey = null
+    if (previewLoadingKey.value === key) previewLoadingKey.value = null
+  }
+}
+
 watch(
   [selectedEntity, selectedTarget],
-  async ([newEntity, newTarget]) => {
+  ([newEntity, newTarget]) => {
     autoReconcileResult.value = null
     autoReconcileError.value = null
-    if (newEntity && newTarget && entitySpec.value) {
-      // Sync slider with entity spec threshold when target changes (convert decimal to percentage)
-      if (entitySpec.value.auto_accept_threshold) {
-        autoAcceptThreshold.value = Math.round(entitySpec.value.auto_accept_threshold * 100)
-      }
 
-      // Load preview data for the selected entity and target
-      try {
-        await reconciliationStore.loadPreviewData(props.projectName, newEntity, newTarget)
-      } catch (e: any) {
-        console.error('[ReconciliationView] Failed to load preview data:', e)
-        resultMessage.value = `Failed to load preview data: ${e.message}`
-        resultColor.value = 'error'
-        showResultSnackbar.value = true
-      }
+    // Sync slider with entity spec threshold when target changes (convert decimal to percentage)
+    if (newEntity && newTarget && entitySpec.value?.auto_accept_threshold) {
+      autoAcceptThreshold.value = Math.round(entitySpec.value.auto_accept_threshold * 100)
     }
+
+    void ensurePreviewLoaded()
   },
   { immediate: true }
+)
+
+// Load the preview the first time the review tab is opened.
+watch(activeTab, () => {
+  void ensurePreviewLoaded()
+})
+
+// A project change invalidates the loaded preview.
+watch(
+  () => props.projectName,
+  () => {
+    previewLoadedKey = ''
+    previewInFlightKey = null
+    previewLoadingKey.value = null
+  }
 )
 </script>
 

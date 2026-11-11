@@ -7,7 +7,7 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
 import type { ColumnAvailabilityResponse, EntityResponse } from '@/api/entities'
-import type { TargetModelEntityOption } from '@/api/projects'
+import type { TargetModelDirectForeignKeysResponse, TargetModelEntityOption } from '@/api/projects'
 import EntityFormDialog from '../EntityFormDialog.vue'
 import { getExtraColumnDiagnostics } from '../extraColumnsEditorUtils'
 
@@ -30,6 +30,7 @@ const mockState = vi.hoisted(() => ({
   showError: vi.fn(),
   showWarning: vi.fn(),
   getTargetModelEntityOptions: vi.fn(),
+  getTargetModelDirectForeignKeys: vi.fn(),
   getEntityTypes: vi.fn(),
   getValidDirectives: vi.fn(async () => []),
   getEntity: vi.fn(),
@@ -39,6 +40,7 @@ const mockState = vi.hoisted(() => ({
   setMappingSyncPending: vi.fn(),
   introspectQueryColumns: vi.fn(async () => []),
   syncCachedEntity: vi.fn(),
+  focusCombobox: vi.fn(),
 }))
 
 vi.mock('@/composables', async () => {
@@ -106,6 +108,7 @@ vi.mock('@/api', () => ({
     },
     projects: {
       getTargetModelEntityOptions: mockState.getTargetModelEntityOptions,
+      getTargetModelDirectForeignKeys: mockState.getTargetModelDirectForeignKeys,
     },
     dataSources: {
       getEntityTypes: mockState.getEntityTypes,
@@ -158,7 +161,7 @@ const childStubs = {
   },
   VSelect: {
     name: 'VSelect',
-    props: ['modelValue', 'label', 'items', 'disabled'],
+    props: ['modelValue', 'label', 'items', 'disabled', 'loading'],
     template: '<div class="v-select-stub" :data-label="label" :data-disabled="String(disabled)"><slot /></div>',
   },
   VAutocomplete: {
@@ -169,6 +172,7 @@ const childStubs = {
   VCombobox: {
     name: 'VCombobox',
     props: ['modelValue', 'label', 'items', 'disabled'],
+    methods: { focus: mockState.focusCombobox },
     template:
       '<div class="v-combobox-stub" :data-label="label" :data-disabled="String(disabled)"><slot v-for="(item, index) in modelValue" name="chip" :item="{ raw: item, title: item }" :props="{ closable: true }" :key="index" /><slot /></div>',
   },
@@ -355,6 +359,27 @@ const sourceEntities = [
   mergedEntity,
 ]
 
+const mixedValueSources = {
+  location_type: 'public_id',
+  method: 'system_id',
+  stale_target: 'public_id',
+}
+
+const locationForeignKeys = [{ entity: 'method', local_keys: ['method_id'], remote_keys: ['method_id'] }]
+const locationDependsOn = ['method']
+
+function createLocationEntity(valueSources?: Record<string, unknown>): EntityResponse {
+  return createEntity('location', {
+    type: 'entity',
+    public_id: 'location_id',
+    keys: ['location_name'],
+    columns: ['location_name'],
+    foreign_keys: locationForeignKeys,
+    depends_on: locationDependsOn,
+    ...(valueSources === undefined ? {} : { foreign_key_value_sources: valueSources }),
+  })
+}
+
 function mountEntityFormDialog(
   props: Partial<InstanceType<typeof EntityFormDialog>['$props']> = {},
   stubs: Record<string, boolean | Component> = childStubs
@@ -415,6 +440,26 @@ async function setTextFieldValue(wrapper: ReturnType<typeof mountEntityFormDialo
   if (!field) throw new Error(`Missing text field: ${label}`)
 
   field.vm.$emit('update:modelValue', value)
+  await flushPromises()
+  await nextTick()
+}
+
+// None of these ID columns are produced by the `location` entity, which keeps the
+// selector independent of the entity's declared columns.
+const directFkRelationships = [
+  { target_entity: 'location_type', public_id: 'location_type_id', target_table: 'tbl_location_type' },
+  { target_entity: 'method', public_id: 'method_id', target_table: 'tbl_method' },
+  { target_entity: 'weather_type', public_id: 'weather_type_id', target_table: 'tbl_weather_type' },
+]
+
+async function waitForDirectForeignKeys(wrapper: ReturnType<typeof mountEntityFormDialog>): Promise<void> {
+  await vi.waitFor(() => expect(mockState.getTargetModelDirectForeignKeys).toHaveBeenCalled())
+  // Prior dialog instances can leave a debounced call pending, so wait for this
+  // wrapper's own request to settle instead of only for the shared mock.
+  await vi.waitFor(() => {
+    const select = findSelectByLabel(wrapper, 'Direct target IDs')
+    expect(select ? select.props('loading') : false).toBe(false)
+  })
   await flushPromises()
   await nextTick()
 }
@@ -481,6 +526,8 @@ describe('EntityFormDialog', () => {
     mockState.previewError = null
     mockState.getTargetModelEntityOptions.mockReset()
     mockState.getTargetModelEntityOptions.mockResolvedValue({ configured: false, entities: [] })
+    mockState.getTargetModelDirectForeignKeys.mockReset()
+    mockState.getTargetModelDirectForeignKeys.mockResolvedValue({ state: 'resolved', relationships: [] })
     mockState.getEntityTypes.mockReset()
     mockState.getEntityTypes.mockResolvedValue([
       { value: 'entity', title: 'Entity', subtitle: 'Derived from another entity' },
@@ -501,6 +548,7 @@ describe('EntityFormDialog', () => {
     mockState.retryFixedEntityMapping.mockReset()
     mockState.setMappingSyncPending.mockReset()
     mockState.syncCachedEntity.mockReset()
+    mockState.focusCombobox.mockReset()
   })
 
   it('loads target options when create mode opens but not in edit mode', async () => {
@@ -1362,6 +1410,342 @@ describe('EntityFormDialog', () => {
     )
   })
 
+  it('round-trips a mixed foreign_key_value_sources map through YAML output, save, and reload', async () => {
+    mockState.update.mockResolvedValue({ warnings: [] })
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: createLocationEntity(mixedValueSources) })
+
+    await flushPromises()
+    await nextTick()
+
+    const initialYaml = loadYaml(wrapper.findComponent({ name: 'YamlEditor' }).props('modelValue') as string) as Record<
+      string,
+      any
+    >
+    expect(initialYaml.foreign_key_value_sources).toEqual(mixedValueSources)
+
+    await setTextFieldValue(wrapper, 'Public ID *', 'location_alt_id')
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith(
+      'location',
+      expect.objectContaining({
+        entity_data: expect.objectContaining({ foreign_key_value_sources: mixedValueSources }),
+      })
+    )
+
+    const savedPayload = mockState.update.mock.calls.at(-1)?.[1] as { entity_data: Record<string, unknown> }
+    expect(savedPayload.entity_data.foreign_keys).toEqual(locationForeignKeys)
+    expect(savedPayload.entity_data.depends_on).toEqual(locationDependsOn)
+
+    const reloadedWrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: createEntity('location', savedPayload.entity_data),
+    })
+    await flushPromises()
+    await nextTick()
+
+    const reloadedYaml = loadYaml(
+      reloadedWrapper.findComponent({ name: 'YamlEditor' }).props('modelValue') as string
+    ) as Record<string, any>
+    expect(reloadedYaml.foreign_key_value_sources).toEqual(mixedValueSources)
+  })
+
+  it('keeps a YAML-authored value-source map when the YAML tab is invalid', async () => {
+    mockState.update.mockResolvedValue({ warnings: [] })
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: createLocationEntity({ location_type: 'public_id', method: 'system_id' }),
+      initialTab: 'yaml',
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const yamlEditor = wrapper.findComponent({ name: 'YamlEditor' })
+    const editedYaml = [
+      'name: location',
+      'type: entity',
+      'system_id: system_id',
+      'public_id: location_id',
+      'keys:',
+      '  - location_name',
+      'columns:',
+      '  - location_name',
+      'foreign_keys:',
+      '  - entity: method',
+      '    local_keys:',
+      '      - method_id',
+      '    remote_keys:',
+      '      - method_id',
+      'depends_on:',
+      '  - method',
+      'foreign_key_value_sources:',
+      '  location_type: public_id',
+      '  method: system_id',
+      '  stale_target: public_id',
+    ].join('\n')
+    yamlEditor.vm.$emit('update:modelValue', editedYaml)
+    yamlEditor.vm.$emit('change', editedYaml)
+    yamlEditor.vm.$emit('validate', true)
+    await flushPromises()
+
+    const saveButtonAfterMapEdit = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButtonAfterMapEdit?.element.disabled).toBe(false)
+
+    yamlEditor.vm.$emit('update:modelValue', 'name: [broken')
+    yamlEditor.vm.$emit('change', 'name: [broken')
+    yamlEditor.vm.$emit('validate', false, 'Invalid YAML')
+    await flushPromises()
+
+    await setTextFieldValue(wrapper, 'Public ID *', 'location_alt_id')
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    const updatePayload = mockState.update.mock.calls.at(-1)?.[1] as { entity_data: Record<string, unknown> }
+    expect(updatePayload.entity_data.foreign_key_value_sources).toEqual(mixedValueSources)
+  })
+
+  it('omits foreign_key_value_sources from payloads when the entity has none', async () => {
+    const createWrapper = mountEntityFormDialog()
+    await flushPromises()
+
+    await setTextFieldValue(createWrapper, 'Entity Name *', 'manual_entity')
+    await setTextFieldValue(createWrapper, 'Public ID *', 'manual_entity_id')
+    const createSaveButton = createWrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(createSaveButton?.element.disabled).toBe(false)
+    await createSaveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.create).toHaveBeenCalledTimes(1)
+    const createPayload = mockState.create.mock.calls.at(-1)?.[0] as { entity_data: Record<string, unknown> }
+    expect(createPayload.entity_data).not.toHaveProperty('foreign_key_value_sources')
+
+    mockState.update.mockResolvedValue({ warnings: [] })
+    const editWrapper = mountEntityFormDialog({ mode: 'edit', entity: sourceEntities[0] })
+    await flushPromises()
+    await nextTick()
+
+    await setTextFieldValue(editWrapper, 'Public ID *', 'abundance_alt_id')
+    const editSaveButton = editWrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(editSaveButton?.element.disabled).toBe(false)
+    await editSaveButton!.trigger('click')
+    await flushPromises()
+
+    const updatePayload = mockState.update.mock.calls.at(-1)?.[1] as { entity_data: Record<string, unknown> }
+    expect(updatePayload.entity_data).not.toHaveProperty('foreign_key_value_sources')
+    expect(updatePayload.entity_data).not.toHaveProperty('foreign_keys')
+  })
+
+  it('renders direct target IDs for a resolved target model and labels each relationship', async () => {
+    mockState.getTargetModelDirectForeignKeys.mockResolvedValue({
+      state: 'resolved',
+      relationships: directFkRelationships,
+    })
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: createLocationEntity(mixedValueSources) })
+    await flushPromises()
+    await waitForDirectForeignKeys(wrapper)
+
+    const select = findSelectByLabel(wrapper, 'Direct target IDs')
+    expect(select).toBeTruthy()
+    expect(select!.props('disabled')).toBe(false)
+
+    const items = select!.props('items') as Array<{ title: string; value: string; props: Record<string, unknown> }>
+    expect(items.map((item) => item.title)).toEqual([
+      'location_type (location_type_id)',
+      'method (method_id)',
+      'weather_type (weather_type_id)',
+    ])
+
+    const methodItem = items.find((item) => item.value === 'method')
+    expect(methodItem?.props.disabled).toBe(true)
+    expect(String(methodItem?.props.subtitle)).toContain('project Foreign Key')
+
+    expect(items.find((item) => item.value === 'location_type')?.props.disabled).toBeUndefined()
+    expect(items.find((item) => item.value === 'weather_type')?.props.disabled).toBeUndefined()
+  })
+
+  it('disables direct target IDs when the project has no target model', async () => {
+    mockState.getTargetModelDirectForeignKeys.mockResolvedValue({ state: 'not_configured', relationships: [] })
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: createLocationEntity() })
+    await flushPromises()
+    await waitForDirectForeignKeys(wrapper)
+
+    const select = findSelectByLabel(wrapper, 'Direct target IDs')
+    expect(select).toBeTruthy()
+    expect(select!.props('disabled')).toBe(true)
+    expect(wrapper.text()).toContain('Select a target model for this project')
+
+    select!.vm.$emit('update:modelValue', ['location_type'])
+    await nextTick()
+
+    expect(select!.props('modelValue')).toEqual([])
+  })
+
+  it('shows an error when the target model cannot be resolved or the request fails', async () => {
+    mockState.getTargetModelDirectForeignKeys.mockResolvedValue({ state: 'unresolvable', relationships: [] })
+
+    const unresolvableWrapper = mountEntityFormDialog({ mode: 'edit', entity: createLocationEntity() })
+    await flushPromises()
+    await waitForDirectForeignKeys(unresolvableWrapper)
+
+    expect(unresolvableWrapper.text()).toContain('The project target model could not be resolved.')
+    expect(findSelectByLabel(unresolvableWrapper, 'Direct target IDs')).toBeUndefined()
+    unresolvableWrapper.unmount()
+
+    mockState.getTargetModelDirectForeignKeys.mockReset()
+    mockState.getTargetModelDirectForeignKeys.mockRejectedValue(new Error('boom'))
+
+    const failingWrapper = mountEntityFormDialog({ mode: 'edit', entity: createLocationEntity() })
+    await flushPromises()
+    await waitForDirectForeignKeys(failingWrapper)
+
+    expect(failingWrapper.text()).toContain('Direct target IDs could not be loaded.')
+  })
+
+  it('selects and clears only the requested public_id entry', async () => {
+    mockState.update.mockResolvedValue({ warnings: [] })
+    mockState.getTargetModelDirectForeignKeys.mockResolvedValue({
+      state: 'resolved',
+      relationships: directFkRelationships,
+    })
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: createLocationEntity(mixedValueSources) })
+    await flushPromises()
+    await waitForDirectForeignKeys(wrapper)
+
+    const select = findSelectByLabel(wrapper, 'Direct target IDs')
+    expect(select).toBeTruthy()
+
+    select!.vm.$emit('update:modelValue', ['location_type', 'weather_type'])
+    await nextTick()
+    expect(select!.props('modelValue')).toEqual(['location_type', 'weather_type'])
+
+    select!.vm.$emit('update:modelValue', ['weather_type'])
+    await nextTick()
+    expect(select!.props('modelValue')).toEqual(['weather_type'])
+
+    await setTextFieldValue(wrapper, 'Public ID *', 'location_alt_id')
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    const savedPayload = mockState.update.mock.calls.at(-1)?.[1] as { entity_data: Record<string, unknown> }
+    expect(savedPayload.entity_data.foreign_key_value_sources).toEqual({
+      method: 'system_id',
+      stale_target: 'public_id',
+      weather_type: 'public_id',
+    })
+    expect(savedPayload.entity_data.foreign_keys).toEqual(locationForeignKeys)
+    expect(savedPayload.entity_data.depends_on).toEqual(locationDependsOn)
+  })
+
+  it('keeps only eligible public_id entries selected and preserves the rest', async () => {
+    mockState.update.mockResolvedValue({ warnings: [] })
+    mockState.getTargetModelDirectForeignKeys.mockResolvedValue({
+      state: 'resolved',
+      relationships: directFkRelationships,
+    })
+
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: createLocationEntity({ method: 'system_id', stale_target: 'public_id' }),
+    })
+    await flushPromises()
+    await waitForDirectForeignKeys(wrapper)
+
+    const select = findSelectByLabel(wrapper, 'Direct target IDs')
+    expect(select!.props('modelValue')).toEqual([])
+
+    const text = wrapper.text()
+    expect(text).toContain('method')
+    expect(text).toContain('stale_target')
+    expect(text).toContain('Uses system_id.')
+    expect(text).toContain('Not declared by the target model.')
+
+    await setTextFieldValue(wrapper, 'Public ID *', 'location_alt_id')
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    const savedPayload = mockState.update.mock.calls.at(-1)?.[1] as { entity_data: Record<string, unknown> }
+    expect(savedPayload.entity_data.foreign_key_value_sources).toEqual({
+      method: 'system_id',
+      stale_target: 'public_id',
+    })
+  })
+
+  it('selects a stored public_id entry and preserves the rest after reload', async () => {
+    mockState.update.mockResolvedValue({ warnings: [] })
+    mockState.getTargetModelDirectForeignKeys.mockResolvedValue({
+      state: 'resolved',
+      relationships: directFkRelationships,
+    })
+
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: createLocationEntity({ location_type: 'public_id', method: 'system_id' }),
+    })
+    await flushPromises()
+    await waitForDirectForeignKeys(wrapper)
+
+    const select = findSelectByLabel(wrapper, 'Direct target IDs')
+    expect(select!.props('disabled')).toBe(false)
+    expect(select!.props('modelValue')).toEqual(['location_type'])
+
+    const text = wrapper.text()
+    expect(text).toContain('method')
+    expect(text).toContain('Uses system_id.')
+
+    await setTextFieldValue(wrapper, 'Public ID *', 'location_alt_id')
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    const savedPayload = mockState.update.mock.calls.at(-1)?.[1] as { entity_data: Record<string, unknown> }
+    expect(savedPayload.entity_data.foreign_key_value_sources).toEqual({
+      location_type: 'public_id',
+      method: 'system_id',
+    })
+    expect(savedPayload.entity_data.foreign_keys).toEqual(locationForeignKeys)
+    expect(savedPayload.entity_data.depends_on).toEqual(locationDependsOn)
+  })
+
+  it('disables direct target IDs while the metadata request is pending', async () => {
+    let resolveDirectForeignKeys: ((value: TargetModelDirectForeignKeysResponse) => void) | undefined
+    mockState.getTargetModelDirectForeignKeys.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDirectForeignKeys = resolve
+        })
+    )
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: createLocationEntity() })
+    await flushPromises()
+    await vi.waitFor(() => expect(mockState.getTargetModelDirectForeignKeys).toHaveBeenCalled())
+    await nextTick()
+
+    const pendingSelect = findSelectByLabel(wrapper, 'Direct target IDs')
+    expect(pendingSelect).toBeTruthy()
+    expect(pendingSelect!.props('disabled')).toBe(true)
+    expect(pendingSelect!.props('loading')).toBe(true)
+
+    resolveDirectForeignKeys?.({ state: 'resolved', relationships: directFkRelationships })
+    await flushPromises()
+    await nextTick()
+
+    expect(pendingSelect!.props('disabled')).toBe(false)
+  })
+
   it('uses the shape of a valid YAML edit for subsequent saves', async () => {
     mockState.update.mockResolvedValue({ warnings: [] })
     const entity = createEntity('yaml_shape_entity', {
@@ -2113,5 +2497,59 @@ describe('EntityFormDialog', () => {
     expect(wrapper.emitted('saved')?.at(-1)).toEqual(['method', true])
     const closeEmits = (wrapper.emitted('update:modelValue') ?? []).map((args) => args[0])
     expect(closeEmits).not.toContain(false)
+  })
+
+  it('opens column settings with guidance when focused on a missing column', async () => {
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: createLocationEntity(),
+      modelValue: true,
+      initialFocus: { field: 'columns', column: 'dataset_id' },
+    })
+
+    await nextTick()
+    await flushPromises()
+
+    const guidance = wrapper.find(
+      '.v-window-item-stub[data-window-value="basic"] [data-testid="direct-target-id-column-guidance"]'
+    )
+    expect(guidance.exists()).toBe(true)
+    expect(guidance.text()).toContain('dataset_id')
+    expect(guidance.text()).toContain('Direct target IDs')
+    expect(mockState.focusCombobox).toHaveBeenCalled()
+  })
+
+  it('shows no column guidance without a focus request', async () => {
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: createLocationEntity(),
+      modelValue: true,
+    })
+
+    await nextTick()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="direct-target-id-column-guidance"]').exists()).toBe(false)
+  })
+
+  it('clears column guidance after the dialog closes and reopens', async () => {
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: createLocationEntity(),
+      modelValue: true,
+      initialFocus: { field: 'columns', column: 'dataset_id' },
+    })
+
+    await nextTick()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="direct-target-id-column-guidance"]').exists()).toBe(true)
+
+    await wrapper.setProps({ modelValue: false })
+    await nextTick()
+    await wrapper.setProps({ modelValue: true })
+    await nextTick()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="direct-target-id-column-guidance"]').exists()).toBe(false)
   })
 })

@@ -4,7 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import ValidationMessageList from '../ValidationMessageList.vue'
-import type { ValidationError } from '@/types'
+import type { DataValidationMode, ValidationError } from '@/types'
 
 const vuetify = createVuetify({ components, directives })
 
@@ -28,10 +28,10 @@ const messages: ValidationError[] = [
   },
 ]
 
-function mountList(msgs: ValidationError[] = messages) {
+function mountList(msgs: ValidationError[] = messages, validationMode: DataValidationMode | null = null) {
   return mount(ValidationMessageList, {
     global: { plugins: [vuetify] },
-    props: { messages: msgs },
+    props: { messages: msgs, validationMode },
   })
 }
 
@@ -146,6 +146,52 @@ describe('ValidationMessageList', () => {
     expect(nonCandidate.find('.link-troubleshooter-action').exists()).toBe(false)
   })
 
+  it('offers the troubleshooter for an integrity candidate and emits the original message', async () => {
+    const candidate: ValidationError = {
+      severity: 'warning',
+      entity: 'orders',
+      message: "2 foreign key value(s) not found in 'customers'",
+      code: 'FK_DATA_INTEGRITY',
+      metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
+    }
+    const wrapper = mountList([candidate])
+
+    await itemAt(wrapper, 0).trigger('click')
+    const action = wrapper.find('.link-troubleshooter-action')
+    expect(action.text()).toContain('Troubleshoot link')
+    await action.trigger('click')
+
+    expect(wrapper.emitted('troubleshoot')?.[0]).toEqual([candidate])
+    expect(expandButtonAt(wrapper, 0).attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('.integrity-troubleshoot-refusal').exists()).toBe(false)
+  })
+
+  it('explains a locally unusable integrity warning instead of offering the action', async () => {
+    const malformed: ValidationError = {
+      severity: 'warning',
+      entity: 'orders',
+      message: "2 foreign key value(s) not found in 'customers'",
+      code: 'FK_DATA_INTEGRITY',
+      metadata: { orphan_count: 2 },
+    }
+    const wrapper = mountList([malformed])
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
+    expect(wrapper.find('.integrity-troubleshoot-refusal').text()).toContain('does not record which configured link')
+    expect(wrapper.emitted('troubleshoot')).toBeUndefined()
+  })
+
+  it('does not show an integrity refusal for unrelated warnings', async () => {
+    const wrapper = mountList([messages[0]!])
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
+    expect(wrapper.find('.integrity-troubleshoot-refusal').exists()).toBe(false)
+  })
+
   it('collapses expanded rows when the message list changes', async () => {
     const wrapper = mountList()
 
@@ -156,5 +202,144 @@ describe('ValidationMessageList', () => {
 
     expect(expandButtonAt(wrapper, 0).attributes('aria-expanded')).toBe('false')
     expect(wrapper.find('.validation-message-details-row').exists()).toBe(false)
+  })
+
+  it('offers the troubleshooter action for an integrity candidate', async () => {
+    const candidate: ValidationError = {
+      severity: 'warning',
+      entity: 'orders',
+      message: "2 foreign key value(s) not found in 'customers'",
+      code: 'FK_DATA_INTEGRITY',
+      metadata: { fk_index: 1, fk_signature: 'saved-signature', orphan_count: 2, join_type: 'right' },
+    }
+    const wrapper = mountList([candidate])
+
+    await itemAt(wrapper, 0).trigger('click')
+    const action = wrapper.find('.link-troubleshooter-action')
+    expect(action.text()).toContain('Troubleshoot link')
+    await action.trigger('click')
+
+    expect(wrapper.emitted('troubleshoot')?.[0]).toEqual([candidate])
+    expect(wrapper.find('.integrity-troubleshoot-refusal').exists()).toBe(false)
+    expect(expandButtonAt(wrapper, 0).attributes('aria-expanded')).toBe('true')
+  })
+
+  it('explains an integrity warning that has no usable configured-link identity', async () => {
+    const malformed: ValidationError = {
+      severity: 'warning',
+      entity: 'orders',
+      message: "2 foreign key value(s) not found in 'customers'",
+      code: 'FK_DATA_INTEGRITY',
+      metadata: { orphan_count: 2 },
+    }
+    const wrapper = mountList([malformed])
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
+    const refusal = wrapper.find('.integrity-troubleshoot-refusal')
+    expect(refusal.exists()).toBe(true)
+    expect(refusal.text()).toContain('does not record which configured link')
+  })
+
+  it.each([
+    [
+      'integrity',
+      {
+        severity: 'warning',
+        entity: 'orders',
+        message: "2 foreign key value(s) not found in 'customers'",
+        code: 'FK_DATA_INTEGRITY',
+        metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
+      } as ValidationError,
+    ],
+    [
+      'row count',
+      {
+        severity: 'warning',
+        entity: 'orders',
+        message: 'Link changed the row count.',
+        code: 'ROW_COUNT_MISMATCH',
+        metadata: { fk_index: 0, fk_signature: 'saved-signature', link_pass: 'initial', join_type: 'inner' },
+      } as ValidationError,
+    ],
+  ])('turns off troubleshooting for a sample-data %s warning', async (_label, candidate) => {
+    const wrapper = mountList([candidate], 'sample')
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
+    expect(wrapper.find('.integrity-troubleshoot-refusal').text()).toContain('turned off for sample data')
+    expect(wrapper.emitted('troubleshoot')).toBeUndefined()
+  })
+
+  it.each(['complete', 'single_pass'] as const)('keeps troubleshooting for %s results', async (mode) => {
+    const candidate: ValidationError = {
+      severity: 'warning',
+      entity: 'orders',
+      message: "2 foreign key value(s) not found in 'customers'",
+      code: 'FK_DATA_INTEGRITY',
+      metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
+    }
+    const wrapper = mountList([candidate], mode)
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(true)
+    expect(wrapper.find('.integrity-troubleshoot-refusal').exists()).toBe(false)
+  })
+
+  it('leaves unrelated warnings without an action or a refusal', async () => {
+    const wrapper = mountList(messages)
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
+    expect(wrapper.find('.integrity-troubleshoot-refusal').exists()).toBe(false)
+  })
+
+  it('offers column settings for a missing direct-FK output column', async () => {
+    const message: ValidationError = {
+      severity: 'error',
+      entity: 'sample',
+      field: 'dataset_id',
+      code: 'DIRECT_FK_OUTPUT_COLUMN_MISSING',
+      message: "Entity 'sample' must output target FK column 'dataset_id'.",
+    }
+    const wrapper = mountList([message])
+
+    await itemAt(wrapper, 0).trigger('click')
+    const action = wrapper.find('.direct-fk-column-action')
+    expect(action.exists()).toBe(true)
+    expect(action.text()).toContain('Open column settings')
+
+    await action.trigger('click')
+
+    expect(wrapper.emitted('open-entity')?.[0]).toEqual(['sample', { field: 'columns', column: 'dataset_id' }])
+    expect(expandButtonAt(wrapper, 0).attributes('aria-expanded')).toBe('true')
+  })
+
+  it('omits column settings for other issues', async () => {
+    const wrapper = mountList()
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.direct-fk-column-action').exists()).toBe(false)
+  })
+
+  it('opens column settings without a column name when the issue has no field', async () => {
+    const message: ValidationError = {
+      severity: 'error',
+      entity: 'sample',
+      field: null,
+      code: 'DIRECT_FK_OUTPUT_COLUMN_MISSING',
+      message: "Entity 'sample' must output a target FK column.",
+    }
+    const wrapper = mountList([message])
+
+    await itemAt(wrapper, 0).trigger('click')
+    await wrapper.find('.direct-fk-column-action').trigger('click')
+
+    expect(wrapper.emitted('open-entity')?.[0]).toEqual(['sample', { field: 'columns', column: null }])
   })
 })

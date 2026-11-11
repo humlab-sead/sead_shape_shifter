@@ -2,6 +2,53 @@
 
 This directory contains CLI scripts for Shape Shifter workflows.
 
+## Disposable PostgreSQL Container
+
+`spinup_disposable_postgres.py` starts a throwaway PostgreSQL container with podman
+for the loopback integration tests that read `SEAD_DISPOSABLE_POSTGRES_*`. The
+container binds to loopback only, holds no real data, and the tests create and drop
+their own schemas in it.
+
+```bash
+# Start (or reuse) the container and print the export lines
+uv run python scripts/spinup_disposable_postgres.py up
+
+# Print only the export lines, for eval
+eval "$(uv run python scripts/spinup_disposable_postgres.py env)"
+
+# Check container readiness, then remove the container and its data
+uv run python scripts/spinup_disposable_postgres.py status
+uv run python scripts/spinup_disposable_postgres.py down
+```
+
+The same actions are available as Make targets: `make pg-disposable-up`,
+`pg-disposable-env`, `pg-disposable-status`, and `pg-disposable-down`.
+
+## Profiling Project Normalization
+
+`profile_normalization.py` profiles normalization for `data/projects/copy_strucke_MS`
+by default. It reports elapsed time and output size for each entity, then shows the
+most expensive functions by cumulative and self time. The script reads source data
+and does not write normalized output files.
+
+Because normalization is asynchronous, use the per-entity wall times for end-to-end
+comparisons. `cProfile` cumulative times can include time spent awaiting async work.
+
+```bash
+# Profile the default project
+uv run python scripts/profile_normalization.py
+
+# Save a profile for interactive inspection
+uv run python scripts/profile_normalization.py --out tmp/copy_strucke_MS.prof
+uv run snakeviz tmp/copy_strucke_MS.prof
+
+# Profile another project configuration
+uv run python scripts/profile_normalization.py --project data/projects/example/shapeshifter.yml
+```
+
+The script loads `data/test.env` and `data/.env` using the same precedence as
+`profile_validation.py`.
+
 ## Normalizing Entity Key Order
 
 `sort_project_yaml.py` re-orders each entity's keys in a project file the way a full
@@ -43,7 +90,31 @@ python scripts/print_target_model_entity.py \
 The `prepare_copilot_release_notes.py` script prepares a user-facing release-notes draft for refinement with Copilot CLI.
 The `generate_whats_new.py` script builds the release-note file from the authored user-facing and upgrade-note sections of merged pull requests. It selects pull requests by commit ancestry: a pull request ships in release `Rn` when its merge commit is reachable from the release ref (`vRn` when the tag exists, otherwise `HEAD`) and not from the previous release ref. It reads pull requests whose base branch is `dev`, `staging`, or `main`, so feature pull requests are included even though they never target `main`. `CHANGELOG.md` supplies only the version date and previous version. If an AI API key is configured, it consolidates overlapping notes; otherwise it preserves the authored notes. The older `generate_user_release_notes.py` script remains available for changelog-derived drafts.
 
-Promotion pull requests carry the `<!-- promotion-pr -->` marker and contribute no notes of their own, so promoted changes are never reported twice. For the latest version in `CHANGELOG.md`, the generator also adds a `Pending Release` snapshot of merged pull requests that have not reached `main`, including their authored notes and the pull requests each promotion carries. It uses `gh pr list` and `git rev-list`, so `gh` must be authenticated and full history and tags must be available. See [the What's New workflow](../docs/whats-new/README.md).
+Promotion pull requests carry the `<!-- promotion-pr -->` marker and contribute no notes of their own, so promoted changes are never reported twice. Every run writes a rolling pending snapshot to `docs/whats-new/PENDING.md`; it never adds pending changes to a versioned note or GitHub release body. It uses `gh pr list` and `git rev-list`, so `gh` must be authenticated and full history and tags must be available. See [the What's New workflow](../docs/whats-new/README.md).
+
+Generate a release draft manually with:
+
+```bash
+python3 scripts/generate_whats_new.py --version X.Y.Z
+```
+
+Use `--current-ref`, `--previous-tag`, or `--source-branches` when you need a custom release window.
+
+The release-note generators and standard PR-description drafting can use shared provider settings from the repository-root `.env` or process environment:
+
+- `REPO_SCRIPTS_DEFAULT_MODEL`
+- `REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE`
+- `REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL`
+- `REPO_SCRIPTS_DEFAULT_PROVIDER_KEY`
+- `RELEASE_NOTES_API_TIMEOUT` (default: 60 seconds; release-note generators only)
+
+Use provider type `openai` or `openai-compatible` and an API-root base URL, such as one ending in `/v1`. The generators append `/chat/completions`. There are no built-in provider defaults; incomplete or unsupported settings produce a warning and a non-AI draft. `COPILOT_PROVIDER_*` environment variables override the shared `.env` settings. Standard PR drafting requires these settings; promotion PRs do not need a model. The script does not read VS Code's secret store.
+
+For a changelog-based draft and Copilot CLI prompt:
+
+```bash
+python3 scripts/prepare_copilot_release_notes.py --version X.Y.Z
+```
 
 ## `update_pr_descriptions.py`
 
@@ -202,7 +273,7 @@ make release-notes-ai VERSION=2.5.0
 python3 scripts/generate_whats_new.py --version 2.5.0
 ```
 
-The script requires authenticated `gh` access to merged PRs. It replaces the output file on each run. See [the What's New workflow](../docs/whats-new/README.md) for the version-selection and pending-staging behavior.
+The script requires authenticated `gh` access to merged PRs. It replaces the versioned output file and refreshes `PENDING.md` on each run. See [the What's New workflow](../docs/whats-new/README.md).
 
 ## `generate_user_release_notes.py` (legacy changelog-based generator)
 
@@ -232,7 +303,6 @@ python3 scripts/generate_user_release_notes.py --version 1.26.0 --force-heuristi
 
 - Reads the selected release section from `CHANGELOG.md` and writes `docs/whats-new/vX.Y.Z.md` by default.
 - Drafts highlights, new features, improvements, and fixes using local heuristics or AI. Use `--force-heuristic` to skip AI.
-- Adds the `Pending Release` PR snapshot only when generating the latest changelog version. `--generate-missing` includes it only if that changelog version is among the versions being generated.
 - Replaces the output file on each run. Review the generated content and reapply any manual edits after regenerating.
 - Can update the matching GitHub Release body when run with `--update-github-release`.
 
@@ -286,6 +356,38 @@ scripts/verify_promotion_provenance.sh --base 7a90e566 --head f4c8a177
 Squash and rebase merges pass only if GitHub still associates the resulting commit with its pull request. Merge commits are recognised from their subject and do not depend on that association, which is how this repository currently merges pull requests.
 
 A pull request cannot repair an earlier direct push. Opening a pull request from a branch that contains the pushed commit associates that commit with the pull request while the branch exists, but the association disappears once the branch is merged and deleted. Fix a reported commit by reverting it through a pull request and re-applying the change on its own branch, or promote it with an explicit override.
+
+## Promoting `dev` to `staging`
+
+Use `make promote-dev-to-staging` or `promote_dev_to_staging.sh` to verify
+commit provenance, create a draft promotion pull request, and prepare its
+description from branch history:
+
+```bash
+# Create the draft PR and generate its local description
+make promote-dev-to-staging
+
+# Or run the script directly
+scripts/promote_dev_to_staging.sh prepare
+
+# Review or edit docs/whats-new/PRs/PR_<number>.txt, then publish it
+scripts/promote_dev_to_staging.sh publish <pull-request-number>
+```
+
+The script requires authenticated `gh` access, the repository `.venv`, and an
+`origin` remote pointing to `humlab-sead/sead_shape_shifter`. It does not merge
+the pull request. After required reviews and checks pass, merge it with:
+
+```bash
+gh pr merge <pull-request-number> --merge
+```
+
+If `dev` changes after the description draft is generated, regenerate and review
+the draft before publishing it:
+
+```bash
+.venv/bin/python scripts/update_pr_descriptions.py <pull-request-number> --draft --force
+```
 
 ## Deployment Scripts
 

@@ -7,7 +7,7 @@ This orchestrator:
 """
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Collection
 
 import pandas as pd
 from loguru import logger
@@ -17,12 +17,13 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.validation import (
     DataValidationStatus,
+    DataValidatorKey,
     EntityDataValidationResult,
     EntityDataValidationStatus,
 )
 from backend.app.services.project_service import ProjectService
-from backend.app.services.shapeshift_service import ShapeShiftService
-from src.model import ShapeShiftProject
+from backend.app.services.shapeshift_service import ProjectNormalizationResult, ShapeShiftService
+from src.model import ForeignKeyConfig, ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
 from src.table_store import TableStore
@@ -173,6 +174,43 @@ class FullDataFetchStrategy(DataFetchStrategy):
         return _get_normalizer_additional_issues(normalizer, entity_name)
 
 
+class SinglePassDataFetchStrategy(DataFetchStrategy):
+    """Normalizes the whole project once and serves every entity from that result.
+
+    One project-wide pass replaces the per-entity preview fetches used by
+    ``PreviewDataFetchStrategy``. Entities that fail to normalize are reported with their
+    failure reason, and entities that depend on them are skipped by the orchestrator, so one
+    broken entity does not hide results for the rest of the project.
+    """
+
+    def __init__(self, preview_service: ShapeShiftService) -> None:
+        self.preview_service: ShapeShiftService = preview_service
+        self._results: dict[str, ProjectNormalizationResult] = {}
+
+    async def prepare(self, project_name: str) -> None:
+        """Normalize every configured entity in one pass."""
+        self._results[project_name] = await self.preview_service.normalize_project(project_name)
+
+    async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
+        """Return the normalized data for one entity."""
+        result: ProjectNormalizationResult | None = self._results.get(project_name)
+        if result is None:
+            raise RuntimeError(f"Project '{project_name}' was not normalized before data validation")
+        if entity_name in result.incomplete_entities:
+            raise RuntimeError(f"Entity '{entity_name}' could not be normalized: {result.incomplete_entities[entity_name]}")
+        if entity_name not in result.table_store:
+            raise RuntimeError(f"Entity '{entity_name}' was not produced by project normalization")
+        return result.table_store[entity_name]
+
+    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[ValidationIssue]:
+        """Return issues recorded while normalizing the entity."""
+        result: ProjectNormalizationResult | None = self._results.get(project_name)
+        if result is None:
+            return []
+
+        return _get_normalizer_additional_issues(result.normalizer, entity_name)
+
+
 class TableStoreDataFetchStrategy(DataFetchStrategy):
     """Strategy for fetching from a pre-existing table store (already normalized)."""
 
@@ -215,6 +253,7 @@ class DataValidationOrchestrator:
         """
         self.fetch_strategy: DataFetchStrategy = fetch_strategy
         self.target_model: TargetModel | None = target_model
+        self.enabled_validators: frozenset[str] | None = None
         self.status: DataValidationStatus = DataValidationStatus.COMPLETED
         self.status_reason: str | None = None
         self.entity_statuses: dict[str, EntityDataValidationResult] = {}
@@ -225,6 +264,7 @@ class DataValidationOrchestrator:
         core_project: ShapeShiftProject,
         project_name: str,
         entity_names: list[str] | None = None,
+        validators: Collection[DataValidatorKey] | None = None,
     ) -> list[ValidationIssue]:
         """
         Validate all or specified entities.
@@ -233,11 +273,14 @@ class DataValidationOrchestrator:
             core_project: Resolved core project (with directives expanded)
             project_name: Name of project (for data fetching)
             entity_names: Optional list of entities to validate (None = all)
+            validators: Selectable checks to run; None runs every selectable check.
+                Checks outside the selectable set always run.
 
         Returns:
             List of domain validation issues (consumer converts to API models if needed)
         """
         issues: list[ValidationIssue] = []
+        self.enabled_validators = None if validators is None else frozenset(validators)
         self.status = DataValidationStatus.COMPLETED
         self.status_reason = None
         self.entity_statuses = {}
@@ -279,6 +322,7 @@ class DataValidationOrchestrator:
                 entity_issues: list[ValidationIssue] = []
                 try:
                     await self._validate_entity(
+                        core_project=core_project,
                         project_name=project_name,
                         entity_name=entity_name,
                         entity_cfg=entity_cfg,
@@ -301,11 +345,43 @@ class DataValidationOrchestrator:
 
         return issues
 
+    @staticmethod
+    def _saved_foreign_keys(core_project: ShapeShiftProject, entity_name: str) -> list[ForeignKeyConfig]:
+        """Return the entity's saved foreign keys in list order, when the project has them."""
+        if not isinstance(core_project, ShapeShiftProject) or not core_project.has_table(entity_name):
+            return []
+        return core_project.get_table(entity_name).foreign_keys
+
+    @staticmethod
+    def _attach_saved_fk_identity(
+        integrity_issues: list[ValidationIssue],
+        saved_foreign_keys: list[ForeignKeyConfig],
+        fk_index: int,
+    ) -> None:
+        """Add the saved link position and signature to integrity issues for one entry.
+
+        Other issue codes are left unchanged, and an entry with no matching saved
+        foreign key stays without identity so it cannot be resolved later.
+        """
+        if not 0 <= fk_index < len(saved_foreign_keys):
+            return
+
+        saved_fk: ForeignKeyConfig = saved_foreign_keys[fk_index]
+        for issue in integrity_issues:
+            if issue.code != "FK_DATA_INTEGRITY":
+                continue
+            issue.metadata["fk_index"] = fk_index
+            issue.metadata["fk_signature"] = saved_fk.identity_signature
+
     def _dependencies(self, core_project: ShapeShiftProject, entity_name: str) -> set[str]:
         """Return the configured dependencies for an entity."""
         if not isinstance(core_project, ShapeShiftProject) or not core_project.has_table(entity_name):
             return set()
         return core_project.get_table(entity_name).depends_on
+
+    def _validator_enabled(self, key: DataValidatorKey) -> bool:
+        """Return whether one selectable check should run for this request."""
+        return self.enabled_validators is None or key in self.enabled_validators
 
     def _dependency_order(self, core_project: ShapeShiftProject, entity_names: list[str]) -> list[str]:
         """Order entity checks so prerequisite previews run before dependent previews."""
@@ -366,6 +442,7 @@ class DataValidationOrchestrator:
 
     async def _validate_entity(
         self,
+        core_project: ShapeShiftProject,
         project_name: str,
         entity_name: str,
         entity_cfg: dict[str, Any],
@@ -376,6 +453,7 @@ class DataValidationOrchestrator:
         Validate a single entity.
 
         Args:
+            core_project: Resolved core project used to read saved foreign keys
             project_name: Project name
             entity_name: Entity name
             entity_cfg: Resolved entity configuration
@@ -388,28 +466,33 @@ class DataValidationOrchestrator:
             if issue not in reported_additional_issues:
                 issues.append(issue)
                 reported_additional_issues.append(issue)
-        issues.extend(NonEmptyResultValidator.validate(df, entity_name))
+        if self._validator_enabled("non_empty_result"):
+            issues.extend(NonEmptyResultValidator.validate(df, entity_name))
 
         if df.empty:
             return
 
         columns: list[str] = entity_cfg.get("columns", [])
-        if columns:
+        if columns and self._validator_enabled("column_exists"):
             issues.extend(ColumnExistsValidator.validate(df, columns, entity_name, entity_cfg))
 
         keys: list[str] = entity_cfg.get("keys", [])
         if keys:
             issues.extend(BusinessKeyProducedValidator.validate(df, keys, entity_name))
-            issues.extend(NaturalKeyUniquenessValidator.validate(df, keys, entity_name))
+            if self._validator_enabled("natural_key_uniqueness"):
+                issues.extend(NaturalKeyUniquenessValidator.validate(df, keys, entity_name))
 
         fk_configs: list[dict[str, Any]] = entity_cfg.get("foreign_keys", [])
-        for fk_config in fk_configs:
+        saved_foreign_keys: list[ForeignKeyConfig] = self._saved_foreign_keys(core_project, entity_name)
+        for fk_index, fk_config in enumerate(fk_configs):
             issues.extend(ForeignKeyDataValidator.validate(df, fk_config, entity_name))
 
             remote_entity: str | None = fk_config.get("entity")
             if remote_entity:
                 remote_df: pd.DataFrame = await self.fetch_strategy.fetch(project_name, remote_entity)
-                issues.extend(ForeignKeyIntegrityValidator.validate(df, remote_df, fk_config, entity_name))
+                integrity_issues: list[ValidationIssue] = ForeignKeyIntegrityValidator.validate(df, remote_df, fk_config, entity_name)
+                self._attach_saved_fk_identity(integrity_issues, saved_foreign_keys, fk_index)
+                issues.extend(integrity_issues)
                 issues.extend(DataTypeCompatibilityValidator.validate(df, remote_df, fk_config, entity_name))
 
         if self.target_model is not None:

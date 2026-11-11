@@ -174,6 +174,48 @@ class TestMaterializeEntity:
                     mock_project_service.save_project.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_materialize_snapshots_api_form_into_source_state(
+        self, materialization_service, mock_project_service, mock_api_project, mock_core_project, mock_table_config, sample_dataframe
+    ):
+        """source_state must store the API form (relative filename + location), never the resolved absolute path."""
+        # API form carries a relative filename plus location; the resolved Core config carries an
+        # environment-absolute path. The frozen source_state must come from the API form.
+        mock_api_project.entities["location"] = {
+            "type": "csv",
+            "public_id": "location_id",
+            "keys": ["location_name"],
+            "options": {"filename": "locations.csv", "location": "local"},
+        }
+        mock_table_config.entity_cfg = {
+            "type": "csv",
+            "public_id": "location_id",
+            "keys": ["location_name"],
+            "options": {"filename": "/app/projects/test-project/locations.csv"},
+        }
+
+        mock_project_service.load_project.return_value = mock_api_project
+        mock_project_service.save_project = Mock()
+
+        mock_spec = MagicMock(spec=CanMaterializeSpecification)
+        mock_spec.is_satisfied_by.return_value = True
+
+        mock_shapeshifter = MagicMock(spec=ShapeShifter)
+        mock_shapeshifter.table_store = {"location": sample_dataframe}
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
+            with patch("backend.app.services.materialization_service.CanMaterializeSpecification", return_value=mock_spec):
+                with patch("backend.app.services.materialization_service.ShapeShifter", return_value=mock_shapeshifter):
+                    result = await materialization_service.materialize_entity("test-project", "location", "inline")
+
+        assert result.success
+
+        saved_entity = mock_project_service.save_project.call_args.args[0].entities["location"]
+        source_state = saved_entity["materialized"]["source_state"]
+
+        assert source_state["options"] == {"filename": "locations.csv", "location": "local"}
+        assert "/app/projects" not in str(source_state)
+
+    @pytest.mark.asyncio
     async def test_materialize_auto_inline_small_dataset(
         self, materialization_service, mock_project_service, mock_api_project, mock_core_project, mock_table_config, small_dataframe
     ):

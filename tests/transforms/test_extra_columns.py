@@ -171,6 +171,37 @@ class TestInterpolationEvaluation:
         result = ExtraColumnEvaluator.evaluate_interpolation(df, "{{name}}: {name}", "test")
         assert result.iloc[0] == "{name}: John"
 
+    def test_interpolation_without_placeholders_returns_series(self):
+        """Literal templates still return one value per input row."""
+        df = pd.DataFrame({"name": ["John", "Jane"]}, index=[2, 2])
+
+        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{{literal}}", "test")
+
+        assert result.tolist() == ["{literal}", "{literal}"]
+        assert result.index.equals(df.index)
+
+    def test_interpolation_handles_categorical_and_all_null_values(self):
+        """Null handling works for categorical and nullable columns."""
+        df = pd.DataFrame(
+            {
+                "category": pd.Series(pd.Categorical(["x", None])),
+                "all_null": pd.Series([pd.NA, pd.NA], dtype="Int64"),
+            }
+        )
+
+        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{category}|{all_null}", "test")
+
+        assert result.tolist() == ["x|", "|"]
+
+    def test_interpolation_does_not_unescape_brace_markers_in_values(self):
+        """Escaped template braces do not change matching text in source values."""
+        marker = "\x00LEFTBRACE\x00"
+        df = pd.DataFrame({"value": [marker]})
+
+        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{{literal}}:{value}", "test")
+
+        assert result.tolist() == ["{literal}:" + marker]
+
     def test_raises_on_missing_column(self):
         """ValueError raised if required column missing."""
         df = pd.DataFrame({"a": [1]})
@@ -194,6 +225,23 @@ class TestInterpolationEvaluation:
         df = pd.DataFrame({"val": [5]})
         result = ExtraColumnEvaluator.evaluate_interpolation(df, "{val} + {val}", "test")
         assert result.iloc[0] == "5 + 5"
+
+    def test_interpolation_preserves_mixed_values_and_template_escaping(self):
+        """Interpolation preserves null, numeric, repeated-column, escaped-brace, and index behavior."""
+        df = pd.DataFrame({"value": [1, 1.0, 2.5, None, float("nan"), pd.NA], "suffix": list("abcdef")})
+        df.index = [3, 3, 2, 2, 1, 1]
+
+        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{{value}}[{value}]/[{value}]-{suffix}", "test")
+
+        assert result.tolist() == [
+            "{value}[1]/[1]-a",
+            "{value}[1]/[1]-b",
+            "{value}[2.5]/[2.5]-c",
+            "{value}[]/[]-d",
+            "{value}[]/[]-e",
+            "{value}[]/[]-f",
+        ]
+        assert result.index.equals(df.index)
 
     def test_interpolates_unicode_column_name(self):
         """A column whose name starts with a non-ASCII letter interpolates."""

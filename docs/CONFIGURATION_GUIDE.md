@@ -79,7 +79,7 @@ metadata:                             # Metadata definitions (required)
 - **name**: A human-readable name for the project (if omitted, derived from filename)
 - **description**: Detailed description of what this configuration does (supports multi-line strings using `|`)
 - **version**: Semantic version string (e.g., "1.0.0", "2.1.3") for tracking configuration changes
-- **data_provider_code** and **provider_schema**: A complete pair from the reviewed local provider registry. New projects require both values, and project validation reports missing, partial, blank, or unregistered values on the metadata fields. Once assigned, application saves cannot change or remove either value. Existing checked-in projects may remain unbound until the Phase 4 migration; assigning one requires both registered values.
+- **data_provider_code** and **provider_schema**: A complete pair from the reviewed local provider registry. New projects require both values, and project validation reports missing, partial, blank, or unregistered values on the metadata fields. Once assigned, application saves cannot change or remove either value. Existing checked-in projects may remain unbound until the Phase 4 migration; assigning one requires both registered values. Business-key declarations (`entities.*.keys`) remain editable on a bound project; SIMS enforces the ordered key contract for the provider scope before identity work.
 - **default_entity**: Reference to an existing entity used as the default source for `data` type entities
 - **target_model**: Reference to a target model specification. Accepted as a `@load:` directive pointing to a YAML file (`"@load: resources/target_models/sead_standard_model.yml"`) or as an inline mapping. When present, the **Check Conformance** button in the editor validates the project entities against the spec. See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for the workflow and [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) for the generated field-level schema reference.
 
@@ -298,6 +298,13 @@ Here, `location.location_type_id` contains existing SEAD `location_type_id` valu
 - Missing values follow the target-model FK rules, including `required`, `required_when`, and `nullable`. Rows excluded from the package do not need a direct-ID lookup.
 - The package manifest lists direct-ID FKs under `direct_target_id_foreign_keys`. Supplied FK values do not become mapping-sidecar links.
 
+In the entity editor, open the **Basic** tab and use **Direct target IDs** to set these entries without editing YAML.
+
+- Selecting a target writes `foreign_key_value_sources.<target>: public_id`; clearing it removes only that entry. The control never creates a project `foreign_keys` link or dependency, and it lists every direct target-model FK the target model declares, whether or not the source currently outputs the ID column.
+- A choice whose target already has a project `foreign_keys` link is disabled until that link is removed. With no target model configured, the control stays disabled.
+- Entries set to `system_id`, targets the model does not declare, and unrecognized values stay visible under **Preserved value sources** with an explanation; changing or removing them requires YAML editing.
+- When the source does not output the target ID column, validation reports `DIRECT_FK_OUTPUT_COLUMN_MISSING` naming the entity and the column, and the expanded issue offers **Open column settings** to open the entity's column fields.
+
 The declaration is not a shared target-model setting and does not waive a target entity's independent `required: true` project requirement.
 
 #### `surrogate_id` (Deprecated - Use `public_id`)
@@ -323,6 +330,7 @@ The declaration is not a shared target-model setting and does not waive a target
 - **Type**: `list[string]`
 - **Required**: Yes (field must exist, but can be empty list)
 - **Description**: Natural/business key columns that uniquely identify rows in the source data. Used for duplicate detection and foreign key relationships. These are the "real world" identifiers from your source system (e.g., sample codes, site names).
+- **Order matters for SIMS**: A SEAD Change Request run registers this ordered list as the provider-scope business-key contract before identity work. Two projects that share a provider scope must declare the same key names in the same order; SIMS rejects a different list or order and the run stops without sending identity work.
 - **Example**:
   ```yaml
   keys: ["ProjektNr", "Befu"]
@@ -831,7 +839,7 @@ This is the canonical mechanism for four common cases:
 - **Copy** when you just need another column name for an existing value
 - **Constant** when every row should receive the same value, `null`, number, or boolean
 - **Interpolation** when you are assembling a label, synthetic identifier, or display string from several columns
-- **Formula** when interpolation is not enough and you need a small expression such as `upper(...)`, `trim(...)`, `substr(...)`, `coalesce(...)`, `replace(...)`, `regex_extract(...)`, or `to_decimal(...)`
+- **Formula** when interpolation is not enough and you need a small expression such as `upper(...)`, `trim(...)`, `substr(...)`, `coalesce(...)`, `map_value(...)`, `replace(...)`, `regex_replace(...)`, `regex_extract(...)`, `split_part(...)`, `concat_ws(...)`, or `to_decimal(...)`
 
 Quick examples:
 
@@ -900,6 +908,25 @@ entities:
 
 This is the right fit when the derived value depends on cleanup, fallback handling, or small string operations.
 
+**Example: Exact Categorical Mappings**
+
+Use `map_value` to map whole input values to typed literals. It does not replace substrings.
+
+```yaml
+entities:
+  sample:
+    type: data
+    table: tbl_sample
+    columns: [sample_type]
+    extra_columns:
+      sample_type_id: "=map_value(sample_type, 'artificial', 1, 'natural', 2)"
+      sample_type_id_with_fallback: "=map_value(sample_type, 'artificial', 1, 'natural', 2, 0)"
+```
+
+Provide one or more key/value pairs. Mapping keys, mapped values, and an optional final fallback must be literals; mapped values and fallbacks keep their types. Append the fallback after the last complete pair. Calls without a fallback have an odd number of total arguments; calls with a fallback have an even number. Null inputs pass through as null. An unmapped non-null input raises an evaluation error unless a fallback is supplied. Null mapping keys are not allowed.
+
+When the result is used for a foreign-key link, the existing FK linker still creates and validates that relationship. `map_value` only produces the value used by the link.
+
 **Authoring Notes:**
 
 - Interpolation is usually the best fit for synthetic labels and identifiers because the YAML stays easy to read.
@@ -966,6 +993,14 @@ This is the right fit when the derived value depends on cleanup, fallback handli
     site_code: "=regex_extract(site_id, '[0-9]+')"
     # Extract a named capture group to pull a prefix
     country_code: "=regex_extract(location_key, '^([A-Z]{2})', 1)"
+    # Extract a named capture group by name instead of index
+    site_code_named: "=regex_extract(site_id, 'SITE-(?P<num>[0-9]+)', 'num')"
+    # Read the 3rd comma-separated field, trimmed
+    field_3: "=trim(split_part(composite_key, ',', 3))"
+    # Join optional parts with a separator, skipping nulls
+    tag_list: "=concat_ws(',', tag_a, tag_b, tag_c)"
+    # Strip a case-insensitive word with one regex call
+    lab_id_clean: "=regex_replace(lab_id, '(?i)okänd', '')"
     # Convert a float measurement column to Decimal with 4 decimal places
     latitude_decimal: "=to_decimal(latitude, 4)"
     # Create constant null column
@@ -984,7 +1019,10 @@ This is the right fit when the derived value depends on cleanup, fallback handli
     - `substr(str, start, length)` - Extract substring (0-indexed)
     - `coalesce(...)` - Return first non-null value
     - `replace(str, old, new)` - Replace all occurrences of substring `old` with `new` (literal, not regex)
-    - `regex_extract(str, pattern[, group])` - Extract first regex match; `group` selects capture group (default 0 = full match); returns null when no match
+    - `regex_replace(str, pattern, replacement)` - Replace all matches of regex `pattern` with `replacement`; a null `replacement` deletes the matches
+    - `regex_extract(str, pattern[, group])` - Extract first regex match; `group` selects capture group by integer index (default 0 = full match) or by name for `(?P<name>...)` groups; returns null when no match
+    - `split_part(str, separator, n)` - Return the 1-based `n`-th field of `str` split on the literal `separator`; out-of-range indexes return null; fields are not trimmed, so wrap in `trim()` when needed
+    - `concat_ws(separator, ...)` - Join non-null arguments with the literal `separator`; null arguments are skipped (unlike `concat`, which renders them as empty strings); returns null when all arguments are null
     - `to_decimal(value[, precision])` - Convert a numeric value (float, int, str, Decimal) or null to `Decimal` rounded to `precision` decimal places (default 10)
     - `to_int(value)` - Convert value to int; null/NaN pass through as null
     - `to_float(value)` - Convert value to float; null/NaN pass through as null

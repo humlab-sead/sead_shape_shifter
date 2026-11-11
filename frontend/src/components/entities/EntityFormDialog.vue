@@ -491,6 +491,25 @@
                       </v-row>
                     </div>
 
+                    <!-- Missing direct target-ID output column guidance -->
+                    <v-alert
+                      v-if="activeFocus?.field === 'columns'"
+                      type="info"
+                      variant="tonal"
+                      density="compact"
+                      class="mb-4"
+                      data-testid="direct-target-id-column-guidance"
+                    >
+                      <span v-if="activeFocus.column">
+                        This entity does not produce the target ID column <code>{{ activeFocus.column }}</code
+                        >. Add it to Columns or the SQL query, or clear the selection in Direct target IDs.
+                      </span>
+                      <span v-else>
+                        This entity does not produce a target ID column for a selected target. Add the column or clear
+                        the selection in Direct target IDs.
+                      </span>
+                    </v-alert>
+
                     <!-- Columns (for entity/fixed/file/merged types) with Depends On -->
                     <div
                       class="form-row"
@@ -499,6 +518,7 @@
                       <v-row no-gutters>
                         <v-col cols="8" class="pr-2">
                           <v-combobox
+                            ref="columnsField"
                             v-model="formData.columns"
                             :items="
                               formData.type === 'fixed'
@@ -572,6 +592,7 @@
                       <v-row no-gutters>
                         <v-col cols="8" class="pr-2">
                           <v-combobox
+                            ref="columnsField"
                             :model-value="columnsOptions"
                             label="Detected Columns"
                             variant="outlined"
@@ -634,6 +655,64 @@
                           </v-btn>
                         </div>
                       </v-alert>
+                    </div>
+
+                    <!-- Direct target IDs (foreign_key_value_sources) -->
+                    <div class="form-row" v-if="directTargetIdsVisible" data-testid="direct-target-ids">
+                      <v-select
+                        v-if="directTargetIdsUiState !== 'unresolvable' && directTargetIdsUiState !== 'error'"
+                        v-model="selectedDirectTargetIds"
+                        label="Direct target IDs"
+                        :items="directForeignKeyItems"
+                        item-title="title"
+                        item-value="value"
+                        variant="outlined"
+                        multiple
+                        chips
+                        closable-chips
+                        :disabled="directTargetIdsUiState !== 'ready'"
+                        :loading="directTargetIdsUiState === 'loading'"
+                        persistent-placeholder
+                      />
+                      <span v-if="directTargetIdsUiState === 'not_configured'" class="text-caption">
+                        Select a target model for this project to configure direct target IDs.
+                      </span>
+                      <span v-else-if="directTargetIdsUiState === 'empty'" class="text-caption">
+                        The target model does not declare a direct foreign key for this entity.
+                      </span>
+                      <span v-else-if="directTargetIdsUiState === 'ready'" class="text-caption">
+                        Sets foreign_key_value_sources.&lt;target&gt; to public_id. Project Foreign Keys are not
+                        created.
+                      </span>
+
+                      <v-alert
+                        v-if="directTargetIdsUiState === 'unresolvable'"
+                        type="error"
+                        variant="tonal"
+                        density="compact"
+                      >
+                        The project target model could not be resolved. Direct target IDs are unavailable.
+                      </v-alert>
+                      <v-alert
+                        v-else-if="directTargetIdsUiState === 'error'"
+                        type="error"
+                        variant="tonal"
+                        density="compact"
+                      >
+                        {{ directForeignKeysError }}
+                      </v-alert>
+
+                      <div
+                        v-if="preservedValueSourceEntries.length > 0"
+                        class="mt-2"
+                        data-testid="direct-target-ids-preserved"
+                      >
+                        <div class="text-caption text-medium-emphasis">Preserved value sources</div>
+                        <div v-for="entry in preservedValueSourceEntries" :key="entry.target" class="text-caption">
+                          <code>{{ entry.target }}</code
+                          >: {{ entry.reason }}
+                        </div>
+                      </div>
                     </div>
 
                     <!-- Fixed Values Grid (only for fixed type) -->
@@ -841,7 +920,7 @@
                       />
                     </div>
 
-                    <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
+                    <v-alert v-if="error" type="error" variant="tonal" class="mt-4 project-save-error">
                       {{ error }}
                       <template v-if="renameConflictDependents.length">
                         <div class="mt-2">Referenced by: {{ renameConflictDependents.join(', ') }}.</div>
@@ -1225,6 +1304,7 @@
  * - Adds minimal overhead (~10-50ms API call) for guaranteed data consistency
  */
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import { useEntities, useSuggestions, useEntityPreview, useSettings, useColumnAvailability } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import { useProjectStore, useEntityStore } from '@/stores'
@@ -1250,12 +1330,13 @@ import SqlEditor from '../common/SqlEditor.vue'
 import MaterializeDialog from './MaterializeDialog.vue'
 import UnmaterializeDialog from './UnmaterializeDialog.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
+import type { ValidationEntityFocus } from '@/types'
 import { normalizeForeignKeyKeys, type ForeignKeyKeyInput } from './foreignKeyEditorUtils'
 import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
 import { getValueReferenceSuggestions } from '@/utils/valueReferenceColumns'
 import type { EntityTypeInfo } from '@/api/data-sources'
-import type { TargetModelEntityOption } from '@/api/projects'
+import type { TargetModelDirectForeignKeysResponse, TargetModelEntityOption } from '@/api/projects'
 import { queryApi } from '@/api/query'
 import {
   buildFixedFullColumns,
@@ -1298,6 +1379,7 @@ interface Props {
   entity?: EntityResponse | null
   mode: 'create' | 'edit'
   initialTab?: 'form' | 'yaml'
+  initialFocus?: ValidationEntityFocus | null
 }
 
 interface Emits {
@@ -1383,6 +1465,11 @@ const selectedTargetEntityName = ref<string | null>(null)
 const sourceTypeExplicitlySelected = ref(false)
 const targetEntityIdentityBaseline = ref<{ name: string; publicId: string | null } | null>(null)
 let targetModelEntityOptionsRequestId = 0
+// Read-only direct target-model FK metadata for the current entity name.
+const directForeignKeys = ref<TargetModelDirectForeignKeysResponse | null>(null)
+const directForeignKeysLoading = ref(false)
+const directForeignKeysError = ref<string | null>(null)
+let directForeignKeysRequestId = 0
 const renameConflictDependents = ref<string[]>([])
 const showSaveSuccess = ref(false)
 let saveSuccessTimeout: ReturnType<typeof setTimeout> | null = null
@@ -1444,6 +1531,8 @@ interface FormData {
     location: 'global' | 'local'
   }
   foreign_keys: any[]
+  // Carried verbatim. This dialog does not interpret eligibility or normalize values.
+  foreign_key_value_sources: Record<string, unknown>
   depends_on: string[]
   drop_duplicates: {
     enabled: boolean
@@ -1700,6 +1789,15 @@ function normalizeForeignKeysForForm(value: unknown): any[] {
   })
 }
 
+function normalizeForeignKeyValueSourcesForForm(value: unknown): Record<string, unknown> {
+  // Copy the map as-is. Key order and every entry survive; nothing is filtered, renamed, sorted, or coerced.
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return {}
+  }
+
+  return { ...(value as Record<string, unknown>) }
+}
+
 function normalizeUnnestForForm(value: unknown): unknown | null {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return value || null
@@ -1735,6 +1833,7 @@ const formData = ref<FormData>({
     location: 'global',
   },
   foreign_keys: [],
+  foreign_key_value_sources: {},
   depends_on: [],
   drop_duplicates: {
     enabled: false,
@@ -1806,6 +1905,40 @@ watch(
       activeTab.value = 'yaml'
     } else if (tab === 'form') {
       activeTab.value = 'basic'
+    }
+  },
+  { immediate: true }
+)
+
+// A focus request arrives with an explicit edit request. Apply it once per opening
+// so a later open without a new request does not show stale guidance.
+const activeFocus = ref<ValidationEntityFocus | null>(null)
+// The visible produced-columns control. The Columns and Detected Columns rows are
+// mutually exclusive, so one ref covers both.
+const columnsField = ref<{ focus: () => void } | null>(null)
+let appliedFocus: ValidationEntityFocus | null = null
+
+watch(
+  () => props.modelValue,
+  async (open) => {
+    if (!open) {
+      activeFocus.value = null
+      return
+    }
+
+    const focus = props.initialFocus ?? null
+    if (focus === null || focus === appliedFocus) {
+      activeFocus.value = null
+      return
+    }
+
+    appliedFocus = focus
+    activeFocus.value = focus
+
+    if (focus.field === 'columns') {
+      activeTab.value = 'basic'
+      await nextTick()
+      columnsField.value?.focus()
     }
   },
   { immediate: true }
@@ -2402,6 +2535,11 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
 
       return transformedFk
     })
+  }
+
+  // Direct target-ID declarations are emitted verbatim and never become project FK links.
+  if (Object.keys(formData.value.foreign_key_value_sources).length > 0) {
+    entityData.foreign_key_value_sources = { ...formData.value.foreign_key_value_sources }
   }
 
   // Include depends_on if specified
@@ -3015,6 +3153,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   targetModelEntityOptionsRequestId += 1
+  resetDirectForeignKeyState()
   window.removeEventListener('keydown', handleKeyPress)
   window.removeEventListener('resize', updateResponsiveDialogMode)
   document.body.classList.remove('entity-dialog-resizing')
@@ -3043,6 +3182,106 @@ const entityTypeOptions = ref<EntityTypeInfo[]>([])
 const selectedTargetEntity = computed(
   () => targetModelEntityOptions.value.find((option) => option.name === selectedTargetEntityName.value) ?? null
 )
+
+// Direct target IDs: selection state derived from the read-only metadata contract
+// and the form's foreign_key_value_sources map. Project foreign_keys and depends_on
+// are never read for writing or modified here.
+type DirectTargetIdsUiState = 'idle' | 'loading' | 'not_configured' | 'unresolvable' | 'error' | 'empty' | 'ready'
+
+interface PreservedValueSourceEntry {
+  target: string
+  value: unknown
+  reason: string
+}
+
+const directTargetIdsVisible = computed(() => currentDirectTargetEntityName().length > 0)
+
+const directTargetIdsUiState = computed<DirectTargetIdsUiState>(() => {
+  if (!directTargetIdsVisible.value) return 'idle'
+  if (directForeignKeysError.value) return 'error'
+  if (directForeignKeysLoading.value || directForeignKeys.value === null) return 'loading'
+  if (directForeignKeys.value.state === 'not_configured') return 'not_configured'
+  if (directForeignKeys.value.state === 'unresolvable') return 'unresolvable'
+  return directForeignKeys.value.relationships.length > 0 ? 'ready' : 'empty'
+})
+
+const eligibleDirectTargets = computed(
+  () =>
+    new Map(
+      (directForeignKeys.value?.relationships ?? []).map((relationship) => [relationship.target_entity, relationship])
+    )
+)
+
+const projectForeignKeyTargets = computed(
+  () =>
+    new Set(
+      formData.value.foreign_keys
+        .map((foreignKey: any) => foreignKey?.entity)
+        .filter((entity): entity is string => typeof entity === 'string')
+    )
+)
+
+const selectedDirectTargetIds = computed<string[]>({
+  get: () =>
+    Object.entries(formData.value.foreign_key_value_sources)
+      .filter(([target, value]) => value === 'public_id' && eligibleDirectTargets.value.has(target))
+      .map(([target]) => target),
+  set: (requested) => {
+    if (directTargetIdsUiState.value !== 'ready') return
+
+    const requestedTargets = new Set<string>(Array.isArray(requested) ? requested : [])
+    const next: Record<string, unknown> = { ...formData.value.foreign_key_value_sources }
+
+    for (const target of requestedTargets) {
+      if (!eligibleDirectTargets.value.has(target)) continue
+      if (projectForeignKeyTargets.value.has(target)) continue
+      next[target] = 'public_id'
+    }
+
+    for (const [target, value] of Object.entries(formData.value.foreign_key_value_sources)) {
+      if (value !== 'public_id') continue
+      if (!eligibleDirectTargets.value.has(target)) continue
+      if (requestedTargets.has(target)) continue
+      delete next[target]
+    }
+
+    formData.value.foreign_key_value_sources = next
+  },
+})
+
+const directForeignKeyItems = computed(() =>
+  (directForeignKeys.value?.relationships ?? []).map((relationship) => {
+    const conflict = projectForeignKeyTargets.value.has(relationship.target_entity)
+    return {
+      title: `${relationship.target_entity} (${relationship.public_id})`,
+      value: relationship.target_entity,
+      props: conflict
+        ? { disabled: true, subtitle: 'A project Foreign Key to this target already exists. Remove it first.' }
+        : {},
+    }
+  })
+)
+
+function describePreservedValueSource(target: string, value: unknown): string {
+  if (directForeignKeys.value?.state !== 'resolved') {
+    return 'Preserved as written; target-model relationships are not available.'
+  }
+  if (value === 'system_id') return 'Uses system_id. Preserved as written.'
+  if (!eligibleDirectTargets.value.has(target)) return 'Not declared by the target model. Preserved as written.'
+  return `Unrecognized value source "${String(value)}". Preserved as written.`
+}
+
+const preservedValueSourceEntries = computed<PreservedValueSourceEntry[]>(() => {
+  const entries: PreservedValueSourceEntry[] = []
+
+  for (const [target, value] of Object.entries(formData.value.foreign_key_value_sources)) {
+    if (value === 'public_id' && eligibleDirectTargets.value.has(target)) continue
+    entries.push({ target, value, reason: describePreservedValueSource(target, value) })
+  }
+
+  return entries
+})
+
 const entityTypeOptionsForSelection = computed(() => {
   if (selectedTargetEntity.value?.role !== 'classifier') return entityTypeOptions.value
   return entityTypeOptions.value.filter((option) => option.value === 'fixed' || option.value === 'sql')
@@ -3346,6 +3585,7 @@ function yamlToFormData(yamlString: string): boolean {
           location: data.options?.location || 'global',
         },
         foreign_keys: normalizeForeignKeysForForm(data.foreign_keys),
+        foreign_key_value_sources: normalizeForeignKeyValueSourcesForForm(data.foreign_key_value_sources),
         depends_on: normalizeChipField(data.depends_on),
         drop_duplicates: dropDuplicatesData,
         drop_empty_rows: dropEmptyRowsData,
@@ -3902,6 +4142,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       location: (entity.entity_data.options as any)?.location || 'global',
     },
     foreign_keys: normalizeForeignKeysForForm(entity.entity_data.foreign_keys),
+    foreign_key_value_sources: normalizeForeignKeyValueSourcesForForm(entity.entity_data.foreign_key_value_sources),
     depends_on: normalizeChipField(entity.entity_data.depends_on),
     drop_duplicates: {
       enabled: dropDuplicates !== undefined && dropDuplicates !== null,
@@ -4023,6 +4264,7 @@ function buildDefaultFormData(): FormData {
       location: 'global',
     },
     foreign_keys: [],
+    foreign_key_value_sources: {},
     depends_on: [],
     drop_duplicates: {
       enabled: false,
@@ -4116,6 +4358,64 @@ function handleTargetEntitySelection(value: unknown): void {
   sourceTypeExplicitlySelected.value = false
   targetEntityIdentityBaseline.value = { name: option.name, publicId: option.public_id }
 }
+
+function resetDirectForeignKeyState(): void {
+  directForeignKeysRequestId += 1
+  directForeignKeys.value = null
+  directForeignKeysLoading.value = false
+  directForeignKeysError.value = null
+}
+
+// The form name is a plain string in the form model, but YAML edits can clear it.
+function currentDirectTargetEntityName(): string {
+  const name = formData.value.name
+  return typeof name === 'string' ? name.trim() : ''
+}
+
+async function loadDirectForeignKeys(): Promise<void> {
+  const entityName = currentDirectTargetEntityName()
+  if (!props.modelValue || entityName.length === 0) {
+    resetDirectForeignKeyState()
+    return
+  }
+
+  const requestId = ++directForeignKeysRequestId
+  directForeignKeysLoading.value = true
+  directForeignKeysError.value = null
+
+  try {
+    const response = await api.projects.getTargetModelDirectForeignKeys(props.projectName, entityName)
+    if (requestId !== directForeignKeysRequestId || !props.modelValue) return
+
+    directForeignKeys.value = response
+  } catch (err) {
+    if (requestId !== directForeignKeysRequestId || !props.modelValue) return
+
+    console.error('Failed to load direct target-model foreign keys:', err)
+    directForeignKeys.value = null
+    directForeignKeysError.value = 'Direct target IDs could not be loaded.'
+  } finally {
+    if (requestId === directForeignKeysRequestId) {
+      directForeignKeysLoading.value = false
+    }
+  }
+}
+
+const debouncedLoadDirectForeignKeys = useDebounceFn(loadDirectForeignKeys, 300)
+
+// Reload metadata for the current entity name. Read-only: never writes formData.
+watch(
+  [() => props.modelValue, () => formData.value.name],
+  ([isOpen]) => {
+    if (!isOpen || currentDirectTargetEntityName().length === 0) {
+      resetDirectForeignKeyState()
+      return
+    }
+
+    void debouncedLoadDirectForeignKeys()
+  },
+  { immediate: true }
+)
 
 function handleEntityTypeSelection(value: unknown): void {
   if (typeof value !== 'string') return
@@ -4381,6 +4681,10 @@ watch(
 </script>
 
 <style scoped>
+.project-save-error {
+  white-space: pre-line;
+}
+
 /* System ID field - read-only with dimmed text and subtle background */
 .system-id-field :deep(input) {
   color: rgba(var(--v-theme-on-surface), 0.5) !important;

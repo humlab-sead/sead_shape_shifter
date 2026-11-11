@@ -1,0 +1,64 @@
+title: Register SIMS business-key contracts and fix reconciliation UI
+description:
+## Summary
+
+Before any Change Request identity work, the backend now registers the saved project's ordered
+entities.*.keys lists with SIMS as a provider-scope business-key contract (POST
+/identity/scope-contracts). The SimsClient gained a register_scope_contracts method that sends
+X-SIMS-Caller and X-SIMS-Caller-Token headers from the new SIMS_CONTRACT_CALLER and
+SIMS_CONTRACT_REGISTRATION_TOKEN settings, and the SeadChangeRequestSimsAdapter calls it for the
+entity types in each resolve request. SIMS accepts an exact ordered match and rejects a different
+key list or order with HTTP 409; a rejected registration raises SimsContractRegistrationError and
+blocks every planned row before any resolve request is sent.
+
+Correspondingly, project saves no longer lock business-key declarations on a bound project and no
+longer scan sibling projects sharing a provider-schema pair; SIMS is the single enforcement point,
+and a conflicting key edit is reported by the next Change Request run. Provider-binding save errors
+are now grouped by message with an "Affected settings" list, and the entity save error alert renders
+multi-line messages.
+
+Frontend reconciliation fixes: the review grid keeps ag-Grid row virtualization enabled (fixed
+height, normal domLayout instead of autoHeight), styles rows via rowClassRules instead of a
+per-render style object, delegates text search to debounced quick filtering, computes status stats
+in one pass, and refreshes only the changed row's cells. The review preview is now requested only
+when the review tab is opened and only once per selection, with a loading state shown while the
+request is in flight. Editor terminology changed from "Target Field" to "Search Field" and from
+"Entity Preview"/"Other Entity" to "Entity"/"Another Entity".
+
+Documentation: RECONCILIATION_SETUP_GUIDE.md and RECONCILIATION_WORKFLOW.md were merged into a new
+docs/other/RECONCILIATION_GUIDE.md; OPERATIONS.md gained the new environment variables and a
+"Provider-Scope Key Contract Conflicts" remediation section; DESIGN.md, CONFIGURATION_GUIDE.md, and
+USER_GUIDE.md document the contract behavior; the Manifest-Driven Reconciliation Inputs proposal was
+moved to docs/proposals/done/ and marked implemented.
+
+## User-facing release note
+
+Change Request runs now confirm the project's business-key declarations with SIMS before sending
+identity work, and a conflicting key list stops the run with a readable conflict message instead of
+silently mismatching identities; project saves no longer block key edits on bound projects. The
+reconciliation review grid scrolls large result sets faster, preview rows load only when the review
+tab is opened, and the editor now uses the clearer "Search Field" and "Another Entity" terminology.
+
+## Upgrade notes
+
+ - To enable contract registration, set SHAPE_SHIFTER_SIMS_CONTRACT_CALLER (defaults to
+shape-shifter) and SHAPE_SHIFTER_SIMS_CONTRACT_REGISTRATION_TOKEN to a token matching the SIMS
+caller entry. An unset token keeps registration closed, so Change Request runs stop before any
+identity work.
+ - Business-key edits on a bound project now save without a warning and are enforced by the next
+Change Request run. On an HTTP 409 conflict, either restore the registered key list and order or
+move the project to a new metadata.provider_schema value; SIMS exposes no update or retire call for
+a registered contract (see docs/OPERATIONS.md#provider-scope-key-contract-conflicts).
+ - Update links to the removed docs/other/RECONCILIATION_SETUP_GUIDE.md and
+docs/other/RECONCILIATION_WORKFLOW.md; both were replaced by docs/other/RECONCILIATION_GUIDE.md.
+
+## Validation
+
+ - The only CI evidence available is the Container Release workflow's validate and publish checks,
+both concluded SKIPPED for this pull request; no test-suite results are reported in CI.
+ - The diff adds and updates tests — backend/tests/test_sims_client.py (new), extended
+backend/tests/ingesters/test_sead_change_request_runtime.py and test_sead_change_request_ingester.py
+(contract-before-resolve ordering, 409 blocking), inverted key-lock expectations in
+backend/tests/services/test_project_service_boundary.py, and new frontend tests for grid
+virtualization/row classes and lazy preview loading — but their execution results are not available
+in the provided evidence and are not reported as passed.

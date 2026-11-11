@@ -479,6 +479,11 @@ class ConditionalForeignKeyConformanceValidator(GlobalConformanceValidator):
                 if foreign_key.required_when is None:
                     continue
 
+                # A valid direct target-ID declaration satisfies this relationship without a
+                # project lookup entity or Core link, so reconciliation cannot change its status.
+                if is_valid_direct_public_id_foreign_key(entity_name, foreign_key.entity, target_model, project):
+                    continue
+
                 issues.append(
                     ConformanceIssue(
                         severity="info",

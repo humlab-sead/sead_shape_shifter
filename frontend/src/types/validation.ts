@@ -5,7 +5,7 @@
 export type ValidationSeverity = 'error' | 'warning' | 'info'
 export type ValidationCategory = 'structural' | 'data' | 'performance' | 'conformance'
 export type ValidationPriority = 'low' | 'medium' | 'high' | 'critical'
-export type DataValidationMode = 'sample' | 'complete'
+export type DataValidationMode = 'sample' | 'complete' | 'single_pass'
 export type DataValidationStatus = 'completed' | 'partial' | 'failed' | 'skipped'
 export type EntityDataValidationStatus = 'completed' | 'failed' | 'skipped'
 export type ValidationMetadataValue = string | number | boolean | null | string[]
@@ -13,6 +13,17 @@ export type ValidationMetadataValue = string | number | boolean | null | string[
 export interface EntityDataValidationResult {
   status: EntityDataValidationStatus
   reason?: string | null
+}
+
+/**
+ * Requests a specific part of the entity editor when a validation issue is opened.
+ *
+ * `field` names the editor section and `column` optionally names the column to explain.
+ * Keep `field` a single-member union so new focus targets are added deliberately.
+ */
+export interface ValidationEntityFocus {
+  field: 'columns'
+  column?: string | null
 }
 
 export interface ValidationError {

@@ -181,8 +181,15 @@ class ShapeShifter:
 
         return data
 
-    async def normalize(self) -> Self:
-        """Extract all configured entities and store them."""
+    async def normalize(self, continue_on_error: bool = False) -> Self:
+        """Extract all configured entities and store them.
+
+        Args:
+            continue_on_error: When True, an entity that fails to process is recorded in
+                ``incomplete_entities`` and skipped instead of aborting the whole run.
+                Dependent entities are marked incomplete by the dependency check below.
+                When False (default), the first entity failure stops normalization.
+        """
         subset_service: SubsetService = SubsetService()
         self.mapping_catalog = self.mapping_manager.load(self.project.filename)
 
@@ -210,9 +217,13 @@ class ShapeShifter:
 
                 try:
                     await self._process_entity(entity, subset_service)
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-exception-caught
                     self.incomplete_entities[entity] = str(e)
-                    raise
+                    self.table_store.pop(entity, None)
+                    if not continue_on_error:
+                        raise
+                    logger.error(f"Entity '{entity}' failed and was skipped: {e}")
+                    self.state.mark_incomplete(entity)
 
             self._link_deferred_foreign_keys()
         finally:
@@ -239,10 +250,10 @@ class ShapeShifter:
                 df=data,
                 extra_columns=table_cfg.extra_columns,
                 entity_name=entity,
-                defer_missing=True,  # Defer columns that reference FK-added columns
+                defer_missing=True,  # Defer columns until their input columns are available.
             )
             if deferred_extra_columns:
-                logger.trace(f"{entity}[extra_columns]: Deferred {len(deferred_extra_columns)} columns until after FK linking")
+                logger.trace(f"{entity}[extra_columns]: Deferred {len(deferred_extra_columns)} columns until their inputs are available")
 
         if table_cfg.filters:
             data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store, stage="extract")
@@ -278,9 +289,10 @@ class ShapeShifter:
                 self.table_store.pop(entity, None)
                 self.state.mark_incomplete(entity)
                 return
+            deferred_extra_columns = self._evaluate_deferred_extra_columns(entity, deferred_extra_columns)
             drop_empty_rows_applied = self._drop_empty_rows_if_ready(entity, table_cfg)
             self._link_entity(entity_name=entity, link_pass="after_unnest")
-            # Re-evaluate deferred extra_columns after unnesting (in case unnest added new columns)
+            # Re-evaluate formulas that depend on columns added by foreign-key linking.
             deferred_extra_columns = self._evaluate_deferred_extra_columns(entity, deferred_extra_columns)
 
             if table_cfg.filters:

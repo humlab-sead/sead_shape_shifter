@@ -281,6 +281,22 @@ See [AUTHORIZATION.md](AUTHORIZATION.md) for policy and response behavior.
 - **New ingester**: create `ingesters/<name>/ingester.py`, implement the `Ingester` protocol, register with `@Ingesters.register(key="...")`. See `.github/instructions/ingesters.instructions.md`.
 - **New API endpoint**: add router in `backend/app/api/v1/endpoints/`, register in `backend/app/api/v1/api.py`, define Pydantic models in `backend/app/models/`, implement service in `backend/app/services/`.
 
+### Configure a Reconciliation Specification
+
+Reconciliation options come from the `GET /reconcile` manifest; there is no built-in type or property list.
+
+1. **Pick a supported type.** Choose an ID from `reconciliation.supportedTypes`. `defaultTypes` serves OpenRefine and supplies display names only; it does not imply reconciliation support.
+2. **Derive properties.** Use the `extend.property_settings` entries whose `entity_types` contains the chosen ID. A supported type with no entries is valid and matches on the search label alone.
+3. **Configure the specification.** In Reconcile → Configuration, select the local entity and search field, the remote type, and the entity's business `keys`; map each declared property to a source column or leave it unmapped.
+4. **Expect saved mappings to be rechecked.** A mapping saved for a type that no longer declares it stays visible but blocks matching until removed or remapped. A manifest outage shows an error, keeps saved values, and blocks matching.
+5. **Verify one real request.** A manifest entry proves implemented matching, not database access or match quality.
+6. **Review, export, normalize.** Accepted decisions export by the local business key. Normalization writes the target ID to the parent's `public_id` and keeps child Core foreign keys on the parent's local `system_id`.
+7. **Add a regression test.** Extend the mocked workflow tests: `backend/tests/integration/test_feature_type_reconciliation_workflow.py`, `test_location_reconciliation_workflow.py`, and `test_manifest_driven_reconciliation_grouped_parity.py`.
+
+Arbodat test project example: local entity `site`, search field `site_name`, remote type `site`, business key `[Fustel, EVNr]`, property `place_name` ← `site_name`, and property `national_id` ← `national_site_identifier`.
+
+Mocked workflow tests prove client behavior only; real service availability checks are separate and read-only. See [RECONCILIATION_GUIDE.md](other/RECONCILIATION_GUIDE.md) and [USER_GUIDE.md](USER_GUIDE.md#8-reconciliation-and-mapping).
+
 ---
 
 ## Debugging and Troubleshooting

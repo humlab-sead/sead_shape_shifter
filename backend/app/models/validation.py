@@ -20,6 +20,7 @@ class DataValidationMode(str, Enum):
 
     SAMPLE = "sample"  # Fast validation using preview samples (limit 1000 rows)
     COMPLETE = "complete"  # Full validation using complete normalized dataset
+    SINGLE_PASS = "single_pass"  # Full validation from one project-wide normalization pass
 
 
 class DataValidationStatus(str, Enum):
@@ -29,6 +30,18 @@ class DataValidationStatus(str, Enum):
     PARTIAL = "partial"
     FAILED = "failed"
     SKIPPED = "skipped"
+
+
+DataValidatorKey = Literal["column_exists", "natural_key_uniqueness", "non_empty_result"]
+"""Data checks a caller may switch on or off for one run.
+
+These are the selectable checks offered with the data-validation options. Checks
+that are not listed here, such as foreign-key integrity, always run so a run
+cannot silently drop them.
+"""
+
+DATA_VALIDATOR_KEYS: tuple[DataValidatorKey, ...] = ("column_exists", "natural_key_uniqueness", "non_empty_result")
+"""Every selectable data check, in the order the options present them."""
 
 
 class EntityDataValidationStatus(str, Enum):

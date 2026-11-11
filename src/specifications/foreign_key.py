@@ -5,6 +5,7 @@ import pandas as pd
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
 from src.specifications.base import ProjectSpecification, Specification
 from src.table_store import TableStore
+from src.transforms.extra_columns import ExtraColumnEvaluator
 
 if TYPE_CHECKING:
     from src.reconciliation.mapping_model import MappingCatalog
@@ -240,6 +241,7 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
     def __init__(self, table_store: TableStore, cfg: "ShapeShiftProject") -> None:
         super().__init__(cfg)
         self.table_store: TableStore = table_store
+        self.extra_column_evaluator: ExtraColumnEvaluator = ExtraColumnEvaluator()
 
     def is_satisfied_by(self, *, fk_cfg: ForeignKeyConfig | None = None, **kwargs) -> bool:
 
@@ -269,8 +271,15 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
 
         super().is_satisfied_by(fk_cfg=fk_cfg)
 
+        pending_unnest_fields: set[str] = self.get_missing_pending_fields(fk_cfg=fk_cfg)
+
         if missing_fields := self.get_missing_local_fields(fk_cfg=fk_cfg):
-            if missing_fields == self.project.get_table(fk_cfg.local_entity).unnest_columns:
+            local_table_cfg: TableConfig = self.project.get_table(fk_cfg.local_entity)
+            if missing_fields == local_table_cfg.unnest_columns or self._local_keys_depend_on_pending_unnest(
+                fk_cfg=fk_cfg,
+                missing_fields=missing_fields,
+                pending_unnest_fields=pending_unnest_fields,
+            ):
                 self.deferred = True
             else:
                 self.add_error(
@@ -279,7 +288,7 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
                     entity=fk_cfg.local_entity,
                 )
 
-        if self.get_missing_pending_fields(fk_cfg=fk_cfg):
+        if pending_unnest_fields:
             self.deferred = True
 
         if missing_fields := self.get_missing_remote_fields(fk_cfg=fk_cfg):
@@ -290,6 +299,66 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
             )
 
         return not self.has_errors()
+
+    def _local_keys_depend_on_pending_unnest(
+        self,
+        *,
+        fk_cfg: ForeignKeyConfig,
+        missing_fields: set[str],
+        pending_unnest_fields: set[str],
+    ) -> bool:
+        """Return whether every missing local key depends on a pending unnest output."""
+        if not missing_fields or not pending_unnest_fields:
+            return False
+
+        local_table_cfg: TableConfig = self.project.get_table(fk_cfg.local_entity)
+        local_data: pd.DataFrame = self.table_store[fk_cfg.local_entity]
+        extra_columns: dict[str, Any] = local_table_cfg.extra_columns
+
+        return all(
+            self._extra_column_depends_on_pending_unnest(
+                column_name=column,
+                extra_columns=extra_columns,
+                pending_unnest_fields=pending_unnest_fields,
+                local_data=local_data,
+                visited=set(),
+            )
+            for column in missing_fields
+        )
+
+    def _extra_column_depends_on_pending_unnest(
+        self,
+        *,
+        column_name: str,
+        extra_columns: dict[str, Any],
+        pending_unnest_fields: set[str],
+        local_data: pd.DataFrame,
+        visited: set[str],
+    ) -> bool:
+        """Return whether a missing extra column depends directly or indirectly on unnest output."""
+        if column_name in pending_unnest_fields:
+            return True
+        if column_name in local_data.columns or column_name in visited or column_name not in extra_columns:
+            return False
+
+        visited.add(column_name)
+        unresolved: dict[str, dict[str, Any]] = self.extra_column_evaluator.get_unresolved_extra_columns(
+            local_data,
+            {column_name: extra_columns[column_name]},
+        )
+        missing_dependencies: list[str] = unresolved.get(column_name, {}).get("missing_dependencies", [])
+
+        return any(
+            dependency in pending_unnest_fields
+            or self._extra_column_depends_on_pending_unnest(
+                column_name=dependency,
+                extra_columns=extra_columns,
+                pending_unnest_fields=pending_unnest_fields,
+                local_data=local_data,
+                visited=visited,
+            )
+            for dependency in missing_dependencies
+        )
 
     def is_already_linked(self, *, fk_cfg: ForeignKeyConfig) -> bool:
         """Check if the foreign key columns already exist in the local entity's data."""

@@ -1,0 +1,25 @@
+title: style(frontend): increase fixed values grid header gap to 8px
+description:
+## Summary
+
+Widens the CSS grid gap in the fixed values grid header component
+(frontend/src/components/entities/FixedValuesGridHeader.vue) from 4px to 8px on the
+.column-type-header element. This is a styling-only change; no logic or markup was modified.
+
+## User-facing release note
+
+The elements in the fixed values grid header are now spaced further apart (8px instead of 4px),
+giving the header a slightly more open layout.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - No CI status checks are recorded for this pull request (status check rollup is empty), so check
+execution and results are unknown.
+ - The previously supplied PR body listed uv run pylint -j 0 src tests backend ingesters (exit 0)
+and pytest (all passed), but these results could not be independently verified from the available
+evidence, and they do not cover the frontend change in this diff.
+ - No tests or frontend validation are included in the diff; the change is CSS-only.

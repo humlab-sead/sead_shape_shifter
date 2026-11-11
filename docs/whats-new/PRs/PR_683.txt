@@ -1,0 +1,53 @@
+title: Restructure Link Troubleshooter as responsive workspace
+description:
+## Summary
+
+Redesigns the Link Troubleshooter and Integrity Troubleshooter dialog bodies into a two-area
+workspace layout that leads with a finding summary and keeps settings and result inspection
+separate.
+
+ - Finding summary first. The mismatch view adds a "What the saved link does" panel summarizing
+unmatched source rows and the saved link's input-to-output effect, with "Inspect unmatched" /
+"Inspect multiple matches" buttons that jump to the affected rows and reset paging. The integrity
+view adds a "Current finding" panel distinguishing recorded vs. current unmatched key-value counts
+with an "Inspect unmatched values" scroll action.
+ - Two working areas. Settings/key controls sit in a left column and results in a right column via
+CSS grid; both collapse to a single stacked column below 900px. The integrity view uses the left
+area for read-only relationship and key-pair details and the right for unmatched values and selected
+local rows; no trial controls are added for FK_DATA_INTEGRITY.
+ - Compacted controls. Entity names serve as key-column headings and select labels; null-key options
+move under an "Advanced trial settings" disclosure showing saved null-policy state; saved
+constraints move under a "Saved link rules" disclosure; Reset is relabeled "Reset to saved".
+ - State-aware results. The comparison table shows Saved link / Last trial / Change columns only
+after a trial. The exception-group dropdown is replaced with count-labelled Unmatched / Multiple
+matches toggle buttons, the result-source selector is relabeled "Saved link" / "Last trial", and the
+rows-per-page control appears only when more than 25 rows are shown. Raw warning text, findings,
+and status details move under a "Technical details" disclosure.
+ - Stale-trial tracking. useLinkTroubleshooter retains the last accepted trial and exposes a new
+trialStale flag that activates when controls diverge from the signature the trial ran under; the
+dialog shows a "Settings changed — rerun the trial" warning instead of clearing the comparison. A
+failed trial no longer discards the prior trial.
+ - Docs: the Foreign-Key Integrity Troubleshooter proposal and its phase plans move to
+docs/proposals/done/, are marked implemented, and their relative links are updated.
+
+## User-facing release note
+
+The Link Troubleshooter now leads with a plain-language summary of the link problem and arranges
+settings and results side by side on wide screens, with row inspection reachable in one click. After
+running a trial, changing settings keeps the previous comparison visible and clearly marks it as
+stale until the trial is rerun.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - Frontend unit tests for LinkTroubleshooterDialog, IntegrityTroubleshooterBody, and
+useLinkTroubleshooter were updated in this PR to cover the new labels and layout, the stale-trial
+state, count-labelled group toggles, finding-summary navigation, and the absence of trial controls
+for FK_DATA_INTEGRITY.
+ - Execution results for these unit tests are not included in the available evidence; they are not
+reported as passed.
+ - The only CI checks visible for this PR are the Container Release workflow's validate and publish
+jobs, both concluded SKIPPED; no other test-suite results were available.

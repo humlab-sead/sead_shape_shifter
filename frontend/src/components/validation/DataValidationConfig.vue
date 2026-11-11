@@ -34,22 +34,23 @@
           <div class="mb-4">
             <v-label class="text-body-2 font-weight-medium mb-2"> Validation Mode </v-label>
             <v-radio-group v-model="validationMode" hide-details>
-              <v-radio value="sample" color="info">
-                <template #label>
-                  <div>
-                    <div class="font-weight-medium">Sample Data (Fast)</div>
-                    <div class="text-caption text-grey">
-                      Validate using preview samples (up to 1000 rows per entity).
-                    </div>
-                  </div>
-                </template>
-              </v-radio>
               <v-radio value="complete" color="info">
                 <template #label>
                   <div>
                     <div class="font-weight-medium">Complete Data (Comprehensive)</div>
                     <div class="text-caption text-grey">
                       Validate using full normalized dataset. Slower but catches all issues.
+                    </div>
+                  </div>
+                </template>
+              </v-radio>
+              <v-radio value="sample" color="info">
+                <template #label>
+                  <div>
+                    <div class="font-weight-medium">Sample Data (Fast)</div>
+                    <div class="text-caption text-grey">
+                      Validate using preview samples (up to 1000 rows per entity). Foreign-key checks can report parent
+                      values as missing that exist outside the sample.
                     </div>
                   </div>
                 </template>
@@ -112,15 +113,15 @@
 
             <v-checkbox
               v-model="enabledValidators"
-              label="Non-Empty Result"
+              label="Warn on Empty Results"
               value="non_empty_result"
               density="compact"
               hide-details
             >
               <template #label>
                 <div>
-                  <div class="font-weight-medium">Non-Empty Result</div>
-                  <div class="text-caption text-grey">Warn when entities return no data</div>
+                  <div class="font-weight-medium">Warn on Empty Results</div>
+                  <div class="text-caption text-grey">Warn when an entity returns no data</div>
                 </div>
               </template>
             </v-checkbox>
@@ -169,20 +170,23 @@ const emit = defineEmits<Emits>()
 const panel = ref<string | undefined>('config')
 const selectedEntities = ref<string[]>([])
 const sampleSize = ref(1000)
-const validationMode = ref<'sample' | 'complete'>('sample')
+const validationMode = ref<'sample' | 'complete'>('complete')
 const enabledValidators = ref(['column_exists', 'natural_key_uniqueness', 'non_empty_result'])
 
 // Methods
 function handleReset() {
   selectedEntities.value = []
   sampleSize.value = 1000
-  validationMode.value = 'sample'
+  validationMode.value = 'complete'
   enabledValidators.value = ['column_exists', 'natural_key_uniqueness', 'non_empty_result']
 }
 
 function handleRun() {
   const config: ValidationConfig = {
     validationMode: validationMode.value,
+    // Send the exact selection so unchecking a check is honoured; an empty list
+    // means none of the selectable checks run.
+    validators: [...enabledValidators.value],
   }
 
   if (selectedEntities.value.length > 0) {
@@ -191,10 +195,6 @@ function handleRun() {
 
   if (sampleSize.value !== 1000) {
     config.sampleSize = sampleSize.value
-  }
-
-  if (enabledValidators.value.length < 3) {
-    config.validators = enabledValidators.value
   }
 
   emit('run', config)

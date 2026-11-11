@@ -131,9 +131,16 @@ def resolve_directives(
     This method does not mutate the input data unless inplace=True. It creates a
     deep copy by default so the original input stays unchanged.
 
-    Environment variables are expected to already be loaded in os.environ.
-    The env_filename parameter is kept for backward compatibility but not used.
+    When env_filename is set, that .env file is loaded into os.environ first
+    (existing process variables keep priority), so ${VAR} references can expand
+    values that only live in the file. Without this, a backend process that
+    reads its .env through pydantic-settings would expand such variables to an
+    empty string and path directives like '@include: ${GLOBAL_DATA_SOURCE_DIR}/file.yml'
+    would resolve outside the approved roots.
     """
+    if env_filename:
+        load_dotenv(dotenv_path=env_filename)
+
     if not inplace:
         data = copy.deepcopy(data)
 

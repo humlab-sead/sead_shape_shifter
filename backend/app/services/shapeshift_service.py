@@ -3,6 +3,7 @@
 import contextlib
 import itertools
 import time
+from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
@@ -23,6 +24,25 @@ from src.table_store import TableStore
 from src.validation_messages import format_validation_message_with_context
 
 
+@dataclass
+class ProjectNormalizationResult:
+    """Result of one project-wide normalization pass.
+
+    Attributes:
+        table_store: Every entity produced by the pass.
+        validation_issues_by_entity: Normalization issues grouped per produced entity.
+        incomplete_entities: Entity name to failure reason for entities that were not produced.
+        normalizer: Finished ``ShapeShifter`` instance, used to read extra-column and linker issues.
+        project_version: Project version the data was produced from.
+    """
+
+    table_store: TableStore
+    validation_issues_by_entity: dict[str, list[dict[str, Any]]]
+    incomplete_entities: dict[str, str]
+    normalizer: ShapeShifter
+    project_version: int
+
+
 class ShapeShiftService:
     """Service for previewing entity data with caching."""
 
@@ -31,9 +51,14 @@ class ShapeShiftService:
         self.cache: ShapeShiftCache = ShapeShiftCache(ttl_seconds=ttl_seconds)  # 5 minute cache
         self.project_cache = ShapeShiftProjectCache(project_service)
         self.settings: Settings = settings
-        # Optional warm table_store populated by batch preview to short-circuit later preview calls
+        # Optional warm table_store populated by a project-wide run to short-circuit later preview calls
         self._warm_table_store: TableStore | None = None
         self._warm_validation_issues: dict[str, list[dict[str, Any]]] = {}
+        self._warm_project_name: str | None = None
+        self._warm_project_version: int | None = None
+        self._warm_timestamp: float = 0.0
+        self._warm_incomplete_entities: dict[str, str] = {}
+        self._warm_normalizer: ShapeShifter | None = None
         # Initialize entity config mapper factory for type-specific transformations
         self._mapper_factory = EntityConfigMapperFactory(self.settings)
 
@@ -108,8 +133,16 @@ class ShapeShiftService:
 
         entity_cfg: TableConfig = project.tables[entity_name]
 
-        # Fast path: if warm table_store from batch run exists, reuse it directly (but not when using override)
-        if not using_override and self._warm_table_store and entity_name in self._warm_table_store:
+        # Fast path: reuse the warm table_store from a project-wide run, but only while it
+        # matches the current project version and has not outlived the cache TTL.
+        if (
+            not using_override  # pylint: disable=too-many-boolean-expressions
+            and self._warm_table_store
+            and entity_name in self._warm_table_store
+            and self._warm_project_name == project_name
+            and self._warm_project_version == project_version
+            and time.time() - self._warm_timestamp < self.cache.ttl_seconds
+        ):
             table_store = TableStore({entity_name: self._warm_table_store[entity_name]})
             validation_issues = self._warm_validation_issues.get(entity_name, [])
             cached_hit = True
@@ -183,6 +216,8 @@ class ShapeShiftService:
         project: ShapeShiftProject,
         entity_names: list[str],
         initial_table_store: TableStore,
+        *,
+        continue_on_error: bool = False,
     ) -> tuple[TableStore, list[dict]]:
         """
         Run ShapeShifter to produce multiple entities in one pass.
@@ -191,28 +226,44 @@ class ShapeShiftService:
             project: ShapeShiftProject instance
             entity_names: List of target entity names to process
             initial_table_store: Pre-existing cached entities to reuse
+            continue_on_error: When True, one failing entity does not abort the whole run.
+                Entities that fail, and entities that depend on them, are reported in
+                ``ShapeShifter.incomplete_entities`` instead.
 
         Returns:
             Tuple of (Complete table_store with target entities and all dependencies, validation issues)
         """
-        try:
-            target_entities = set(entity_names)
+        shapeshifter: ShapeShifter = await self._normalize_batch(
+            project=project,
+            entity_names=entity_names,
+            initial_table_store=initial_table_store,
+            continue_on_error=continue_on_error,
+        )
 
+        return shapeshifter.table_store, self._collect_validation_issues(shapeshifter)
+
+    async def _normalize_batch(
+        self,
+        project: ShapeShiftProject,
+        entity_names: list[str],
+        initial_table_store: TableStore,
+        *,
+        continue_on_error: bool,
+    ) -> ShapeShifter:
+        """Run one ShapeShifter pass and return the finished normalizer."""
+        try:
             shapeshifter: ShapeShifter = ShapeShifter(
                 project=project,
                 table_store=initial_table_store,
                 default_entity=project.metadata.default_entity,
-                target_entities=target_entities,
+                target_entities=set(entity_names),
             )
 
-            (await shapeshifter.normalize())
+            await shapeshifter.normalize(continue_on_error=continue_on_error)
             shapeshifter.add_system_id_columns()
             shapeshifter.move_keys_to_front()
 
-            # Collect validation issues from the linker
-            validation_issues = self._collect_validation_issues(shapeshifter)
-
-            return shapeshifter.table_store, validation_issues
+            return shapeshifter
 
         except (
             FunctionalDependencyError,
@@ -225,6 +276,124 @@ class ShapeShiftService:
         except Exception as e:
             logger.exception(f"ShapeShift batch failed for {len(entity_names)} entities: {e}", exc_info=True)
             raise RuntimeError(f"ShapeShift batch failed: {str(e)}") from e
+
+    async def normalize_project(
+        self,
+        project_name: str,
+        entity_names: list[str] | None = None,
+    ) -> ProjectNormalizationResult:
+        """Normalize every requested entity in a single ShapeShifter pass.
+
+        One pass replaces the per-entity preview calls used by sample data validation.
+        Entities that fail to normalize, and entities that depend on them, are reported in
+        ``incomplete_entities`` instead of aborting the run.
+
+        Produced entities are written to the shared cache and kept as the warm table store,
+        so later preview requests and validation runs reuse them instead of recomputing.
+
+        Args:
+            project_name: Name of the project file.
+            entity_names: Entities to produce. None produces every configured entity.
+
+        Returns:
+            ProjectNormalizationResult with the produced data, validation issues per entity,
+            and the reason for every entity that could not be produced.
+
+        Raises:
+            ValueError: If a requested entity is not configured in the project.
+            RuntimeError: If the normalization pass cannot complete.
+        """
+        start_time: float = time.time()
+        project: ShapeShiftProject = await self.project_cache.get_project(project_name)
+        project_version: int = self.get_project_version(project_name)
+
+        names: list[str] = list(entity_names) if entity_names is not None else list(project.table_names)
+        missing_entities: list[str] = [name for name in names if name not in project.tables]
+        if missing_entities:
+            raise ValueError(f"Entities not found in project '{project_name}': {', '.join(missing_entities)}")
+
+        reusable: ProjectNormalizationResult | None = self._reusable_warm_result(project_name, project_version, set(names))
+        if reusable is not None:
+            logger.info(f"Reusing normalized data for {project_name} (version {project_version})")
+            return reusable
+
+        resolved_project: ShapeShiftProject = project
+        if not project.is_resolved():
+            resolved_project = project.clone().resolve(filename=project.filename, strict=True, **self.settings.env_opts)
+
+        shapeshifter: ShapeShifter = await self._normalize_batch(
+            project=resolved_project,
+            entity_names=names,
+            initial_table_store=TableStore(),
+            continue_on_error=True,
+        )
+
+        table_store: TableStore = shapeshifter.table_store
+        validation_issues: list[dict] = self._deduplicate_validation_issues(self._collect_validation_issues(shapeshifter))
+        validation_issues_by_entity: dict[str, list[dict[str, Any]]] = self._validation_issues_by_entity(
+            validation_issues, project, list(table_store.keys())
+        )
+
+        entity_configs: dict[str, TableConfig] = {name: project.get_table(name) for name in table_store.keys() if project.has_table(name)}
+        self.cache.set_table_store(
+            project_name=project_name,
+            table_store=table_store,
+            target_entity="project",
+            project_version=project_version,
+            entity_configs=entity_configs,
+            validation_issues_by_entity=validation_issues_by_entity,
+        )
+
+        incomplete_entities: dict[str, str] = dict(shapeshifter.incomplete_entities)
+
+        self._warm_table_store = table_store
+        self._warm_validation_issues = validation_issues_by_entity
+        self._warm_project_name = project_name
+        self._warm_project_version = project_version
+        self._warm_timestamp = time.time()
+        self._warm_incomplete_entities = incomplete_entities
+        self._warm_normalizer = shapeshifter
+
+        elapsed_ms: int = int((time.time() - start_time) * 1000)
+        logger.info(
+            f"Normalized {len(table_store)} of {len(names)} entities for {project_name} in {elapsed_ms}ms "
+            f"({len(incomplete_entities)} incomplete)"
+        )
+        if incomplete_entities:
+            logger.warning(f"Incomplete entities for {project_name}: {sorted(incomplete_entities)}")
+
+        return ProjectNormalizationResult(
+            table_store=table_store,
+            validation_issues_by_entity=validation_issues_by_entity,
+            incomplete_entities=incomplete_entities,
+            normalizer=shapeshifter,
+            project_version=project_version,
+        )
+
+    def _reusable_warm_result(
+        self, project_name: str, project_version: int, requested_entity_names: set[str]
+    ) -> ProjectNormalizationResult | None:
+        """Return a fresh warm result when it covers the requested project entities."""
+        if self._warm_table_store is None or self._warm_normalizer is None:
+            return None
+        if self._warm_project_name != project_name:
+            return None
+        if self._warm_incomplete_entities:
+            return None
+        if self._warm_project_version != project_version:
+            return None
+        if not requested_entity_names.issubset(self._warm_table_store.keys()):
+            return None
+        if time.time() - self._warm_timestamp >= self.cache.ttl_seconds:
+            return None
+
+        return ProjectNormalizationResult(
+            table_store=self._warm_table_store,
+            validation_issues_by_entity=self._warm_validation_issues,
+            incomplete_entities={},
+            normalizer=self._warm_normalizer,
+            project_version=project_version,
+        )
 
     async def shapeshift(
         self,
@@ -430,6 +599,11 @@ class ShapeShiftService:
         # Preserve warm table_store for subsequent preview calls in this service instance
         self._warm_table_store = table_store
         self._warm_validation_issues = validation_issues_by_entity
+        self._warm_project_name = project_name
+        self._warm_project_version = project_version
+        self._warm_timestamp = time.time()
+        self._warm_incomplete_entities = {}
+        self._warm_normalizer = None
 
         elapsed_ms: int = int((time.time() - start_time) * 1000)
         logger.info(f"Batch processed {len(table_store)} entities in {elapsed_ms}ms (cache populated)")
@@ -455,6 +629,11 @@ class ShapeShiftService:
         self.cache.invalidate(project_name, entity_name)
         self._warm_table_store = None
         self._warm_validation_issues = {}
+        self._warm_project_name = None
+        self._warm_project_version = None
+        self._warm_timestamp = 0.0
+        self._warm_incomplete_entities = {}
+        self._warm_normalizer = None
         logger.info(f"Invalidated preview cache for {project_name}:{entity_name or 'all'}")
 
     def get_project_version(self, project_name: str) -> int:

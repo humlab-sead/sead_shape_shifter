@@ -3,22 +3,76 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import replace
-from typing import Any
+from dataclasses import dataclass, replace
+from typing import Any, Literal, cast
 
 import pandas as pd
 
+from backend.app.core.config import Settings, get_settings
+from backend.app.exceptions import ProjectedBudgetExceeded
 from backend.app.mappers.link_troubleshooter_mapper import LinkTroubleshooterMapper
 from backend.app.models.link_troubleshooter import (
+    ExceptionGroupName,
+    ExceptionRowSide,
+    LinkExceptionRowsPage,
+    LinkExperimentContextResponse,
+    LinkExperimentTrialRequest,
+    LinkExperimentTrialResponse,
     LinkTroubleshootKeyOptions,
     LinkTroubleshootKeys,
     LinkTroubleshootRelationship,
-    LinkTroubleshootResponse,
-    LinkTroubleshootRowFilter,
 )
 from backend.app.services.link_baseline_service import LinkBaselineResult, LinkBaselineService
+from backend.app.services.link_experiment_context_store import (
+    ContextLookupState,
+    LinkExperimentContext,
+    LinkExperimentContextStore,
+    LinkExperimentDiagnostics,
+    LinkExperimentSnapshot,
+    TrialExceptionGroup,
+    TrialExceptionGroups,
+    get_link_experiment_context_store,
+)
 from backend.app.services.link_trial_service import LinkTrialResult, LinkTrialService
 from src.model import ForeignKeyConfig
+
+
+@dataclass(frozen=True)
+class LinkExperimentContextResult:
+    """Outcome of one context read.
+
+    ``unavailable`` covers an unknown identifier and an identifier owned by
+    another user or project, so the route cannot reveal either case.
+    """
+
+    state: ContextLookupState
+    response: LinkExperimentContextResponse | None = None
+
+
+@dataclass(frozen=True)
+class LinkExperimentTrialResult:
+    """Outcome of one context trial.
+
+    ``unavailable`` covers an unknown identifier and an identifier owned by
+    another user or project, so the route cannot reveal either case.
+    """
+
+    state: ContextLookupState
+    response: LinkExperimentTrialResponse | None = None
+
+
+@dataclass(frozen=True)
+class LinkExceptionRowsResult:
+    """Outcome of one exception-row browse request.
+
+    ``unavailable`` means the context is unknown, expired, or owned by another
+    user or project. A retained context whose diagnostic did not complete returns
+    an available page with an unavailable status instead, because the context
+    itself exists and its baseline state is already known.
+    """
+
+    state: ContextLookupState
+    page: LinkExceptionRowsPage | None = None
 
 
 class LinkTroubleshooterService:
@@ -28,25 +82,35 @@ class LinkTroubleshooterService:
         self,
         baseline_service: LinkBaselineService | None = None,
         trial_service: LinkTrialService | None = None,
+        context_store: LinkExperimentContextStore | None = None,
+        settings: Settings | None = None,
     ) -> None:
         """Create the baseline and trial services used for each request."""
         self.baseline_service: LinkBaselineService = baseline_service or LinkBaselineService()
         self.trial_service: LinkTrialService = trial_service or LinkTrialService()
+        self.context_store: LinkExperimentContextStore = context_store if context_store is not None else get_link_experiment_context_store()
+        self.settings: Settings = settings if settings is not None else get_settings()
 
-    async def run(
+    async def open_context(
         self,
         *,
         project_name: str,
         issue_type: str,
         local_entity: str,
         metadata: Mapping[str, Any],
-        local_keys: Sequence[str] | None = None,
-        remote_keys: Sequence[str] | None = None,
-        page: int = 1,
-        page_size: int = 50,
-        row_filter: LinkTroubleshootRowFilter = "all",
-    ) -> LinkTroubleshootResponse:
-        """Replay the configured link and optionally compare a requested key pair."""
+        owner_principal_id: str,
+        project_locator: str,
+    ) -> LinkExperimentContextResponse:
+        """Reproduce the warning and retain its inputs for later trials.
+
+        A failed, incomplete, or unrun configured-key diagnostic still opens a
+        context and is reported as an incomplete baseline. A warning that does
+        not reproduce returns no identifier.
+
+        Raises:
+            ProjectedBudgetExceeded: If the retained inputs or the projected
+                reproduction merge exceed the configured memory limit.
+        """
         baseline: LinkBaselineResult = await self.baseline_service.build_baseline(
             project_name=project_name,
             issue_type=issue_type,
@@ -55,53 +119,259 @@ class LinkTroubleshooterService:
         )
         fk: ForeignKeyConfig | None = baseline._foreign_key
 
-        if not baseline.is_reproduced:
-            return self._map_without_trial(
-                baseline,
-                fk,
-                local_keys=local_keys,
-                remote_keys=remote_keys,
-                page=page,
-                page_size=page_size,
-                row_filter=row_filter,
+        if (
+            not baseline.is_reproduced
+            or fk is None
+            or baseline.local_rows is None
+            or baseline.remote_rows is None
+            or baseline._saved_project is None
+        ):
+            return LinkTroubleshooterMapper.to_context_response(
+                context_id=None,
+                expires_at=None,
+                baseline=baseline,
+                diagnostics=None,
+                relationship=self._relationship(baseline, fk) if fk is not None else None,
+                key_options=None,
+                configured_keys=LinkTroubleshootKeys(local_keys=fk.local_keys, remote_keys=fk.remote_keys) if fk is not None else None,
+                row_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
             )
 
-        if baseline.local_rows is None or baseline.remote_rows is None or baseline._saved_project is None or fk is None:
-            baseline = replace(
-                baseline,
-                status="not_reproduced",
-                reason="baseline_context_missing",
-                message="The reproduced baseline is missing the project, foreign key, or input rows required for a trial.",
-                local_rows=None,
-                remote_rows=None,
-            )
-            return self._map_without_trial(
-                baseline,
-                fk,
-                local_keys=local_keys,
-                remote_keys=remote_keys,
-                page=page,
-                page_size=page_size,
-                row_filter=row_filter,
+        try:
+            diagnostics = LinkExperimentDiagnostics.from_trial(self._configured_diagnostics(baseline, fk))
+        except ProjectedBudgetExceeded as exc:
+            diagnostics = LinkExperimentDiagnostics(
+                status="incomplete",
+                reason="projected_budget_exceeded",
+                message=exc.message,
             )
 
-        configured_keys = LinkTroubleshootKeys(local_keys=fk.local_keys, remote_keys=fk.remote_keys)
-        relationship = self._relationship(baseline, fk)
-        key_options = LinkTroubleshootKeyOptions(
-            local=self._key_options(baseline.local_rows, fk.local_keys),
-            remote=self._key_options(baseline.remote_rows, fk.remote_keys),
+        context: LinkExperimentContext = await self.context_store.open_context(
+            owner_principal_id=owner_principal_id,
+            project_locator=project_locator,
+            snapshot=LinkExperimentSnapshot(baseline=baseline, diagnostics=diagnostics),
+        )
+        return self._context_response(context)
+
+    async def read_context(
+        self,
+        *,
+        context_id: str,
+        owner_principal_id: str,
+        project_locator: str,
+    ) -> LinkExperimentContextResult:
+        """Return one owned context's retained baseline state."""
+        lookup = await self.context_store.lookup_context(
+            context_id,
+            owner_principal_id=owner_principal_id,
+            project_locator=project_locator,
+        )
+        if lookup.state != "found" or lookup.context is None:
+            return LinkExperimentContextResult(state=lookup.state)
+        return LinkExperimentContextResult(state="found", response=self._context_response(lookup.context))
+
+    async def run_context_trial(
+        self,
+        *,
+        context_id: str,
+        owner_principal_id: str,
+        project_locator: str,
+        local_keys: Sequence[str],
+        remote_keys: Sequence[str],
+        how: str | None = None,
+        allow_null_keys: bool | None = None,
+        null_keys_equal: bool | None = None,
+    ) -> LinkExperimentTrialResult:
+        """Run one trial against an owned snapshot without reopening it."""
+        lookup = await self.context_store.lookup_context(
+            context_id,
+            owner_principal_id=owner_principal_id,
+            project_locator=project_locator,
+        )
+        if lookup.state != "found" or lookup.context is None:
+            return LinkExperimentTrialResult(state=lookup.state)
+
+        context: LinkExperimentContext = lookup.context
+        baseline: LinkBaselineResult = context.snapshot.baseline
+        trial: LinkTrialResult = self.trial_service.run_trial(
+            baseline,
+            local_keys=local_keys,
+            remote_keys=remote_keys,
+            how=cast(Literal["inner", "left"] | None, how),
+            allow_null_keys=allow_null_keys,
+            null_keys_equal=null_keys_equal,
         )
 
-        baseline_trial: LinkTrialResult = self.trial_service.run_trial(
+        if trial.status == "complete" and trial.input_a_rows != baseline.row_count_before:
+            trial = replace(
+                trial,
+                status="failed",
+                reason="baseline_input_mismatch",
+                message="The requested-key trial input count did not match the retained baseline.",
+                input_a_rows=None,
+                output_rows=None,
+                unmatched_a_rows=None,
+                multiply_matched_a_rows=None,
+                a_rows=None,
+                exception_groups=None,
+            )
+
+        response: LinkExperimentTrialResponse = LinkTroubleshooterMapper.to_context_trial_response(
+            context_id=context.context_id,
+            expires_at=context.expires_at,
+            baseline=baseline,
+            diagnostics=context.snapshot.diagnostics,
+            trial=trial,
+            local_keys=local_keys,
+            remote_keys=remote_keys,
+            row_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
+        )
+        return LinkExperimentTrialResult(state="found", response=response)
+
+    async def close_context(
+        self,
+        *,
+        context_id: str,
+        owner_principal_id: str,
+        project_locator: str,
+    ) -> bool:
+        """Release one owned context and report whether it existed."""
+        return await self.context_store.close_context(
+            context_id,
+            owner_principal_id=owner_principal_id,
+            project_locator=project_locator,
+        )
+
+    async def read_exception_rows(
+        self,
+        *,
+        context_id: str,
+        owner_principal_id: str,
+        project_locator: str,
+        side: ExceptionRowSide,
+        group: ExceptionGroupName,
+        offset: int,
+        limit: int,
+        trial_request: LinkExperimentTrialRequest | None = None,
+    ) -> LinkExceptionRowsResult:
+        """Read one bounded page of affected source rows from an owned context.
+
+        Baseline rows come from the retained configured-key diagnostic. Trial
+        rows are not retained, so a trial page recomputes the trial from the
+        retained inputs with the submitted controls and then slices it.
+        """
+        lookup = await self.context_store.lookup_context(
+            context_id,
+            owner_principal_id=owner_principal_id,
+            project_locator=project_locator,
+        )
+        if lookup.state != "found" or lookup.context is None:
+            return LinkExceptionRowsResult(state=lookup.state)
+
+        context: LinkExperimentContext = lookup.context
+        groups: TrialExceptionGroups | None = context.snapshot.diagnostics.exception_groups
+
+        if side == "trial":
+            if trial_request is None:
+                return LinkExceptionRowsResult(
+                    state="found",
+                    page=LinkExceptionRowsPage(
+                        status="unavailable",
+                        reason="trial_required",
+                        message="Browsing trial rows requires the trial controls that produced the trial.",
+                        side=side,
+                        group=group,
+                        offset=offset,
+                        limit=limit,
+                        browse_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
+                    ),
+                )
+            trial: LinkTrialResult = self.trial_service.run_trial(
+                context.snapshot.baseline,
+                local_keys=trial_request.local_keys,
+                remote_keys=trial_request.remote_keys,
+                how=cast(Literal["inner", "left"] | None, trial_request.how),
+                allow_null_keys=trial_request.allow_null_keys,
+                null_keys_equal=trial_request.null_keys_equal,
+            )
+            if trial.status != "complete" or trial.exception_groups is None:
+                return LinkExceptionRowsResult(
+                    state="found",
+                    page=LinkExceptionRowsPage(
+                        status="unavailable",
+                        reason=trial.reason,
+                        message=trial.message,
+                        side=side,
+                        group=group,
+                        offset=offset,
+                        limit=limit,
+                        browse_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
+                    ),
+                )
+            groups = trial.exception_groups
+
+        if groups is None:
+            return LinkExceptionRowsResult(
+                state="found",
+                page=LinkExceptionRowsPage(
+                    status="unavailable",
+                    reason="diagnostic_incomplete",
+                    message="The configured-key diagnostic did not complete, so affected rows are unavailable.",
+                    side=side,
+                    group=group,
+                    offset=offset,
+                    limit=limit,
+                    browse_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
+                ),
+            )
+
+        selected_group: TrialExceptionGroup = groups.unmatched if group == "unmatched" else groups.multiply_matched
+        page = LinkTroubleshooterMapper.to_exception_rows_page(
+            side=side,
+            group=group,
+            offset=offset,
+            limit=limit,
+            total_count=selected_group.total_count,
+            browse_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
+            rows=selected_group.rows[offset : offset + limit],
+        )
+        return LinkExceptionRowsResult(state="found", page=page)
+
+    def _context_response(self, context: LinkExperimentContext) -> LinkExperimentContextResponse:
+        """Map one retained context to its baseline response."""
+        baseline: LinkBaselineResult = context.snapshot.baseline
+        fk: ForeignKeyConfig | None = baseline._foreign_key
+        key_options: LinkTroubleshootKeyOptions | None = None
+        if fk is not None and baseline.local_rows is not None and baseline.remote_rows is not None:
+            key_options = LinkTroubleshootKeyOptions(
+                local=self._key_options(baseline.local_rows, fk.local_keys),
+                remote=self._key_options(baseline.remote_rows, fk.remote_keys),
+            )
+
+        return LinkTroubleshooterMapper.to_context_response(
+            context_id=context.context_id,
+            expires_at=context.expires_at,
+            baseline=baseline,
+            diagnostics=context.snapshot.diagnostics,
+            relationship=self._relationship(baseline, fk) if fk is not None else None,
+            key_options=key_options,
+            configured_keys=LinkTroubleshootKeys(local_keys=fk.local_keys, remote_keys=fk.remote_keys) if fk is not None else None,
+            row_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
+        )
+
+    def _configured_diagnostics(self, baseline: LinkBaselineResult, fk: ForeignKeyConfig) -> LinkTrialResult:
+        """Run the configured-key diagnostic and reject a row-count mismatch."""
+        trial: LinkTrialResult = self.trial_service.run_trial(
             baseline,
             local_keys=fk.local_keys,
             remote_keys=fk.remote_keys,
+            settings_source="saved",
         )
-        if baseline_trial.status == "complete" and (
-            baseline_trial.input_a_rows != baseline.row_count_before or baseline_trial.output_rows != baseline.row_count_after
+        if trial.status == "complete" and (
+            trial.input_a_rows != baseline.row_count_before or trial.output_rows != baseline.row_count_after
         ):
-            baseline_trial = replace(
-                baseline_trial,
+            return replace(
+                trial,
                 status="failed",
                 reason="baseline_counts_mismatch",
                 message="Configured-key diagnostics did not match the reproduced baseline row counts.",
@@ -110,80 +380,9 @@ class LinkTroubleshooterService:
                 unmatched_a_rows=None,
                 multiply_matched_a_rows=None,
                 a_rows=None,
+                exception_groups=None,
             )
-
-        if local_keys is None and remote_keys is None:
-            selected_local_keys: list[str] = list(fk.local_keys)
-            selected_remote_keys: list[str] = list(fk.remote_keys)
-        else:
-            selected_local_keys = list(local_keys) if local_keys is not None else []
-            selected_remote_keys = list(remote_keys) if remote_keys is not None else []
-
-        if selected_local_keys == fk.local_keys and selected_remote_keys == fk.remote_keys:
-            requested_trial: LinkTrialResult = baseline_trial
-        else:
-            requested_trial = self.trial_service.run_trial(
-                baseline,
-                local_keys=selected_local_keys,
-                remote_keys=selected_remote_keys,
-            )
-
-        if requested_trial.status == "complete" and requested_trial.input_a_rows != baseline.row_count_before:
-            requested_trial = replace(
-                requested_trial,
-                status="failed",
-                reason="baseline_input_mismatch",
-                message="The requested-key trial input count did not match the reproduced baseline.",
-                input_a_rows=None,
-                output_rows=None,
-                unmatched_a_rows=None,
-                multiply_matched_a_rows=None,
-                a_rows=None,
-            )
-
-        return LinkTroubleshooterMapper.to_response(
-            baseline=baseline,
-            baseline_trial=baseline_trial,
-            trial=requested_trial,
-            relationship=relationship,
-            key_options=key_options,
-            configured_keys=configured_keys,
-            trial_local_keys=selected_local_keys,
-            trial_remote_keys=selected_remote_keys,
-            page=page,
-            page_size=page_size,
-            row_filter=row_filter,
-        )
-
-    def _map_without_trial(
-        self,
-        baseline: LinkBaselineResult,
-        fk: ForeignKeyConfig | None,
-        *,
-        local_keys: Sequence[str] | None,
-        remote_keys: Sequence[str] | None,
-        page: int,
-        page_size: int,
-        row_filter: LinkTroubleshootRowFilter,
-    ) -> LinkTroubleshootResponse:
-        """Map a baseline that cannot support a requested-key trial."""
-        configured_keys = LinkTroubleshootKeys(local_keys=fk.local_keys, remote_keys=fk.remote_keys) if fk is not None else None
-        selected_local_keys: list[str] = list(local_keys) if local_keys is not None else list(fk.local_keys if fk is not None else ())
-        selected_remote_keys: list[str] = list(remote_keys) if remote_keys is not None else list(fk.remote_keys if fk is not None else ())
-
-        return LinkTroubleshooterMapper.to_response(
-            baseline=baseline,
-            baseline_trial=None,
-            trial=None,
-            relationship=self._relationship(baseline, fk) if fk is not None else None,
-            key_options=None,
-            configured_keys=configured_keys,
-            trial_local_keys=selected_local_keys,
-            trial_remote_keys=selected_remote_keys,
-            page=page,
-            page_size=page_size,
-            row_filter=row_filter,
-        )
+        return trial
 
     @staticmethod
     def _relationship(baseline: LinkBaselineResult, fk: ForeignKeyConfig) -> LinkTroubleshootRelationship:

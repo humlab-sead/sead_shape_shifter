@@ -17,6 +17,16 @@ vi.mock('pinia', async () => {
   }
 })
 
+const serviceManifest = {
+  defaultTypes: [
+    { id: 'site', name: 'Site' },
+    { id: 'taxon', name: 'Taxon' },
+    { id: 'feature_type', name: 'Feature type' },
+  ],
+  reconciliation: { supportedTypes: ['site', 'feature_type'] },
+  extend: { property_settings: [{ name: 'place_name', entity_types: ['site'] }] },
+}
+
 const reconciliationStore = reactive({
   reconciliationConfig: {
     version: '3.0',
@@ -64,7 +74,7 @@ const reconciliationStore = reactive({
   updateMapping: vi.fn(),
   saveEntityResolutionCatalog: vi.fn(),
   checkServiceHealth: vi.fn(async () => ({ status: 'online', service_name: 'reconciliation' })),
-  getServiceManifest: vi.fn(async () => ({ defaultTypes: [{ id: 'site' }] })),
+  getServiceManifest: vi.fn(async () => serviceManifest),
   loadEntityResolutionCatalog: vi.fn(async () => {}),
   loadSpecifications: vi.fn(async () => {}),
   loadPreviewData: vi.fn(async () => {}),
@@ -138,6 +148,7 @@ async function mountView() {
 
   await nextTick()
   await nextTick()
+  await flushPromises()
   return wrapper
 }
 
@@ -147,6 +158,9 @@ describe('ReconciliationView', () => {
     reconciliationStore.previewData = { test_project: { site: { site_code: [] } } }
     reconciliationStore.previewErrors = {}
     reconciliationStore.autoReconcile = vi.fn()
+    reconciliationStore.getServiceManifest = vi.fn(async () => serviceManifest)
+    reconciliationStore.reconciliationConfig.entities.site.site_code.remote.service_type = 'site'
+    reconciliationStore.reconciliationConfig.entities.site.site_code.property_mappings = {}
     reconciliationStore.mappingData = { test_project: { site: null } }
     reconciliationStore.mappingErrors = {}
     reconciliationStore.mappingLoading = {}
@@ -185,8 +199,8 @@ describe('ReconciliationView', () => {
     expect(reconciliationStore.exportToMapping).toHaveBeenCalledWith('test_project', 'site', 'site_code')
     expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site')
     expect(wrapper.text()).toContain(
-      '2 link(s) exported; 1 stale link(s) removed; 1 local-only approval(s) exported; '
-      + '2 stale local-only approval(s) removed; 1 protected link(s) skipped.'
+      '2 link(s) exported; 1 stale link(s) removed; 1 local-only approval(s) exported; ' +
+        '2 stale local-only approval(s) removed; 1 protected link(s) skipped.'
     )
   })
 
@@ -314,5 +328,100 @@ describe('ReconciliationView', () => {
     expect(wrapper.get('[data-testid="matching-result"]').text()).toContain('considered 4 rows')
     expect(wrapper.get('[data-testid="matching-result"]').text()).toContain('found no candidates for 2 rows')
     expect(wrapper.get('[data-testid="matching-result"]').text()).toContain('Row 3 (A): Missing required key')
+  })
+
+  it('blocks saved mappings that the current manifest does not declare', async () => {
+    reconciliationStore.reconciliationConfig.entities.site.site_code.property_mappings = { old_property: 'site_name' }
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="matching-blocked"]').text()).toContain(
+      "Property mapping 'old_property' not declared for remote type 'site'."
+    )
+    expect(wrapper.get('[data-testid="find-candidates-button"]').attributes('disabled')).toBeDefined()
+    expect(reconciliationStore.autoReconcile).not.toHaveBeenCalled()
+  })
+
+  it('blocks candidate search when the manifest request fails', async () => {
+    reconciliationStore.getServiceManifest = vi.fn().mockRejectedValue(new Error('Manifest unavailable'))
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="matching-blocked"]').text()).toContain('Manifest unavailable')
+    expect(wrapper.get('[data-testid="find-candidates-button"]').attributes('disabled')).toBeDefined()
+    expect(reconciliationStore.autoReconcile).not.toHaveBeenCalled()
+  })
+
+  it('allows candidate search for a supported zero-property type', async () => {
+    reconciliationStore.reconciliationConfig.entities.site.site_code.remote.service_type = 'feature_type'
+    reconciliationStore.reconciliationConfig.entities.site.site_code.property_mappings = {}
+    reconciliationStore.autoReconcile = vi.fn().mockResolvedValue({
+      proposed: 0,
+      unmatched: 0,
+      total: 0,
+      candidates: {},
+      errors: [],
+    })
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+    const button = wrapper.get('[data-testid="find-candidates-button"]')
+    expect(button.attributes('disabled')).toBeUndefined()
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(reconciliationStore.autoReconcile).toHaveBeenCalledWith('test_project', 'site', 'site_code', 0.95, 0.7)
+  })
+
+  it('does not load the preview until the review tab is opened', async () => {
+    reconciliationStore.loadPreviewData = vi.fn(async () => {})
+    const wrapper = await mountView()
+
+    expect(reconciliationStore.loadPreviewData).not.toHaveBeenCalled()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await flushPromises()
+
+    expect(reconciliationStore.loadPreviewData).toHaveBeenCalledWith('test_project', 'site', 'site_code')
+  })
+
+  it('loads the preview once when the review tab is reopened', async () => {
+    reconciliationStore.loadPreviewData = vi.fn(async () => {})
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await flushPromises()
+
+    expect(reconciliationStore.loadPreviewData).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows a loading state instead of the empty state while the preview request is in flight', async () => {
+    let resolvePreview: (() => void) | undefined
+    reconciliationStore.loadPreviewData = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePreview = resolve
+        })
+    )
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="preview-loading"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('No Preview Rows')
+
+    resolvePreview?.()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="preview-loading"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('No Preview Rows')
   })
 })
