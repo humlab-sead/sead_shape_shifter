@@ -90,7 +90,7 @@ python scripts/print_target_model_entity.py \
 The `prepare_copilot_release_notes.py` script prepares a user-facing release-notes draft for refinement with Copilot CLI.
 The `generate_whats_new.py` script builds the release-note file from the authored user-facing and upgrade-note sections of merged pull requests. It selects pull requests by commit ancestry: a pull request ships in release `Rn` when its merge commit is reachable from the release ref (`vRn` when the tag exists, otherwise `HEAD`) and not from the previous release ref. It reads pull requests whose base branch is `dev`, `staging`, or `main`, so feature pull requests are included even though they never target `main`. `CHANGELOG.md` supplies only the version date and previous version. If an AI API key is configured, it consolidates overlapping notes; otherwise it preserves the authored notes. The older `generate_user_release_notes.py` script remains available for changelog-derived drafts.
 
-Promotion pull requests carry the `<!-- promotion-pr -->` marker and contribute no notes of their own, so promoted changes are never reported twice. For the latest version in `CHANGELOG.md`, the generator also adds a `Pending Release` snapshot of merged pull requests that have not reached `main`, including their authored notes and the pull requests each promotion carries. It uses `gh pr list` and `git rev-list`, so `gh` must be authenticated and full history and tags must be available. See [the What's New workflow](../docs/whats-new/README.md).
+Promotion pull requests carry the `<!-- promotion-pr -->` marker and contribute no notes of their own, so promoted changes are never reported twice. Every run writes a rolling pending snapshot to `docs/whats-new/PENDING.md`; it never adds pending changes to a versioned note or GitHub release body. It uses `gh pr list` and `git rev-list`, so `gh` must be authenticated and full history and tags must be available. See [the What's New workflow](../docs/whats-new/README.md).
 
 Generate a release draft manually with:
 
@@ -273,7 +273,7 @@ make release-notes-ai VERSION=2.5.0
 python3 scripts/generate_whats_new.py --version 2.5.0
 ```
 
-The script requires authenticated `gh` access to merged PRs. It replaces the output file on each run. See [the What's New workflow](../docs/whats-new/README.md) for the version-selection and pending-staging behavior.
+The script requires authenticated `gh` access to merged PRs. It replaces the versioned output file and refreshes `PENDING.md` on each run. See [the What's New workflow](../docs/whats-new/README.md).
 
 ## `generate_user_release_notes.py` (legacy changelog-based generator)
 
@@ -303,7 +303,6 @@ python3 scripts/generate_user_release_notes.py --version 1.26.0 --force-heuristi
 
 - Reads the selected release section from `CHANGELOG.md` and writes `docs/whats-new/vX.Y.Z.md` by default.
 - Drafts highlights, new features, improvements, and fixes using local heuristics or AI. Use `--force-heuristic` to skip AI.
-- Adds the `Pending Release` PR snapshot only when generating the latest changelog version. `--generate-missing` includes it only if that changelog version is among the versions being generated.
 - Replaces the output file on each run. Review the generated content and reapply any manual edits after regenerating.
 - Can update the matching GitHub Release body when run with `--update-github-release`.
 
