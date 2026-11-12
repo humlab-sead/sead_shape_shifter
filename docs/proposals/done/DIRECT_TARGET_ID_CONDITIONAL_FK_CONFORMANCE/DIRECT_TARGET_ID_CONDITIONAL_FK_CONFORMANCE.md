@@ -2,15 +2,16 @@
 
 ## Status
 
-- Approved change request (2026-11-11)
-- Scope: project-only conformance for `required_when.has_new_rows` on direct target-ID foreign keys
-- Goal: do not report reconciliation as necessary to establish a lookup entity requirement when the FK uses an existing target ID.
+- **Implemented**
+- Scope: Project validation skips the reconciliation-pending issue for valid conditional direct-target-ID foreign keys while retaining the target-database ID check and independent target requirements.
+- Goal: Do not require reconciliation to establish a lookup entity requirement when the foreign key uses an existing target ID.
+- Validation: Not recorded in this proposal.
 
 ## Summary
 
 Skip the conditional FK's awaiting-reconciliation result when the source entity validly declares `foreign_key_value_sources.<target>: public_id`. That relationship does not need a project lookup entity or Core link, even if source rows will be inserted. Continue to report the pending target-database check for the supplied IDs. Other relationships and independent requirements for the target entity remain in force.
 
-Related decisions: [Conditional Target Model Requirements](../done/CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md), [Direct Target-Id Foreign Keys](../done/DIRECT_TARGET_ID_FOREIGN_KEYS/DIRECT_TARGET_ID_FOREIGN_KEYS.md), and [Direct Target-ID Foreign Key UX](../DIRECT_TARGET_ID_FOREIGN_KEY_UX/DIRECT_TARGET_ID_FOREIGN_KEY_UX.md).
+Related decisions: [Conditional Target Model Requirements](../../done/CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md), [Direct Target-Id Foreign Keys](../../done/DIRECT_TARGET_ID_FOREIGN_KEYS/DIRECT_TARGET_ID_FOREIGN_KEYS.md), and [Direct Target-ID Foreign Key UX](../../done/DIRECT_TARGET_ID_FOREIGN_KEY_UX/DIRECT_TARGET_ID_FOREIGN_KEY_UX.md).
 
 ## Problem
 
@@ -29,7 +30,7 @@ Project-only conformance reports `CONDITIONAL_FK_AWAITING_RECONCILIATION` for ev
 
 ## Current Behavior
 
-The [conditional conformance validator](../../../src/target_model/conformance.py) reports an informational awaiting-reconciliation issue for every conditional FK on a present source. The same module already checks whether a `public_id` declaration is a valid direct FK and separately reports `DIRECT_FK_TARGET_CHECK_PENDING`. The [change-request projection](../../../ingesters/sead_change_request/target_projection.py) skips local FK projection for declared direct IDs; [direct-ID validation](../../../ingesters/sead_change_request/direct_fk_validation.py) checks required values on inserted rows and verifies supplied IDs against the target database. An existing [conformance test](../../../tests/model/test_target_model_conformance.py) explicitly expects both pending results for a conditional direct-ID FK.
+The [conditional conformance validator](../../../../src/target_model/conformance.py) reports an informational awaiting-reconciliation issue for every conditional FK on a present source. The same module already checks whether a `public_id` declaration is a valid direct FK and separately reports `DIRECT_FK_TARGET_CHECK_PENDING`. The [change-request projection](../../../../ingesters/sead_change_request/target_projection.py) skips local FK projection for declared direct IDs; [direct-ID validation](../../../../ingesters/sead_change_request/direct_fk_validation.py) checks required values on inserted rows and verifies supplied IDs against the target database. An existing [conformance test](../../../../tests/model/test_target_model_conformance.py) explicitly expects both pending results for a conditional direct-ID FK.
 
 ## Proposed Design
 
