@@ -267,7 +267,7 @@ Follow-up work: none identified for this feature. The committed change for this 
 | Deliverable | Target | Task IDs | Completion evidence |
 | ----------- | ------ | -------- | ------------------- |
 | Reload-selection test | `frontend/src/components/entities/__tests__/EntityFormDialog.test.ts` (**NEW** test) | `T1.1` | `V-1` passes |
-| Core verification result | `docs/proposals/DIRECT_TARGET_ID_FOREIGN_KEY_UX/DIRECT_TARGET_ID_FOREIGN_KEY_UX_PHASE_5_TASK_PLAN.md` execution record | `T2.1` | `V-2` recorded |
+| Core verification result | `docs/proposals/done/DIRECT_TARGET_ID_FOREIGN_KEY_UX/DIRECT_TARGET_ID_FOREIGN_KEY_UX_PHASE_5_TASK_PLAN.md` execution record | `T2.1` | `V-2` recorded |
 | Backend verification result | Same execution record | `T2.2` | `V-3` recorded |
 | Ingester and YAML-project verification result | Same execution record | `T2.3` | `V-4`, `V-5` recorded |
 | Frontend verification result | Same execution record | `T3.1`, `T3.2`, `T3.3` | `V-6`, `V-7`, `V-8` recorded |

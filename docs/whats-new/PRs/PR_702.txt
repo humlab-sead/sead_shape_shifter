@@ -29,7 +29,7 @@ model keeps the entity and column; the expanded issue gains an Open column setti
 opens the entity dialog on the Basic tab with guidance, with the focus cleared on close so manual
 edits never show stale guidance.
  - Documents the control in docs/CONFIGURATION_GUIDE.md and docs/USER_GUIDE.md. The proposal and its
-phase plans are added under docs/proposals/DIRECT_TARGET_ID_FOREIGN_KEY_UX/ and indexed in the
+phase plans are added under docs/proposals/done/DIRECT_TARGET_ID_FOREIGN_KEY_UX/ and indexed in the
 proposals README.
 
 ## User-facing release note

@@ -2,9 +2,10 @@
 
 ## Status
 
-- Proposed feature
-- Scope: Entity-editor support for `foreign_key_value_sources`
+- **Implemented**
+- Scope: The entity editor supports selecting eligible direct target-ID relationships and preserves the complete `foreign_key_value_sources` map.
 - Goal: Let project authors select eligible direct target-ID relationships without editing YAML.
+- Validation: Tests confirm Core output-column conformance and backend validator entity/column preservation.
 
 ## Summary
 
@@ -14,7 +15,7 @@ This keeps the UI separate from project `foreign_keys` links, which create Core 
 
 ## Problem
 
-The [direct target-ID feature](../done/DIRECT_TARGET_ID_FOREIGN_KEYS/DIRECT_TARGET_ID_FOREIGN_KEYS.md) is supported in project YAML, but authors must enter `foreign_key_value_sources` manually. The entity dialog has Basic and Foreign Keys sections but no control for this setting. Its YAML and saved-entity loaders also rebuild form data without this map, so adding a control without round-trip handling could lose existing values.
+The [direct target-ID feature](../../done/DIRECT_TARGET_ID_FOREIGN_KEYS/DIRECT_TARGET_ID_FOREIGN_KEYS.md) is supported in project YAML, but authors must enter `foreign_key_value_sources` manually. The entity dialog has Basic and Foreign Keys sections but no control for this setting. Its YAML and saved-entity loaders also rebuild form data without this map, so adding a control without round-trip handling could lose existing values.
 
 The existing target-model entity picker is not a suitable metadata source: it lists only target entities absent from the project and reports required-link summaries. The selector needs all direct relationships for the current target-model entity, including optional targets and targets already configured in the project.
 
@@ -38,7 +39,7 @@ The existing target-model entity picker is not a suitable metadata source: it li
 
 - A project entity can declare `foreign_key_value_sources` in YAML. `public_id` applies to change-request package values; absent entries retain the `system_id` default.
 - The target model must be selected for this declaration, and the target entity must define a direct FK relationship, `public_id`, and `target_table`.
-- Core structural validation checks the target entity's `public_id` against [`get_target_facing_columns()`](../../../src/model.py#L968), which includes computed columns and accounts for columns removed by unnesting. It reports a missing output column without requiring the selector to duplicate that check.
+- Core structural validation checks the target entity's `public_id` against [`get_target_facing_columns()`](../../../../src/model.py#L968), which includes computed columns and accounts for columns removed by unnesting. It reports a missing output column without requiring the selector to duplicate that check.
 - The target-model entity picker excludes entities already present in the project and returns required-link summaries, not all FK relationships for an existing entity.
 - The current entity dialog exposes basic entity settings and project FK links, but has no visual control for this map.
 - The form parser and saved-entity loader construct explicit field lists without `foreign_key_value_sources`.
