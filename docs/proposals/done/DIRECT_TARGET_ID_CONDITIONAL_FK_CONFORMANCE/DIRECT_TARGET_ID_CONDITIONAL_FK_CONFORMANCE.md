@@ -11,7 +11,7 @@
 
 Skip the conditional FK's awaiting-reconciliation result when the source entity validly declares `foreign_key_value_sources.<target>: public_id`. That relationship does not need a project lookup entity or Core link, even if source rows will be inserted. Continue to report the pending target-database check for the supplied IDs. Other relationships and independent requirements for the target entity remain in force.
 
-Related decisions: [Conditional Target Model Requirements](../../done/CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md), [Direct Target-Id Foreign Keys](../../done/DIRECT_TARGET_ID_FOREIGN_KEYS/DIRECT_TARGET_ID_FOREIGN_KEYS.md), and [Direct Target-ID Foreign Key UX](../../DIRECT_TARGET_ID_FOREIGN_KEY_UX/DIRECT_TARGET_ID_FOREIGN_KEY_UX.md).
+Related decisions: [Conditional Target Model Requirements](../../done/CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md), [Direct Target-Id Foreign Keys](../../done/DIRECT_TARGET_ID_FOREIGN_KEYS/DIRECT_TARGET_ID_FOREIGN_KEYS.md), and [Direct Target-ID Foreign Key UX](../../done/DIRECT_TARGET_ID_FOREIGN_KEY_UX/DIRECT_TARGET_ID_FOREIGN_KEY_UX.md).
 
 ## Problem
 

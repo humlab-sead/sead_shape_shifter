@@ -20,9 +20,9 @@ It does not cover target-model relationship changes, project or change-request v
 
 ## Current Position
 
-- YAML authoring of `foreign_key_value_sources` is shipped: `TableConfig.foreign_key_value_sources` accessor in [`src/model.py`](../../../src/model.py), a typed field on the backend `Entity` model, a generated entity-schema entry, change-request ingester consumption, and Core conformance validators in [`src/target_model/conformance.py`](../../../src/target_model/conformance.py).
+- YAML authoring of `foreign_key_value_sources` is shipped: `TableConfig.foreign_key_value_sources` accessor in [`src/model.py`](../../../../src/model.py), a typed field on the backend `Entity` model, a generated entity-schema entry, change-request ingester consumption, and Core conformance validators in [`src/target_model/conformance.py`](../../../../src/target_model/conformance.py).
 - Core conformance already reports `DIRECT_FK_OUTPUT_COLUMN_MISSING` for a declared `public_id` source whose target column is absent from `get_target_facing_columns()`.
-- The existing [`TargetModelEntityOptionsService`](../../../backend/app/services/target_model_entity_options_service.py) returns only target-model entities absent from the project, with required-link summaries. It exposes no per-entity direct-FK list.
+- The existing [`TargetModelEntityOptionsService`](../../../../backend/app/services/target_model_entity_options_service.py) returns only target-model entities absent from the project, with required-link summaries. It exposes no per-entity direct-FK list.
 - The entity dialog's form model, YAML parser, saved-entity hydrator, YAML generator, and save payload each use explicit field lists that omit `foreign_key_value_sources`, so the field is dropped on save and on YAML/form switching.
 - Validation messages already carry entity and column/field values and can open the entity editor by name, but no action targets an entity's column settings.
 - The generated entity schema already documents the field, so YAML editing recognizes it today.
