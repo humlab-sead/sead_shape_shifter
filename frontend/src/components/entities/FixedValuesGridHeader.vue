@@ -77,14 +77,16 @@ function onSelectChange(event: Event): void {
 
 <style scoped>
 .column-type-header {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   width: 100%;
   min-width: 0;
   padding: 2px 0;
 }
 
 .column-type-header__name {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   padding: 0;
@@ -110,7 +112,9 @@ function onSelectChange(event: Event): void {
 }
 
 .column-type-header__select {
-  width: 100%;
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 60%;
   min-width: 0;
   min-height: 20px;
   padding: 1px 2px;
