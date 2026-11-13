@@ -76,7 +76,7 @@ async def test_empty_selection_runs_none_of_the_selectable_checks():
     """An explicit empty selection runs no selectable check."""
     codes = await _run([])
 
-    assert not (SELECTABLE_CODES & codes)
+    assert not SELECTABLE_CODES & codes
 
 
 @pytest.mark.asyncio
