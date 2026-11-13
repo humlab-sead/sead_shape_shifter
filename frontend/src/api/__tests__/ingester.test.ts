@@ -43,10 +43,54 @@ describe('ingesterApi project routes', () => {
   })
 
   it('posts strict project requests to the fixed ingestion route', async () => {
-    const result: IngestResponse = { success: true, records_processed: 2, message: 'Bundle created' }
+    const result: IngestResponse = {
+      success: true,
+      records_processed: 2,
+      message: 'Bundle created',
+      output_expectation_results: [],
+    }
     vi.mocked(apiClient.post).mockResolvedValue({ data: result })
 
     await expect(ingesterApi.ingestProject(projectRequest)).resolves.toEqual(result)
+    expect(apiClient.post).toHaveBeenCalledWith('/ingesters/sead_change_request/from-project/ingest', projectRequest)
+  })
+
+  it('preserves output expectation results on failed project ingestion responses', async () => {
+    const result: IngestResponse = {
+      success: false,
+      records_processed: 0,
+      message: 'Output expectation checks failed; no tables were ingested.',
+      error_details: 'Expected 2 rows but measured 3.',
+      output_expectation_results: [
+        {
+          name: 'site-count',
+          entity: 'site',
+          metric: 'row_count',
+          group_value: null,
+          measured_value: 3,
+          expected_limit: { equals: 2 },
+          status: 'fail',
+          failure_reason: 'Expected 2 rows but measured 3.',
+        },
+        {
+          name: 'site-group',
+          entity: 'site',
+          metric: 'grouped_row_count',
+          group_value: true,
+          measured_value: 1,
+          expected_limit: { equals: 1 },
+          status: 'pass',
+          failure_reason: null,
+        },
+      ],
+    }
+    vi.mocked(apiClient.post).mockResolvedValue({ data: result })
+
+    const response = await ingesterApi.ingestProject(projectRequest)
+
+    expect(response.success).toBe(false)
+    expect(response.output_expectation_results.map((item) => item.status)).toEqual(['fail', 'pass'])
+    expect(response.output_expectation_results.map((item) => item.group_value)).toEqual([null, true])
     expect(apiClient.post).toHaveBeenCalledWith('/ingesters/sead_change_request/from-project/ingest', projectRequest)
   })
 

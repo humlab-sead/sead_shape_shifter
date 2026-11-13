@@ -51,8 +51,13 @@ async def execute_workflow(
     Performs the complete normalization workflow:
     1. Optional validation
     2. Load and normalize all entities
-    3. Apply optional transformations (translate, drop FKs)
-    4. Dispatch to target using selected dispatcher
+    3. Check configured output expectations on the complete normalized output
+    4. Apply optional transformations (translate, drop FKs)
+    5. Dispatch to target using selected dispatcher
+
+    Output expectation results are returned on success and on expectation failure.
+    A failed expectation reports every check, withholds dispatcher output, and
+    does not change optional pre-run validation status.
 
     Args:
         name: Project name
@@ -65,7 +70,8 @@ async def execute_workflow(
             - default_entity: Optional default entity
 
     Returns:
-        ExecuteResult with success status, message, and execution details
+        ExecuteResult with success status, message, execution details, and
+        output expectation results
     """
     execute_service: ExecuteService = get_execute_service()
 

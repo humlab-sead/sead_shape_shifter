@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -91,7 +92,7 @@ def response_model() -> IntegrityTroubleshootResponse:
             rows=[{"customer_code": "A", "order_code": "O1"}],
         ),
         context_id="context-one",
-        expires_at="2026-01-01T00:15:00Z",
+        expires_at=datetime.fromisoformat("2026-01-01T00:15:00Z").replace(tzinfo=UTC),
     )
 
 
