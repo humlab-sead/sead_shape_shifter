@@ -1,6 +1,6 @@
 # Target Model Missing Entity Candidates: 2026-10-26 (recounted 2026-11-12)
 
-**Model checked:** [sead_standard_model.yml](sead_standard_model.yml) (version 2.8.0)
+**Model checked:** [sead_standard_model.yml](../../../../resources/target_models/sead_standard_model.yml) (version 2.8.0)
 **Schema checked (original, 2026-10-26):** `docs/sead/01_tables.sql` and `docs/sead/05_constraints.sql`
 **Schema checked (recount, 2026-11-10):** `docs/investigations/sead-target-model-completeness/columns.csv` — the declared source of truth (a run of `exported-columns.sql` against `sead_staging`)
 

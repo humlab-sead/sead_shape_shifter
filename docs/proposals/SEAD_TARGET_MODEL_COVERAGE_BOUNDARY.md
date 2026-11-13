@@ -6,7 +6,7 @@
 - Scope: how a SEAD target model declares its coverage source and how coverage is measured
 - Goal: make "complete" a computed result instead of a prose claim
 - Related: [SEAD v2 Target Model Completeness](done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) (closed metadata-boundary decision), [Target Model Conformance Enhancements](done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
-- Gap triage: [TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md](../../resources/target_models/TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md)
+- Gap triage: [TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md](TARGET_MODEL_PROJECT_REQUIREMENTS/archive/TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md)
 - Tracking issue: [#532 feat(target-model): track SEAD standard model coverage completion](https://github.com/humlab-sead/sead_shape_shifter/issues/532)
 
 ## Summary
@@ -127,7 +127,7 @@ With `source_kind: sead-database` (or a CLI override), the CLI lists SEAD tables
 
 ### 5. Gap triage stays in documents
 
-The CLI reports unmapped tables; [TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md](../../resources/target_models/TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md) keeps the tiering and reasons (Tier 1 FK-referenced, Tier 2 data-capture, Tier 3 probably out of scope). Slice completion is measured by the unmapped count falling as entities are added. If a deliberate-exclusion record is later needed, it can be added to the `coverage` block then — no placeholder now.
+The CLI reports unmapped tables; [TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md](TARGET_MODEL_PROJECT_REQUIREMENTS/archive/TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md) keeps the tiering and reasons (Tier 1 FK-referenced, Tier 2 data-capture, Tier 3 probably out of scope). Slice completion is measured by the unmapped count falling as entities are added. If a deliberate-exclusion record is later needed, it can be added to the `coverage` block then — no placeholder now.
 
 ### 6. Prose stops carrying counts
 
