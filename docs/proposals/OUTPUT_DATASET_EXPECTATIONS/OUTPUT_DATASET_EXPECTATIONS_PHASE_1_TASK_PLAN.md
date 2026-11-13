@@ -6,8 +6,8 @@
 
 Sources: [approved proposal](OUTPUT_DATASET_EXPECTATIONS.md) (`P-AC-1`, `P-AC-2`); [phase plan](OUTPUT_DATASET_EXPECTATIONS_PHASE_PLAN.md), Phase 1 (`PH1-AC-1`, `PH1-AC-2`, `VM-1`). The approved proposal is the only phase dependency. This phase defines and checks declarations; it does not measure output or gate on measured values.
 
-- [ ] `PH1-AC-1` (from `P-AC-1`): Valid declarations accept `row_count`, `distinct_key_count`, and `grouped_row_count` with `equals`, `min`, `max`, or an inclusive range.
-- [ ] `PH1-AC-2` (from `P-AC-2`): Invalid entity, pre-translation grouping column, missing business keys, metric, or numeric limit declarations fail before either write, including when optional pre-run validation is disabled.
+- [x] `PH1-AC-1` (from `P-AC-1`): Valid declarations accept `row_count`, `distinct_key_count`, and `grouped_row_count` with `equals`, `min`, `max`, or an inclusive range.
+- [x] `PH1-AC-2` (from `P-AC-2`): Invalid entity, pre-translation grouping column, missing business keys, metric, or numeric limit declarations fail before either write, including when optional pre-run validation is disabled.
 
 ## Repository Findings
 
@@ -42,13 +42,13 @@ Sources: [approved proposal](OUTPUT_DATASET_EXPECTATIONS.md) (`P-AC-1`, `P-AC-2`
 
 **Tasks:**
 
-- [ ] `T1.1` **Change:** Add a pure Core project specification for `options.output_expectations`.
+- [x] `T1.1` **Change:** Add a pure Core project specification for `options.output_expectations`.
   - **Target:** `src/specifications/output_expectations.py` **NEW**; use `ProjectSpecification` and `SpecificationIssue` conventions from `src/specifications/base.py`.
   - **Current -> required:** There is no expectation declaration check; absent expectations remain a no-op, while a present declaration must be a list of named, uniquely identifiable expectations referring to configured entities.
   - **Implementation:** Validate each item's shape, nonempty name, entity and metric; allow `row_count` and `distinct_key_count` with exactly one comparison mode (`equals`, `min`, `max`, or `min` plus `max`), and `grouped_row_count` with one configured column and a nonempty `groups` map whose values each use that comparison rule. Require nonnegative integer limits (not booleans), with `min <= max`; reject empty/malformed bounds, conflicting `equals` and range bounds, unsupported fields/metrics, missing keys for `distinct_key_count`, and groups/columns on incompatible metrics. Check group columns against the configured pre-translation output contract using `TableConfig.get_target_facing_columns`; fail when a column cannot be established without loading data. Accumulate issues with entity and `options.output_expectations` field context rather than raising or stopping at the first error.
   - **Constraints:** Do not read source data, resolve directives in Core, or validate measured counts. Keep optional projects unaffected.
   - **Validation:** `V-1` in `tests/specifications/test_project.py`: inline project dictionaries with valid exact/min/max/range and grouped declarations, and invalid entity, column (including an unnest input removed from output), key, metric, malformed shape, missing/conflicting bounds, boolean/negative/fractional limits, and reversed range; assert structural issues and no errors for absent expectations.
-- [ ] `T1.2` **Change:** Include the new check in default structural validation.
+- [x] `T1.2` **Change:** Include the new check in default structural validation.
   - **Target:** `src/specifications/project.py::CompositeProjectSpecification.get_default_specifications`; `tests/specifications/test_project.py::TestCompositeProjectSpecification`.
   - **Current -> required:** Existing composite checks do not inspect output expectations; the composite must include their errors without changing other specification behavior.
   - **Implementation:** Register the new specification with other project-level checks; keep the existing issue aggregation and reuse behavior.
@@ -67,13 +67,13 @@ Sources: [approved proposal](OUTPUT_DATASET_EXPECTATIONS.md) (`P-AC-1`, `P-AC-2`
 
 **Tasks:**
 
-- [ ] `T2.1` **Change:** Make the declaration check mandatory at dispatcher entry while leaving other validation optional.
+- [x] `T2.1` **Change:** Make the declaration check mandatory at dispatcher entry while leaving other validation optional.
   - **Target:** `backend/app/services/execute_service.py::ExecuteService.execute_workflow`; `backend/tests/services/test_execute_service_expectations.py` **NEW**.
   - **Current -> required:** `run_validation=False` bypasses all composite checks; invalid expectations must instead return failure before output target resolution or `workflow()`.
   - **Implementation:** After authorized project loading and mapping, inspect expectation declarations through the shared Core check even if `run_validation=False`. When `run_validation=True`, preserve composite validation and avoid replacing its other checks. Return declaration errors in the existing failure response; leave `validation_passed` as `None` when optional validation was skipped. Do not start normalization or create output paths on invalid declarations.
   - **Constraints:** Preserve authorization and dispatcher-key guards and existing success/failure response shapes; measured expectation results are later-phase work.
   - **Validation:** `V-3`: stub project, target resolution, and workflow in the existing service style; assert invalid declarations fail for both flag values without target/workflow calls, and valid/absent declarations follow existing optional validation behavior.
-- [ ] `T2.2` **Change:** Guard direct full workflow calls and cover ingestion through its existing composite check.
+- [x] `T2.2` **Change:** Guard direct full workflow calls and cover ingestion through its existing composite check.
   - **Target:** `src/workflow.py::workflow`, `tests/test_workflow.py::TestWorkflowContract`, `backend/tests/services/test_project_ingester_service.py`.
   - **Current -> required:** CLI calls the workflow without mandatory validation; ingestion already runs composite validation before normalization. Both must reject invalid declarations before any output write.
   - **Implementation:** Validate declarations on the resolved project before workflow normalization/store, without making `normalize_project()` a full-run check. Add ingestion tests using a real composite through the existing mapper path rather than mocking the new check; verify failure before `normalize_project()`/`ingest_tables()`. Preserve validation-only, preview, and materialization behavior.
@@ -92,14 +92,14 @@ Sources: [approved proposal](OUTPUT_DATASET_EXPECTATIONS.md) (`P-AC-1`, `P-AC-2`
 
 **Tasks:**
 
-- [ ] `T3.1` **Change:** Document `options.output_expectations` and the Phase 1 declaration rules.
+- [x] `T3.1` **Change:** Document `options.output_expectations` and the Phase 1 declaration rules.
   - **Target:** `docs/CONFIGURATION_GUIDE.md`, project options section.
   - **Current -> required:** The guide does not describe output expectations; it must show supported shapes, named groups, pre-translation grouping columns, valid comparisons, and errors for unsupported declarations.
   - **Implementation:** Add a concise YAML example and distinguish declaration validation from later runtime metric evaluation; do not claim count checks already exist at Phase 1 completion.
   - **Constraints:** Keep examples consistent with the approved proposal and the implemented declaration schema.
-  - **Validation:** `V-4`: inspect the guide against `T1.1` cases and run the existing generated-schema check without editing generated JSON unless a real model change requires it.
+  - **Validation:** `V-4`: inspect the guide against `T1.1` cases and run the existing generated-schema check without editing generated JSON unless a real model change requires it. The guide review and schema check pass.
 
-**Completion evidence:** The guide matches the tested declaration contract, and schema generation remains in sync.
+**Completion evidence:** The guide matches the tested declaration contract, and all generated schemas are synchronized.
 
 ## Acceptance-Criteria Coverage
 
@@ -114,10 +114,10 @@ All commands run from the repository root. `V-1` through `V-4` together provide 
 
 | ID | Check and target | Command or method | Covers | Expected result | Baseline |
 |---|---|---|---|---|---|
-| `V-1` | New specification and composite declarations in `tests/specifications/test_project.py`; valid exact/min/max/range and groups, invalid entity/column/key/metric/limits, no-op absence | `.venv/bin/pytest tests/specifications/test_project.py -q` | `PH1-AC-1`, `PH1-AC-2` | All structural cases pass, with issue context and no data loading. | Pass: existing file in focused baseline; new cases not run. |
-| `V-2` | Existing specification and backend validation regression in `tests/specifications/test_project.py`, `backend/tests/services/test_validation_service.py` | `.venv/bin/pytest tests/specifications/test_project.py backend/tests/services/test_validation_service.py -q` | `PH1-AC-1`, existing structural behavior | No regression in composite and API-side validation. | Pass: both files ran in the two focused baselines; combined command not run. |
-| `V-3` | Dispatcher flag on/off in `backend/tests/services/test_execute_service_expectations.py` **NEW**, direct CLI workflow in `tests/test_workflow.py`, ingestion in `backend/tests/services/test_project_ingester_service.py` | `.venv/bin/pytest backend/tests/services/test_execute_service_expectations.py tests/test_workflow.py backend/tests/services/test_project_ingester_service.py -q` | `PH1-AC-2`, write and authorization boundaries | Invalid declarations stop target creation, store, and ingestion; valid/absent declarations continue; `validation_passed` stays distinct. | Not run: new file and cases do not exist; both existing test files passed independently in focused baselines. |
-| `V-4` | Generated editor schema and guide match implemented declarations | `make check-schemas` and review `docs/CONFIGURATION_GUIDE.md` against the `V-1` cases | `PH1-AC-1`, documentation/schema regression | Generated JSON remains synchronized, examples match validation rules. | Not run: check is for implementation handoff. |
+| `V-1` | New specification and composite declarations in `tests/specifications/test_project.py`; valid exact/min/max/range and groups, invalid entity/column/key/metric/limits, no-op absence | `.venv/bin/pytest tests/specifications/test_project.py -q` | `PH1-AC-1`, `PH1-AC-2` | All structural cases pass, with issue context and no data loading. | Pass, rechecked 2026-11-13: `rtk .venv/bin/pytest tests/specifications/test_project.py backend/tests/services/test_validation_service.py backend/tests/services/test_execute_service_expectations.py tests/test_workflow.py backend/tests/services/test_project_ingester_service.py -q` passed.<br>`rtk .venv/bin/pytest tests/specifications/test_project.py::TestOutputExpectationsSpecification::test_accepts_json_scalar_group_values tests/specifications/test_project.py::TestOutputExpectationsSpecification::test_rejects_non_json_scalar_group_values -q` passed (7 tests), covering accepted JSON scalars and rejected dates, timestamps, bytes, NaN, and infinities. |
+| `V-2` | Existing specification and backend validation regression in `tests/specifications/test_project.py`, `backend/tests/services/test_validation_service.py` | `.venv/bin/pytest tests/specifications/test_project.py backend/tests/services/test_validation_service.py -q` | `PH1-AC-1`, existing structural behavior | No regression in composite and API-side validation. | Pass, rechecked 2026-11-13; covered by the combined command recorded under `V-1`. |
+| `V-3` | Dispatcher flag on/off in `backend/tests/services/test_execute_service_expectations.py` **NEW**, direct CLI workflow in `tests/test_workflow.py`, ingestion in `backend/tests/services/test_project_ingester_service.py` | `.venv/bin/pytest backend/tests/services/test_execute_service_expectations.py tests/test_workflow.py backend/tests/services/test_project_ingester_service.py -q` | `PH1-AC-2`, write and authorization boundaries | Invalid declarations stop target creation, store, and ingestion; valid/absent declarations continue; `validation_passed` stays distinct. | Pass, rechecked 2026-11-13; covered by the combined command recorded under `V-1`. |
+| `V-4` | Generated editor schema and guide match implemented declarations | `make check-schemas` and review `docs/CONFIGURATION_GUIDE.md` against the `V-1` cases | `PH1-AC-1`, documentation/schema regression | Generated JSON remains synchronized, examples match validation rules. | Pass, rechecked 2026-11-13: `rtk make check-schemas` and `rtk make check-doc-links` passed; the guide states allowed and rejected group value types. |
 
 Baseline commands already run: `.venv/bin/pytest tests/specifications/test_project.py backend/tests/services/test_project_ingester_service.py backend/tests/services/test_execute_service_output_paths.py -q` and `.venv/bin/pytest tests/test_workflow.py backend/tests/services/test_validation_service.py -q`; both passed on the recorded repository state.
 
@@ -135,17 +135,17 @@ Baseline commands already run: `.venv/bin/pytest tests/specifications/test_proje
 
 | Area | Status | Dependencies | Notes |
 |---|---|---|---|
-| Area 1: Declare and validate | Not started | Approved proposal | Existing structural tests pass. |
-| Area 2: Enforce before writes | Not started | Area 1 | No measured results in this phase. |
-| Area 3: Document and recheck | Not started | Areas 1 and 2 | No generated schema change expected. |
+| Area 1: Declare and validate | Done | Approved proposal | V-1 and V-2 pass. The user-requested JSON-scalar group-value check is included in T1.1 and covered by V-1. |
+| Area 2: Enforce before writes | Done | Area 1 | V-3 passes for dispatcher, direct workflow, and ingestion paths. |
+| Area 3: Document and recheck | Done | Areas 1 and 2 | T3.1 and V-4 pass; the guide documents the allowed and rejected group value types, and all generated schemas are synchronized. |
 
 ## Definition Of Done
 
-- [ ] `PH1-AC-1` and `PH1-AC-2` have task and validation evidence (`T1.1`-`T3.1`, `V-1`-`V-4`; Phase 1 `VM-1`).
-- [ ] All three areas and listed deliverables are complete; the plan's progress tracker and evidence are updated.
-- [ ] Focused tests and schema synchronization check pass; invalid declarations cause no dispatcher, CLI, or ingester write.
-- [ ] Existing authorized execution, optional validation status, and projects without expectations retain their behavior.
-- [ ] The configuration guide matches the shipped Phase 1 contract; generated artifacts change only if the underlying model changes.
-- [ ] Deviations and follow-up work are recorded, and no unresolved decision affects implementation or verification.
+- [x] `PH1-AC-1` and `PH1-AC-2` have implementation and focused validation evidence (`T1.1`-`T2.2`, `V-1`-`V-3`), including accepted JSON-scalar group values and rejected dates, timestamps, bytes, NaN, and infinities; the guide review and schema-sync check in `V-4` pass.
+- [x] All three areas and listed deliverables are complete; the plan's progress tracker and evidence are updated.
+- [x] Focused tests and schema synchronization check pass; invalid declarations cause no dispatcher, CLI, or ingester write.
+- [x] Existing authorized execution, optional validation status, and projects without expectations retain their behavior.
+- [x] The configuration guide matches the shipped Phase 1 contract, including JSON-scalar group values; generated artifacts change only if the underlying model changes.
+- [x] Deviations and follow-up work are recorded, and no unresolved decision affects implementation or verification.
 
 If repository behavior differs from these verified paths during implementation, stop and report the discrepancy with test results before changing the design or scope.

@@ -9,11 +9,13 @@ Usage:
 """
 
 import asyncio
+import json
 import sys
 from pathlib import Path
 
 import click
 
+from src.output_expectations import OutputExpectationEvaluation
 from src.utility import setup_logging
 from src.workflow import validate_project, workflow
 
@@ -61,7 +63,7 @@ def main(
         is_valid: bool = validate_project(project_filename)
         sys.exit(0 if is_valid else 1)
 
-    asyncio.run(
+    evaluation = asyncio.run(
         workflow(
             project=project_filename,
             default_entity=default_entity,
@@ -73,7 +75,27 @@ def main(
         )
     )
 
+    if evaluation is not None:
+        _report_output_expectation_results(evaluation)
+        if not evaluation.passed:
+            raise click.ClickException("Output expectation checks failed; no output was written.")
+
     click.secho(f"✓ Successfully written normalized workbook to {target}", fg="green")
+
+
+def _report_output_expectation_results(evaluation: OutputExpectationEvaluation) -> None:
+    """Print every output expectation result in the order it was evaluated."""
+    click.echo("\nOutput expectation results:")
+    for result in evaluation.results:
+        label = f"{result.name} ({result.entity}, {result.metric}"
+        if result.metric == "grouped_row_count":
+            label += f", group={json.dumps(result.group_value)}"
+        label += ")"
+        click.echo(f"  [{result.status.upper()}] {label}")
+        click.echo(f"    measured: {result.measured_value if result.measured_value is not None else 'not available'}")
+        click.echo(f"    expected: {json.dumps(result.expected_limit, sort_keys=True)}")
+        if result.failure_reason:
+            click.echo(f"    reason: {result.failure_reason}")
 
 
 if __name__ == "__main__":

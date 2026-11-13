@@ -2,6 +2,9 @@
  * TypeScript types for ingester functionality
  */
 
+// The ingestion response reuses the execute API shape for output expectation checks.
+import type { OutputExpectationResult } from '@/api/execute'
+
 export interface IngesterMetadata {
   key: string
   name: string
@@ -102,6 +105,7 @@ export interface IngestResponse {
   run_id?: string | null
   deploy_artifact?: DeployArtifact
   pending_confirmation_report?: PendingConfirmationReport
+  output_expectation_results: OutputExpectationResult[]
 }
 
 export interface DatabaseConfig {

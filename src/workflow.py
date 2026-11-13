@@ -8,13 +8,16 @@ Usage:
 """
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
 
 from loguru import logger
 
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
+from src.output_expectations import OutputExpectationEvaluation, evaluate_output_expectations
 from src.specifications import CompositeProjectSpecification
+from src.specifications.output_expectations import OutputExpectationsSpecification
 from src.transforms.translate import extract_translation_map
 from src.utility import load_shape_file
 
@@ -47,6 +50,7 @@ async def normalize_project(
     drop_foreign_keys: bool,
     default_entity: str | None = None,
     env_file: str | None = None,
+    check_output_expectations: bool = False,
 ) -> ShapeShifter:
     """Normalize a project's tables and return the completed ShapeShifter without writing output.
 
@@ -58,7 +62,16 @@ async def normalize_project(
 
     shapeshifter: ShapeShifter = ShapeShifter(project=resolved_project, default_entity=default_entity)
 
-    await shapeshifter.normalize()
+    should_evaluate_expectations = check_output_expectations and bool(resolved_project.options.get("output_expectations"))
+    if should_evaluate_expectations:
+        await shapeshifter.normalize(continue_on_error=True)
+        shapeshifter.output_expectation_evaluation = evaluate_output_expectations(
+            project=resolved_project,
+            tables=shapeshifter.table_store,
+            incomplete_entities=shapeshifter.incomplete_entities,
+        )
+    else:
+        await shapeshifter.normalize()
 
     if drop_foreign_keys:
         shapeshifter.drop_foreign_key_columns()
@@ -80,23 +93,44 @@ async def workflow(
     drop_foreign_keys: bool,
     default_entity: str | None = None,
     env_file: str | None = None,
-) -> None:
-    """Main workflow to normalize data and store the results."""
+) -> OutputExpectationEvaluation | None:
+    """Normalize and store tables, then return any output expectation results."""
+    resolved_project = resolve_config(project, env_file=env_file)
+    expectation_specification = OutputExpectationsSpecification(resolved_project.cfg)
+    if not expectation_specification.is_satisfied_by():
+        error_details = "\n".join(str(error) for error in expectation_specification.errors)
+        raise ValueError(f"Invalid output expectation declarations:\n{error_details}")
+
     shapeshifter: ShapeShifter = await normalize_project(
-        project,
+        resolved_project,
         translate=translate,
         drop_foreign_keys=drop_foreign_keys,
         default_entity=default_entity,
-        env_file=env_file,
+        env_file=None,
+        check_output_expectations=True,
     )
+
+    evaluation: OutputExpectationEvaluation | None = shapeshifter.output_expectation_evaluation
+    if evaluation is not None and not evaluation.passed:
+        return evaluation
+
+    if shapeshifter.incomplete_entities:
+        raise ValueError(_incomplete_output_message(shapeshifter.incomplete_entities))
 
     shapeshifter.store(target=target, mode=target_type)
     shapeshifter.log_shapes(target=target)
+    return evaluation
 
     # if verbose:
     #     click.echo("\nTable Summary:")
     #     for name, table in shapeshifter.table_store.items():
     #         click.echo(f"  - {name}: {len(table)} rows")
+
+
+def _incomplete_output_message(incomplete_entities: Mapping[str, str]) -> str:
+    """Describe why a full run cannot write output with an incomplete entity."""
+    details = "; ".join(f"entity '{entity}': {reason}" for entity, reason in incomplete_entities.items())
+    return f"Full-run output is incomplete and was not written: {details}"
 
 
 def validate_project(project: str | ShapeShiftProject) -> bool:
