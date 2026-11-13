@@ -60,10 +60,19 @@ PROMOTION_HEADINGS: list[str] = [
 ACCEPTED_HEADING_SETS: tuple[list[str], ...] = (EXPECTED_HEADINGS, PROMOTION_HEADINGS)
 PROMOTION_MARKER = "<!-- promotion-pr -->"
 PROMOTION_ROUTES = frozenset({("dev", "staging"), ("staging", "main")})
-PROMOTION_JSON_FIELDS = "number,title,mergedAt,mergeCommit,closingIssuesReferences"
+PROMOTION_JSON_FIELDS = "number,title,mergedAt,mergeCommit,closingIssuesReferences,body"
 ORPHANED_HEADING = "## Detected orphaned commits"
 ORPHANED_COMMIT_LIMIT = 50
 MERGED_PULL_REQUEST_FIELDS = "number,mergedAt,mergeCommit"
+
+# GitHub closing keywords, which act only when they reach the default branch. Its recorded
+# `closingIssuesReferences` is empty for a pull request into `dev` or `staging`, so a promotion
+# reads the keywords from the `Summary` section of the pull requests it carries.
+CLOSING_KEYWORD_LINE_PATTERN = re.compile(
+    r"^\s*(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+(?P<references>.+)$",
+    re.IGNORECASE,
+)
+ISSUE_REFERENCE_PATTERN = re.compile(r"#(?P<number>[1-9][0-9]*)")
 
 # Subjects produced by tooling rather than by hand, so matching the text is stable. The
 # release version bump touches `backend/app/__init__.py`, which is inside the product tree,
@@ -1070,17 +1079,52 @@ def list_included_pull_requests(metadata: dict[str, Any], repo: str | None) -> l
     return sorted(included, key=lambda record: (str(record.get("mergedAt") or ""), int(record.get("number") or 0)))
 
 
+def summary_section_lines(body: str) -> list[str]:
+    """Return the lines under `## Summary`, up to the next level-two heading."""
+    lines: list[str] = []
+    inside = False
+    for line in body.splitlines():
+        heading = re.match(r"^##\s+(?P<title>.+?)\s*$", line)
+        if heading is not None:
+            inside = heading.group("title").casefold() == "summary"
+            continue
+        if inside:
+            lines.append(line)
+    return lines
+
+
+def closing_issue_numbers(body: str) -> list[int]:
+    """Read closing keywords from the `Summary` section of a pull request body.
+
+    The template requires one `Closes #<issue>` line per resolved issue at the end of
+    `Summary`. Reading only lines that start with a keyword keeps prose that mentions one,
+    such as a quoted review note, from adding a reference.
+    """
+    numbers: list[int] = []
+    for line in summary_section_lines(body):
+        match = CLOSING_KEYWORD_LINE_PATTERN.match(line)
+        if match is None:
+            continue
+        numbers.extend(int(found.group("number")) for found in ISSUE_REFERENCE_PATTERN.finditer(match.group("references")))
+    return numbers
+
+
 def collect_issue_numbers(records: Sequence[dict[str, Any]]) -> list[int]:
-    """Collect linked issue numbers from included pull request records."""
+    """Collect issue numbers resolved by the included pull requests.
+
+    Recorded closing references come first, then the closing keywords in each pull request's
+    `Summary`. GitHub records a closing reference only for a pull request into the default
+    branch, so a change pull request into `dev` contributes its issues through the text.
+    """
     numbers: list[int] = []
     for record in records:
         references = record.get("closingIssuesReferences")
-        if not isinstance(references, list):
-            continue
-        for reference in references:
-            number = reference.get("number") if isinstance(reference, dict) else None
-            if isinstance(number, int) and not isinstance(number, bool):
-                numbers.append(number)
+        if isinstance(references, list):
+            for reference in references:
+                number = reference.get("number") if isinstance(reference, dict) else None
+                if isinstance(number, int) and not isinstance(number, bool):
+                    numbers.append(number)
+        numbers.extend(closing_issue_numbers(str(record.get("body") or "")))
     return list(dict.fromkeys(numbers))
 
 
