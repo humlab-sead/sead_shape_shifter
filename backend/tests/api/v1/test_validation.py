@@ -145,7 +145,7 @@ class TestEntityValidation:
 
         assert response.status_code == 422
         assert "not_a_check" in response.json()["detail"]
-        assert calls == []
+        assert not calls
 
     async def test_data_validation_returns_fixed_entity_load_errors(
         self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client

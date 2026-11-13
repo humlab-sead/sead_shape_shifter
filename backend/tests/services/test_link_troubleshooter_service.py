@@ -494,6 +494,10 @@ async def test_context_trial_keeps_an_incomplete_baseline_without_totals() -> No
 @pytest.mark.asyncio
 async def test_context_trial_does_not_mutate_frames_or_saved_project(tmp_path) -> None:
     baseline = make_baseline()
+    
+    assert baseline.local_rows is not None
+    assert baseline.remote_rows is not None
+
     local_before = baseline.local_rows.copy(deep=True)
     remote_before = baseline.remote_rows.copy(deep=True)
     saved_fk = baseline._foreign_key

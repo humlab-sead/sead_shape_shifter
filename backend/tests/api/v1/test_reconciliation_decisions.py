@@ -373,7 +373,7 @@ class TestReconciliationDecisionRoutes:
             "extend": {"property_settings": []},
         }
         path = "/api/v1/projects/review/reconciliation/site/site_name"
-
+        progress = None
         with (
             patch.object(ReconciliationClient, "get_service_manifest", new=AsyncMock(return_value=unsupported_manifest)),
             patch.object(ReconciliationClient, "reconcile_batch", new=AsyncMock()) as reconcile_batch,
