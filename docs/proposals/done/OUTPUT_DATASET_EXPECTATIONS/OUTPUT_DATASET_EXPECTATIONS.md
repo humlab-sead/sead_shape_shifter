@@ -2,9 +2,10 @@
 
 ## Status
 
-- Approved change request
+- **Implemented** (branch `feature/output-dataset-expectations`; merged in [PR #730](https://github.com/humlab-sead/sead_shape_shifter/pull/730)).
 - Scope: Check configured metrics on transformed entity output during a full run.
 - Goal: Detect output that is structurally valid but unexpectedly empty, incomplete, or different in size.
+- Validation: All four phases are implemented and verified. Phase task plans record passing evidence: Phase 1 declaration validation, Phase 2 metric evaluation on complete normalized output, Phase 3 dispatcher/CLI gating (`V-1`–`V-6`), and Phase 4 project-table ingestion gating (`V-1`–`V-5`).
 
 ## Summary
 
