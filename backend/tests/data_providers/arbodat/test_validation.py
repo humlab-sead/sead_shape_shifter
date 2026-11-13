@@ -4,7 +4,6 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-import jpype
 import pytest
 from dotenv import dotenv_values
 from loguru import logger
@@ -19,7 +18,6 @@ from backend.app.validators.data_validation_orchestrator import (
     TableStoreDataFetchStrategy,
 )
 from backend.app.validators.target_model_validator import TargetModelValidator
-from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.specifications.project import CompositeProjectSpecification
@@ -32,25 +30,16 @@ TARGET_MODEL_PATH: Path = TEST_DATA_DIR / "target_models" / "sead_standard_model
 PROJECTS_DIR: Path = TEST_DATA_DIR / "projects"
 
 
-@pytest.fixture(scope="module", autouse=True)
-def initialize_jvm():
-    """Initialize JVM once for all tests in this module."""
-    if not jpype.isJVMStarted():
-        init_jvm_for_ucanaccess()
-    yield
-
-
 @pytest.fixture(scope="module", name="arbodat_project")
-def _arbodat_project() -> ShapeShiftProject:
+def _arbodat_project(local_data_directory: Path) -> ShapeShiftProject:
     """Load the backend integration test project configuration once per module.
 
-    Applies data/test.env first and the local data/.env second, so a variable defined in
-    both files takes the value from data/.env. The environment is applied only for the
-    duration of the load through a temporary MonkeyPatch; directive values are resolved
-    into the returned project, so tests do not depend on the process environment.
+    Applies test.env first and the local .env second, so a variable defined in both files
+    takes the value from .env. The environment is applied only for the duration of the
+    load through a temporary MonkeyPatch; directives are resolved into the project.
     """
     with pytest.MonkeyPatch.context() as env_patch:
-        for env_file, override in (("data/test.env", False), ("data/.env", True)):
+        for env_file, override in ((local_data_directory / "test.env", False), (local_data_directory / ".env", True)):
             for name, value in dotenv_values(env_file).items():
                 if value is not None and (override or name not in os.environ):
                     env_patch.setenv(name, value)
@@ -105,7 +94,7 @@ def test_check_circular_dependencies(project: ShapeShiftProject):
 
 
 @pytest.mark.asyncio
-async def test_data_validation_orchestrator(project: ShapeShiftProject):
+async def test_data_validation_orchestrator(ucanaccess_required: None, project: ShapeShiftProject):  # pylint: disable=unused-argument
 
     expected_issues: set[str] = {
         "warning:dating:EMPTY_RESULT",
