@@ -100,7 +100,7 @@ def _write_reconciliation_catalog(tmp_path: Path) -> None:
             }
         },
     }
-    with open(tmp_path / "test_project" / "test_project-reconciliation.yml", "w", encoding="utf-8") as handle:
+    with open(tmp_path / "test_project" / "shapeshifter.reconciliation.yml", "w", encoding="utf-8") as handle:
         yaml.dump(catalog, handle, sort_keys=False)
 
 
@@ -139,7 +139,7 @@ def _write_sample_reconciliation_catalog(tmp_path: Path) -> None:
             }
         },
     }
-    with open(tmp_path / "test_project" / "test_project-reconciliation.yml", "w", encoding="utf-8") as handle:
+    with open(tmp_path / "test_project" / "shapeshifter.reconciliation.yml", "w", encoding="utf-8") as handle:
         yaml.dump(catalog, handle, sort_keys=False)
 
 
@@ -177,17 +177,17 @@ def _write_mapping_sidecar(
             }
         },
     }
-    with open(tmp_path / "test_project" / "test_project-mapping.yml", "w", encoding="utf-8") as handle:
+    with open(tmp_path / "test_project" / "shapeshifter.mapping.yml", "w", encoding="utf-8") as handle:
         yaml.dump(sidecar, handle, sort_keys=False)
 
 
 def _read_reconciliation_catalog(tmp_path: Path) -> dict:
-    path = tmp_path / "test_project" / "test_project-reconciliation.yml"
+    path = tmp_path / "test_project" / "shapeshifter.reconciliation.yml"
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
 def _write_reconciliation_catalog_data(tmp_path: Path, catalog: dict) -> None:
-    path = tmp_path / "test_project" / "test_project-reconciliation.yml"
+    path = tmp_path / "test_project" / "shapeshifter.reconciliation.yml"
     path.write_text(yaml.safe_dump(catalog, sort_keys=False), encoding="utf-8")
 
 
@@ -253,7 +253,7 @@ class TestReconciliationExportApi:
         await _create_project(authorized_client, "site", _SITE_ENTITY)
         _write_reconciliation_catalog(tmp_path)
         _write_mapping_sidecar(tmp_path)
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
 
         response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
 
@@ -298,7 +298,7 @@ class TestReconciliationExportApi:
         catalog["entities"]["site"]["site_code"]["mapping"] = [decision]
         _write_reconciliation_catalog_data(tmp_path, catalog)
         _write_mapping_sidecar(tmp_path)
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
         original = sidecar_path.read_bytes()
 
         with patch.object(ReconciliationClient, "verify_candidates", new=AsyncMock()) as verify:
@@ -328,7 +328,7 @@ class TestReconciliationExportApi:
         assert response.status_code == 400
         assert "re-accepted" in response.json()["detail"]["message"]
         verify.assert_not_awaited()
-        assert not (tmp_path / "test_project" / "test_project-mapping.yml").exists()
+        assert not (tmp_path / "test_project" / "shapeshifter.mapping.yml").exists()
 
     async def test_verification_outage_exports_unverified_then_retry_verifies_link(
         self, tmp_path: Path, monkeypatch, authorized_client
@@ -347,7 +347,7 @@ class TestReconciliationExportApi:
 
         assert unavailable.status_code == 200, unavailable.text
         assert {item["outcome"] for item in unavailable.json()["outcomes"]} == {"unverified"}
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
         sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
         assert all(link["verified_at"] is None for link in sidecar["entities"]["site"]["links"].values())
 
@@ -386,7 +386,7 @@ class TestReconciliationExportApi:
         assert response.json()["exported"] == 0
         assert response.json()["removed"] == 2
         assert [item["outcome"] for item in response.json()["outcomes"]] == ["not_found", "invalid_candidate"]
-        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert sidecar["entities"]["site"]["links"] == {}
 
     async def test_mismatched_verified_target_id_does_not_write_links(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
@@ -410,7 +410,7 @@ class TestReconciliationExportApi:
 
         assert response.status_code == 500
         assert "different target ID" in response.json()["detail"]["message"]
-        assert not (tmp_path / "test_project" / "test_project-mapping.yml").exists()
+        assert not (tmp_path / "test_project" / "shapeshifter.mapping.yml").exists()
 
     @pytest.mark.parametrize("changed_input", ["catalog", "project", "sidecar"])
     async def test_export_rejects_inputs_changed_during_verification(
@@ -422,9 +422,9 @@ class TestReconciliationExportApi:
         _write_mapping_sidecar(tmp_path)
         project_dir = tmp_path / "test_project"
         input_paths = {
-            "catalog": project_dir / "test_project-reconciliation.yml",
+            "catalog": project_dir / "shapeshifter.reconciliation.yml",
             "project": _project_path(tmp_path),
-            "sidecar": project_dir / "test_project-mapping.yml",
+            "sidecar": project_dir / "shapeshifter.mapping.yml",
         }
         changed_path = input_paths[changed_input]
         original_changed_bytes = changed_path.read_bytes()
@@ -473,7 +473,7 @@ class TestReconciliationExportApi:
         assert response.status_code == 200, response.text
         assert response.json()["exported"] == 1
         assert response.json()["removed"] == 0
-        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert sidecar["entities"]["site"]["links"]["B"]["target_id"] == 303
 
     async def test_export_records_local_only_approvals_without_creating_id_links(
@@ -499,7 +499,7 @@ class TestReconciliationExportApi:
         assert response.json()["exported"] == 2
         assert response.json()["exported_local_only_approvals"] == 1
         assert response.json()["removed_local_only_approvals"] == 0
-        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert set(sidecar["entities"]["site"]["links"]) == {"A", "B"}
         approval = sidecar["entities"]["site"]["local_only_approvals"]["C"]
         assert approval["owner"] == {"entity_name": "site", "target_field": "site_code"}
@@ -528,7 +528,7 @@ class TestReconciliationExportApi:
         assert response.json()["exported"] == 0
         assert response.json()["removed"] == 1
         assert response.json()["removed_local_only_approvals"] == 1
-        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert "B" not in sidecar["entities"]["site"]["links"]
         assert "C" not in sidecar["entities"]["site"]["local_only_approvals"]
 
@@ -577,7 +577,7 @@ class TestReconciliationExportApi:
                 }
             ],
         }
-        assert not (tmp_path / "test_project" / "test_project-mapping.yml").exists()
+        assert not (tmp_path / "test_project" / "shapeshifter.mapping.yml").exists()
 
     async def test_export_to_mapping_returns_404_when_reconciliation_catalog_is_missing(
         self, tmp_path: Path, monkeypatch, authorized_client
@@ -599,7 +599,7 @@ class TestReconciliationExportApi:
         await _create_project(authorized_client, "site", _SITE_ENTITY)
         _write_reconciliation_catalog(tmp_path)
         _write_mapping_sidecar(tmp_path)
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
         sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
         sidecar["entities"]["site"]["links"]["B"] = {
             "target_id": 303,
@@ -646,7 +646,7 @@ class TestReconciliationExportApi:
 
         assert response.status_code == 409
         assert "claim for key" in response.json()["detail"]["message"]
-        assert not (tmp_path / "test_project" / "test_project-mapping.yml").exists()
+        assert not (tmp_path / "test_project" / "shapeshifter.mapping.yml").exists()
 
     async def test_local_only_export_conflicts_with_protected_link_or_other_owner_approval(
         self, tmp_path: Path, monkeypatch, authorized_client
@@ -662,7 +662,7 @@ class TestReconciliationExportApi:
             "created_by": "operator",
         }
         _write_mapping_sidecar(tmp_path, links={"C": protected_link})
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
         original = sidecar_path.read_bytes()
 
         response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
@@ -691,7 +691,7 @@ class TestReconciliationExportApi:
         await _create_project(authorized_client, "site", _SITE_ENTITY)
         _write_reconciliation_catalog(tmp_path)
         _write_mapping_sidecar(tmp_path)
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
         sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
         sidecar["entities"]["site"]["public_id"] = "wrong_id"
         sidecar_path.write_text(yaml.safe_dump(sidecar, sort_keys=False), encoding="utf-8")
@@ -708,7 +708,7 @@ class TestReconciliationExportApi:
         await _create_project(authorized_client, "site", _SITE_ENTITY)
         _write_reconciliation_catalog(tmp_path)
         _write_mapping_sidecar(tmp_path)
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
         original = sidecar_path.read_bytes()
 
         def fail_save(*_args, **_kwargs):
@@ -765,7 +765,7 @@ class TestReconciliationExportApi:
         )
         _write_reconciliation_catalog_data(tmp_path, catalog)
         _write_mapping_sidecar(tmp_path)
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
         sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
         sidecar["entities"]["site"]["links"]["A"]["target_id"] = 111
         sidecar["entities"]["site"]["links"]["C"] = {

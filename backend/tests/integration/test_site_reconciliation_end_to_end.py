@@ -305,8 +305,8 @@ async def _export(client: httpx.AsyncClient, path: str) -> dict:
     return response.json()
 
 
-def _sidecar(directory: Path, name: str) -> dict:
-    return yaml.safe_load((directory / f"{name}-mapping.yml").read_text(encoding="utf-8"))
+def _sidecar(directory: Path) -> dict:
+    return yaml.safe_load((directory / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
 
 
 async def _register_site_reconciliation(client: httpx.AsyncClient, name: str) -> str:
@@ -384,18 +384,18 @@ async def test_review_export_offline_normalization_and_transitions(authorized_cl
     await _decision(authorized_client, path, "rejected", "rejected")
     first = await _export(authorized_client, path)
     assert first["outcomes"] == [{"local_key_value": "accepted", "outcome": "verified", "reason": None}]
-    entity = _sidecar(directory, name)["entities"]["site"]
+    entity = _sidecar(directory)["entities"]["site"]
     assert entity["links"]["accepted"]["target_id"] == site_id
     assert entity["links"]["accepted"]["owner"] == {"entity_name": "site", "target_field": "site_name"}
     assert entity["links"]["accepted"]["verified_at"]
     assert entity["local_only_approvals"]["local"]["owner"] == {"entity_name": "site", "target_field": "site_name"}
     assert set(entity["links"]) == {"accepted"}
     assert set(entity["local_only_approvals"]) == {"local"}
-    sidecar_bytes = (directory / f"{name}-mapping.yml").read_bytes()
+    sidecar_bytes = (directory / "shapeshifter.mapping.yml").read_bytes()
     rerun = await authorized_client.post(f"{path}/auto-reconcile-sync")
     assert rerun.status_code == 200, rerun.text
     assert rerun.json()["proposed"] == 1
-    catalog = yaml.safe_load((directory / f"{name}-reconciliation.yml").read_text(encoding="utf-8"))
+    catalog = yaml.safe_load((directory / "shapeshifter.reconciliation.yml").read_text(encoding="utf-8"))
     assert {item["local_key_value"]: item["status"] for item in catalog["entities"]["site"]["site_name"]["mapping"]} == {
         "accepted": "accepted",
         "local": "local-only",
@@ -404,7 +404,7 @@ async def test_review_export_offline_normalization_and_transitions(authorized_cl
     }
     unchanged = await _export(authorized_client, path)
     assert unchanged["exported"] == unchanged["removed"] == unchanged["exported_local_only_approvals"] == 0
-    assert (directory / f"{name}-mapping.yml").read_bytes() == sidecar_bytes
+    assert (directory / "shapeshifter.mapping.yml").read_bytes() == sidecar_bytes
 
     with pytest.MonkeyPatch.context() as no_network:
         no_network.setattr(httpx.AsyncClient, "request", lambda *_args, **_kwargs: pytest.fail("Normalization used HTTP"))
@@ -422,20 +422,20 @@ async def test_review_export_offline_normalization_and_transitions(authorized_cl
     await _decision(authorized_client, path, "accepted", "rejected")
     rejected = await _export(authorized_client, path)
     assert rejected["removed"] == 1
-    assert "accepted" not in _sidecar(directory, name)["entities"]["site"]["links"]
+    assert "accepted" not in _sidecar(directory)["entities"]["site"]["links"]
     await _decision(authorized_client, path, "accepted", "local-only")
     await _export(authorized_client, path)
-    assert "accepted" in _sidecar(directory, name)["entities"]["site"]["local_only_approvals"]
+    assert "accepted" in _sidecar(directory)["entities"]["site"]["local_only_approvals"]
     await _decision(authorized_client, path, "accepted", "accepted", site_id, uri)
     await _export(authorized_client, path)
-    assert "accepted" not in _sidecar(directory, name)["entities"]["site"]["local_only_approvals"]
+    assert "accepted" not in _sidecar(directory)["entities"]["site"]["local_only_approvals"]
 
     missing_id = site_id + 1000000000
     absent_uri = uri.rsplit("/", 1)[0] + f"/{missing_id}"
     await _decision(authorized_client, path, "accepted", "accepted", missing_id, absent_uri)
     absent = await _export(authorized_client, path)
     assert absent["outcomes"][0]["outcome"] == "not_found"
-    assert "accepted" not in _sidecar(directory, name)["entities"]["site"]["links"]
+    assert "accepted" not in _sidecar(directory)["entities"]["site"]["links"]
 
 
 @pytest.mark.asyncio
@@ -572,8 +572,8 @@ async def test_export_outage_recovery_preserves_manual_and_unowned_links(authori
     await _decision(authorized_client, path, "accepted", "accepted", site_id, uri)
     await _export(authorized_client, path)
 
-    sidecar_path = directory / f"{name}-mapping.yml"
-    sidecar = _sidecar(directory, name)
+    sidecar_path = directory / "shapeshifter.mapping.yml"
+    sidecar = _sidecar(directory)
     protected_links = {
         "manual-protected": {
             "target_id": site_id,
@@ -596,7 +596,7 @@ async def test_export_outage_recovery_preserves_manual_and_unowned_links(authori
     await _decision(authorized_client, path, "accepted", "rejected")
     removed = await _export(authorized_client, path)
     assert removed["removed"] == 1
-    links = _sidecar(directory, name)["entities"]["site"]["links"]
+    links = _sidecar(directory)["entities"]["site"]["links"]
     assert set(links) == set(protected_links)
     for key, expected in protected_links.items():
         assert links[key]["target_id"] == expected["target_id"]
@@ -614,7 +614,7 @@ async def test_export_outage_recovery_preserves_manual_and_unowned_links(authori
             "Retry export when it is available.",
         }
     ]
-    unverified_sidecar = _sidecar(directory, name)["entities"]["site"]
+    unverified_sidecar = _sidecar(directory)["entities"]["site"]
     assert unverified_sidecar["links"]["accepted"]["verified_at"] is None
     assert unverified_sidecar["links"]["accepted"]["owner"] == {"entity_name": "site", "target_field": "site_name"}
     assert set(unverified_sidecar["links"]) == {"accepted", *protected_links}
@@ -622,7 +622,7 @@ async def test_export_outage_recovery_preserves_manual_and_unowned_links(authori
     monkeypatch.setattr(settings, "RECONCILIATION_SERVICE_URL", live_service_url)
     retried = await _export(authorized_client, path)
     assert retried["outcomes"] == [{"local_key_value": "accepted", "outcome": "verified", "reason": None}]
-    verified_sidecar = _sidecar(directory, name)["entities"]["site"]
+    verified_sidecar = _sidecar(directory)["entities"]["site"]
     assert verified_sidecar["links"]["accepted"]["verified_at"]
     for key, expected in protected_links.items():
         assert verified_sidecar["links"][key]["target_id"] == expected["target_id"]

@@ -73,7 +73,7 @@ The Reconciliation tab shows **Online** with a supported-type count when the bac
 Reconciliation data lives in a separate catalog file. Shape Shifter looks for it in the project folder:
 
 ```text
-data/projects/<project>/<project>-reconciliation.yml
+data/projects/<project>/shapeshifter.reconciliation.yml
 ```
 
 There is no `@include` entry and no `reconciliation:` block in `shapeshifter.yml`. When the file is missing, Shape Shifter starts with an empty catalog.
@@ -263,7 +263,7 @@ A row with no candidate, or only low-scoring candidates, needs a reviewer decisi
 Select **Export to Mapping** to copy accepted decisions into the mapping sidecar.
 
 - Each accepted candidate URI is checked against SEAD.
-- Valid decisions are written to `<project>-mapping.yml` with `source: reconciliation`, `committed_at`, and an owner recorded.
+- Valid decisions are written to `shapeshifter.mapping.yml` with `source: reconciliation`, `committed_at`, and an owner recorded.
 - A candidate reported as absent or invalid is not exported, and any older link owned by that specification for the same key is removed. The result names the key and the reason.
 - When the Authority Service is unavailable, the link is written with an empty `verified_at` and shown as unverified. Export again after recovery to retry the check.
 - Only links owned by that specification are updated; its stale owned links are removed. Manual links and unowned links are protected.
@@ -351,7 +351,7 @@ curl http://localhost:8000/reconcile
 curl http://localhost:8025/api/v1/reconciliation/health
 
 # The configured service URL
-grep service_url data/projects/my_project/my_project-reconciliation.yml
+grep service_url data/projects/my_project/shapeshifter.reconciliation.yml
 ```
 
 ### Every Row Is Unreviewable
@@ -377,7 +377,7 @@ A key is already owned by another specification, or the sidecar metadata does no
 ### Decisions Do Not Persist
 
 1. Check the browser console and the network tab for failed requests.
-2. Confirm `data/projects/<project>/<project>-reconciliation.yml` is writable.
+2. Confirm `data/projects/<project>/shapeshifter.reconciliation.yml` is writable.
 3. Reload the project and check that the decisions are listed again.
 
 ### Matching Looks Out of Date

@@ -33,6 +33,8 @@ class EntityMappingManager:
     Query and introspection operations (like schema inspection) are handled by ReconciliationService.
     """
 
+    CATALOG_FILENAME = "shapeshifter.reconciliation.yml"
+
     def __init__(self, project_service: ProjectService, config_dir: Path):
         """
         Initialize entity resolution catalog manager.
@@ -45,8 +47,12 @@ class EntityMappingManager:
         self.config_dir = Path(config_dir)
 
     def _get_default_catalog_filename(self, project_name: str) -> Path:
-        """Get path to reconciliation YAML file."""
-        return self.config_dir / project_name / f"{project_name}-reconciliation.yml"
+        """Get the default path to the reconciliation catalog YAML file.
+
+        The catalog has the fixed name ``shapeshifter.reconciliation.yml``
+        inside the project directory.
+        """
+        return self.config_dir / project_name / self.CATALOG_FILENAME
 
     def load_catalog(self, project_name: str, filename: Path | None = None) -> core.EntityResolutionCatalog:
         """
