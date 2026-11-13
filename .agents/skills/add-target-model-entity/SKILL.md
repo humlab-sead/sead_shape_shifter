@@ -60,7 +60,8 @@ Run these from the repository root. Use `.venv/bin/python`; `uv run` is unreliab
 for ad-hoc scripts in this repository.
 
 1. **Confirm the table and pick a role.** `columns.csv` column `table_name` is the
-   table; the gap triage in `resources/target_models/TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md`
+   table; the closed gap triage in
+   `docs/proposals/TARGET_MODEL_PROJECT_REQUIREMENTS/archive/TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md`
    usually suggests the entity name, role, and tier.
 
 2. **Inspect the source table in one call:**
@@ -111,8 +112,8 @@ for ad-hoc scripts in this repository.
    |---|---|
    | `tests/target_model/test_spec_files.py` | `assert len(target_model.entities) == N` |
    | `tests/model/test_target_model_conformance.py` | the `sead_missing_sample_group` baseline dict: `CONDITIONAL_FK_AWAITING_RECONCILIATION` rises by one per new conditional FK owned by an entity the fixture declares |
-   | `resources/target_models/README.md` | entity count, mapped/unmapped, model version, and the gap-triage row |
-   | `resources/target_models/TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md` | strike the completed candidate, adjust the gap total, and the "remaining Tier 1" wording |
+   | `resources/target_models/README.md` | entity count, mapped/unmapped, model version |
+   | `docs/proposals/TARGET_MODEL_PROJECT_REQUIREMENTS/TARGET_MODEL_COVERAGE_REVIEW.md` | the coverage counts and any remaining-gap note; the archived gap triage is frozen |
 
    Take the numbers from the verification output, never from memory or from the
    previous document text.
@@ -158,8 +159,8 @@ for ad-hoc scripts in this repository.
   `taxa_tree_genus.family_id` points at the unmapped `taxa_tree_family`), declare
   the column and leave the FK out. Naming an entity that does not exist produces
   `UNKNOWN_FOREIGN_KEY_ENTITY`. Record the deferred FK in
-  `TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md` so the next pass picks it up, and
-  re-add the FK once the target is modelled.
+  `docs/proposals/TARGET_MODEL_PROJECT_REQUIREMENTS/TARGET_MODEL_COVERAGE_REVIEW.md`
+  so the next pass picks it up, and re-add the FK once the target is modelled.
 - A nullable FK column means an optional FK (`required: false`), which creates no
   insert-order edge. Use that for self-references and for back-references such as
   `site.site_preservation_status_id`, where the target row is an aggregate child of

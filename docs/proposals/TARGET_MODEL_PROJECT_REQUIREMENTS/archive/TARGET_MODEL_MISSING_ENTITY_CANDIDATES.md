@@ -1,20 +1,20 @@
-# Target Model Missing Entity Candidates: 2026-10-26 (recounted 2026-11-10)
+# Target Model Missing Entity Candidates: 2026-10-26 (recounted 2026-11-12)
 
-**Model checked:** [sead_standard_model.yml](sead_standard_model.yml) (version 2.5.0)
+**Model checked:** [sead_standard_model.yml](../../../../resources/target_models/sead_standard_model.yml) (version 2.8.0)
 **Schema checked (original, 2026-10-26):** `docs/sead/01_tables.sql` and `docs/sead/05_constraints.sql`
 **Schema checked (recount, 2026-11-10):** `docs/investigations/sead-target-model-completeness/columns.csv` — the declared source of truth (a run of `exported-columns.sql` against `sead_staging`)
 
-## Recount against the declared source of truth (2026-11-10)
+## Recount against the declared source of truth (2026-11-12)
 
 The completeness investigation closed on 2026-11-10 and declared `columns.csv`
 (source of truth) the authoritative surface. Recomputing against it, after the
-declared exclusions, gives **40 unmapped tables**:
+declared exclusions, gives **17 unmapped tables**:
 
 - Effective surface: 150 tables (156 in the export, minus 6 `%colours` / `%images`
-  exclusions). 110 mapped, 40 unmapped, 0 out-of-source.
-- All Tier 1 entities are now modelled. The 40 remaining gaps are 15 Tier 2
-  data-capture tables, 16 Tier 3 reference tables, 8 newer subsystem tables, and the
-  `tbl_site_site_types` bridge named under the Tier 1 correction below.
+  exclusions). 133 mapped, 17 unmapped, 0 out-of-source.
+- All Tier 1 and Tier 2 entities are now modelled. The 17 remaining gaps are 9
+  Tier 3 reference tables and 8 newer subsystem tables. The site-type bridge
+  correction described below is now complete.
 - 9 are new, because the `sead_staging` surface is wider than the 137-table schema
   dump the original 42-gap count used. These are subsystem tables the dump omitted:
 
@@ -61,44 +61,47 @@ rows (`required_when.has_new_rows`), never for every insert.
 | ~~`season`~~ | ~~`tbl_seasons`~~ | **Done:** entity `season`, conditional FK from `analysis_dating_range`; conditional `season_type` FK |
 | ~~`season_type`~~ | ~~`tbl_season_types`~~ | **Done:** entity `season_type`, conditional FK from `season` |
 
-Related correction: the model's `site` entity declares a `site_type_id` column, but
-`tbl_sites` has no such column in the schema dump. The site-to-site-type relationship
-is the bridge table `tbl_site_site_types` (with `is_primary_type` and `confidence_code`
-columns). The model should add a `site_site_type` bridge entity, in the style of
-`site_location`, and drop the direct column from `site`.
+Related correction (done 2026-11-12): `tbl_sites` has no `site_type_id` column. The
+site-to-site-type relationship is represented by `tbl_site_site_types`, which is
+now modelled as the optional `site_site_type` bridge. The model no longer declares
+`site.site_type_id`; project configurations that still use that direct field need
+a separate migration.
 
-## Tier 2 — Clear data-capture entities, likely in clearinghouse scope
+## Tier 2 — Clear data-capture entities (complete 2026-11-12)
 
-Fact or bridge entities that carry submitted research data. Decide scope, then model.
+The 15 remaining Tier 2 entities are now modelled. Required foreign keys are
+conditional on new rows in their owning entities; nullable foreign keys remain
+optional.
 
 | Candidate entity | Table | Notes |
 |---|---|---|
-| `analysis_entity_age` | `tbl_analysis_entity_ages` | Dating facts on analysis entities; FKs to `analysis_entity` and `chronology` (both modeled); has a generated `age_range` column |
-| `analysis_entity_dimension` | `tbl_analysis_entity_dimensions` | Mirrors `analysis_value_dimension`, which is already modeled |
-| `analysis_entity_prep_method` | `tbl_analysis_entity_prep_methods` | Bridge: analysis_entity to method |
-| `measured_value` | `tbl_measured_values` | Fact on analysis_entity |
-| `measured_value_dimension` | `tbl_measured_value_dimensions` | Child of measured_value, same pattern as other dimension tables |
-| `geochron_reference` | `tbl_geochron_refs` | Bridge geochronology to citation |
-| `relative_age_reference` | `tbl_relative_age_refs` | Bridge relative_ages to citation |
-| `sample_group_description` | `tbl_sample_group_descriptions` | Counterpart to `sample_description`, which is modeled |
-| `sample_group_description_type` | `tbl_sample_group_description_types` | Classifier for the above |
-| `lithology` | `tbl_lithology` | Stratigraphic description attached to a sample group |
-| `site_reference` | `tbl_site_references` | Site to citation bridge, parallel to `sample_group_reference` |
-| `site_other_record` | `tbl_site_other_records` | Site-level misc record with uuid; FKs to citation and record_type |
+| ~~`analysis_entity_age`~~ | ~~`tbl_analysis_entity_ages`~~ | **Done (2026-11-12):** dating facts with optional links to `analysis_entity` and `chronology`; `age_range` is represented as a string |
+| ~~`analysis_entity_dimension`~~ | ~~`tbl_analysis_entity_dimensions`~~ | **Done (2026-11-12):** dimension measurement attached to `analysis_entity` |
+| ~~`analysis_entity_prep_method`~~ | ~~`tbl_analysis_entity_prep_methods`~~ | **Done (2026-11-12):** bridge from `analysis_entity` to `method` |
+| ~~`measured_value`~~ | ~~`tbl_measured_values`~~ | **Done (2026-11-12):** measured value attached to `analysis_entity` |
+| ~~`measured_value_dimension`~~ | ~~`tbl_measured_value_dimensions`~~ | **Done (2026-11-12):** dimension measurement attached to `measured_value` |
+| ~~`geochron_reference`~~ | ~~`tbl_geochron_refs`~~ | **Done (2026-11-12):** bridge from `geochronology` to `citation` |
+| ~~`relative_age_reference`~~ | ~~`tbl_relative_age_refs`~~ | **Done (2026-11-12):** bridge from `relative_ages` to `citation` |
+| ~~`sample_group_description`~~ | ~~`tbl_sample_group_descriptions`~~ | **Done (2026-11-12):** description linked to `sample_group_description_type` and optionally `sample_group` |
+| ~~`sample_group_description_type`~~ | ~~`tbl_sample_group_description_types`~~ | **Done (2026-11-12):** classifier for sample-group descriptions |
+| ~~`lithology`~~ | ~~`tbl_lithology`~~ | **Done (2026-11-12):** stratigraphic description attached to `sample_group` |
+| ~~`site_reference`~~ | ~~`tbl_site_references`~~ | **Done (2026-11-12):** site-to-citation bridge |
+| ~~`site_other_record`~~ | ~~`tbl_site_other_records`~~ | **Done (2026-11-12):** site-level record with a UUID and optional citation and record type |
 | ~~`site_preservation_status`~~ | ~~`tbl_site_preservation_status`~~ | **Done (2026-11-10):** modelled as `site_preservation_status` (fact, aggregate child of `site`); `site.site_preservation_status_id` declares the FK |
-| `dataset_method` | `tbl_dataset_methods` | Bridge dataset to method; `dataset` also carries a single `method_id` FK |
-| `dataset_submission` | `tbl_dataset_submissions` | Legacy submission tracking; may be superseded by the newer `submission` entity — decide before modeling |
-| `dataset_submission_type` | `tbl_dataset_submission_types` | Classifier for the above |
+| ~~`dataset_method`~~ | ~~`tbl_dataset_methods`~~ | **Done (2026-11-12):** bridge from `dataset` to `method` |
+| ~~`dataset_submission`~~ | ~~`tbl_dataset_submissions`~~ | **Done (2026-11-12):** legacy dataset submission tracking modelled alongside the newer `submission` entity |
+| ~~`dataset_submission_type`~~ | ~~`tbl_dataset_submission_types`~~ | **Done (2026-11-12):** classifier for legacy dataset submissions |
 
-## Tier 3 — Taxonomy enrichment and reference data, probably out of scope
+## Tier 3 — Taxonomy enrichment and reference data
 
 Low priority for the clearinghouse flow. Include only if a project needs them.
 
-- `species_association` / `species_association_type` — `tbl_species_associations`, `tbl_species_association_types`
-- `taxa_reference_specimen` — `tbl_taxa_reference_specimens`
-- `taxa_seasonality` — `tbl_taxa_seasonality`; would also require `activity_type` (`tbl_activity_types`) and `season`
-- `taxonomy_note` — `tbl_taxonomy_notes`
-- `taxonomic_order_biblio` — `tbl_taxonomic_order_biblio`
+- ~~`species_association` / `species_association_type`~~ — `tbl_species_associations`, `tbl_species_association_types`. **Done (2026-11-12):** modelled with the optional association-type and bibliography links and the conditional taxon link.
+- ~~`taxa_reference_specimen`~~ — `tbl_taxa_reference_specimens`. **Done (2026-11-12):** modelled with conditional taxon and contact links.
+- ~~`taxa_seasonality`~~ — `tbl_taxa_seasonality`. **Done (2026-11-12):** modelled with conditional activity-type, taxon, and location links and an optional season link.
+- ~~`activity_type`~~ — `tbl_activity_types`. **Done (2026-11-12):** modelled as the required classifier dependency of `taxa_seasonality`.
+- ~~`taxonomy_note`~~ — `tbl_taxonomy_notes`. **Done (2026-11-12):** modelled with conditional taxon and bibliography links.
+- ~~`taxonomic_order_biblio`~~ — `tbl_taxonomic_order_biblio`. **Done (2026-11-12):** modelled with optional bibliography and taxonomic-order-system links.
 - `text_biology`, `text_distribution`, `text_identification_key` — `tbl_text_biology`, `tbl_text_distribution`, `tbl_text_identification_keys`
 - `imported_taxa_replacement` — `tbl_imported_taxa_replacements`; internal ETL bookkeeping
 - `temperatures` — `tbl_temperatures`; climate proxy data, likely legacy
@@ -130,11 +133,11 @@ present. The pinned `docs/sead/01_tables.sql` dump simply predates these tables.
 
 ## Suggested next steps
 
-1. Tier 1 is complete. Next priority is the `site` / `site_type` relationship
-   correction: add a `site_site_type` bridge and drop the direct column from `site`.
-2. Decide clearinghouse scope for the Tier 2 entities, then model the accepted ones.
-   `analysis_dating_range` and `season` already declare `season_id`; the remaining
-   Tier 3 dependency `tbl_taxa_seasonality` needs its own scope decision.
+1. Tier 1 entities, Tier 2 data-capture tables, and the `site` / `site_type` bridge
+   correction are complete.
+2. Decide whether the remaining Tier 3 reference and subsystem entities are needed.
+   The selected taxa tables, including the `activity_type` dependency of
+   `taxa_seasonality`, are now modelled.
 3. ~~Refresh `docs/sead/01_tables.sql` and `05_constraints.sql` so the six newer tables
    appear in the schema dump.~~ Superseded (2026-11-10): `columns.csv` against
    `sead_staging` is the declared source of truth; the schema dump is historical

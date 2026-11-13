@@ -1,7 +1,7 @@
 model:
   name: SEAD Clearinghouse Extended
   format_version: "1"
-  version: 2.5.0
+  version: 2.8.0
   description: SEAD archaeological research data model with enhanced spatial, dating, and metadata coverage
 
 entities:
@@ -65,9 +65,6 @@ entities:
         required: true
         type: string
         nullable: false
-      site_type_id:
-        type: integer
-        nullable: true
       national_site_identifier:
         type: string
         nullable: true
@@ -92,7 +89,66 @@ entities:
         via: site_location
       - entity: site_type
         required: false
+        via: site_site_type
       - entity: site_preservation_status
+        required: false
+
+  site_reference:
+    role: bridge
+    required: false
+    description: Citation associated with a site.
+    domains: [spatial, provenance, bibliography]
+    target_table: tbl_site_references
+    public_id: site_reference_id
+    unique_sets:
+      - [site_id, biblio_id]
+    columns:
+      site_id:
+        type: integer
+        nullable: true
+      biblio_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: site
+        required: false
+      - entity: citation
+        required_when:
+          has_new_rows: site_reference
+
+  site_other_record:
+    role: fact
+    required: false
+    description: Other record associated with a site.
+    domains: [spatial, provenance]
+    target_table: tbl_site_other_records
+    public_id: site_other_records_id
+    unique_sets:
+      - [site_other_records_uuid]
+    columns:
+      site_id:
+        type: integer
+        nullable: true
+      biblio_id:
+        type: integer
+        nullable: true
+      record_type_id:
+        type: integer
+        nullable: true
+      description:
+        type: string
+        nullable: true
+      site_other_records_uuid:
+        required: true
+        type: uuid
+        nullable: false
+    foreign_keys:
+      - entity: site
+        required: false
+      - entity: citation
+        required: false
+      - entity: record_type
         required: false
 
   site_location:
@@ -179,6 +235,42 @@ entities:
       - entity: site_type_group
         required: false
 
+  site_site_type:
+    role: bridge
+    required: false
+    description: Relationship between a site and a site type, with primary-type and confidence metadata.
+    domains: [core, spatial]
+    target_table: tbl_site_site_types
+    public_id: site_site_type_id
+    unique_sets:
+      - [site_id, site_type_id]
+    columns:
+      site_id:
+        required: true
+        type: integer
+        nullable: false
+      site_type_id:
+        required: true
+        type: integer
+        nullable: false
+      is_primary_type:
+        required: true
+        type: boolean
+        nullable: false
+      confidence_code:
+        type: integer
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+    foreign_keys:
+      - entity: site
+        required_when:
+          has_new_rows: site_site_type
+      - entity: site_type
+        required_when:
+          has_new_rows: site_site_type
+
   sample_group:
     role: fact
     required: true
@@ -214,6 +306,84 @@ entities:
         required: true
       - entity: sample_group_sampling_context
         required: false
+
+  sample_group_description_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for sample-group descriptions.
+    domains: [core, sample-metadata]
+    target_table: tbl_sample_group_description_types
+    public_id: sample_group_description_type_id
+    unique_sets:
+      - [type_name]
+    columns:
+      type_name:
+        type: string
+        nullable: true
+      type_description:
+        type: string
+        nullable: true
+
+  sample_group_description:
+    role: fact
+    required: false
+    description: Description attached to a sample group and description type.
+    domains: [core, sample-metadata]
+    target_table: tbl_sample_group_descriptions
+    public_id: sample_group_description_id
+    unique_sets:
+      - [sample_group_id, sample_group_description_type_id]
+    columns:
+      group_description:
+        type: string
+        nullable: true
+      sample_group_description_type_id:
+        required: true
+        type: integer
+        nullable: false
+      sample_group_id:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: sample_group_description_type
+        required_when:
+          has_new_rows: sample_group_description
+      - entity: sample_group
+        required: false
+
+  lithology:
+    role: fact
+    required: false
+    description: Stratigraphic description attached to a sample group.
+    aggregate_parent: sample_group
+    domains: [core, sample-metadata]
+    target_table: tbl_lithology
+    public_id: lithology_id
+    unique_sets:
+      - [sample_group_id, depth_top, depth_bottom]
+    columns:
+      depth_bottom:
+        type: decimal
+        nullable: true
+      depth_top:
+        required: true
+        type: decimal
+        nullable: false
+      description:
+        required: true
+        type: string
+        nullable: false
+      lower_boundary:
+        type: string
+        nullable: true
+      sample_group_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: sample_group
+        required_when:
+          has_new_rows: lithology
 
   sample_group_sampling_context:
     role: classifier
@@ -1071,6 +1241,91 @@ entities:
       - entity: dataset
         required: false
 
+  dataset_method:
+    role: bridge
+    required: false
+    description: Method associated with a dataset.
+    aggregate_parent: dataset
+    domains: [core]
+    target_table: tbl_dataset_methods
+    public_id: dataset_method_id
+    unique_sets:
+      - [dataset_id, method_id]
+    columns:
+      dataset_id:
+        required: true
+        type: integer
+        nullable: false
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: dataset
+        required_when:
+          has_new_rows: dataset_method
+      - entity: method
+        required_when:
+          has_new_rows: dataset_method
+
+  dataset_submission_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for legacy dataset submissions.
+    domains: [core, provenance]
+    target_table: tbl_dataset_submission_types
+    public_id: submission_type_id
+    unique_sets:
+      - [submission_type]
+    columns:
+      submission_type:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+
+  dataset_submission:
+    role: fact
+    required: false
+    description: Legacy submission record for a dataset.
+    aggregate_parent: dataset
+    domains: [core, provenance]
+    target_table: tbl_dataset_submissions
+    public_id: dataset_submission_id
+    unique_sets:
+      - [dataset_id, submission_type_id, contact_id, date_submitted]
+    columns:
+      dataset_id:
+        required: true
+        type: integer
+        nullable: false
+      submission_type_id:
+        required: true
+        type: integer
+        nullable: false
+      contact_id:
+        required: true
+        type: integer
+        nullable: false
+      date_submitted:
+        type: string
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+    foreign_keys:
+      - entity: dataset
+        required_when:
+          has_new_rows: dataset_submission
+      - entity: dataset_submission_type
+        required_when:
+          has_new_rows: dataset_submission
+      - entity: contact
+        required_when:
+          has_new_rows: dataset_submission
+
   master_dataset:
     role: lookup
     required: true
@@ -1415,6 +1670,103 @@ entities:
         required: true
 
     unique_sets: []
+
+  analysis_entity_age:
+    role: fact
+    required: false
+    description: Dating facts attached to an analysis entity and optional chronology.
+    domains: [dating]
+    target_table: tbl_analysis_entity_ages
+    public_id: analysis_entity_age_id
+    unique_sets:
+      - [analysis_entity_id, chronology_id, age, age_older, age_younger, dating_specifier]
+    columns:
+      age:
+        type: decimal
+        nullable: true
+      age_older:
+        type: decimal
+        nullable: true
+      age_younger:
+        type: decimal
+        nullable: true
+      analysis_entity_id:
+        type: integer
+        nullable: true
+      chronology_id:
+        type: integer
+        nullable: true
+      dating_specifier:
+        type: string
+        nullable: true
+      age_range:
+        type: string
+        nullable: true
+        description: PostgreSQL int4range value represented as a string.
+    foreign_keys:
+      - entity: analysis_entity
+        required: false
+      - entity: chronology
+        required: false
+
+  analysis_entity_dimension:
+    role: fact
+    required: false
+    description: Dimension measurement attached directly to an analysis entity.
+    aggregate_parent: analysis_entity
+    domains: [analysis]
+    target_table: tbl_analysis_entity_dimensions
+    public_id: analysis_entity_dimension_id
+    unique_sets:
+      - [analysis_entity_id, dimension_id]
+    columns:
+      analysis_entity_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_value:
+        required: true
+        type: decimal
+        nullable: false
+    foreign_keys:
+      - entity: analysis_entity
+        required_when:
+          has_new_rows: analysis_entity_dimension
+      - entity: dimension
+        required_when:
+          has_new_rows: analysis_entity_dimension
+
+  analysis_entity_prep_method:
+    role: bridge
+    required: false
+    description: Preparation method applied to an analysis entity.
+    aggregate_parent: analysis_entity
+    domains: [analysis]
+    target_table: tbl_analysis_entity_prep_methods
+    public_id: analysis_entity_prep_method_id
+    unique_sets:
+      - [analysis_entity_id, method_id]
+    columns:
+      analysis_entity_id:
+        required: true
+        type: integer
+        nullable: false
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: analysis_entity
+        required_when:
+          has_new_rows: analysis_entity_prep_method
+      - entity: method
+        required_when:
+          has_new_rows: analysis_entity_prep_method
+
   analysis_value:
     role: fact
     required: false
@@ -1778,6 +2130,61 @@ entities:
         required: true
       - entity: dimension
         required: true
+
+  measured_value:
+    role: fact
+    required: false
+    description: Measured numeric value recorded for an analysis entity.
+    aggregate_parent: analysis_entity
+    domains: [analysis]
+    target_table: tbl_measured_values
+    public_id: measured_value_id
+    unique_sets:
+      - [analysis_entity_id]
+    columns:
+      analysis_entity_id:
+        required: true
+        type: integer
+        nullable: false
+      measured_value:
+        required: true
+        type: decimal
+        nullable: false
+    foreign_keys:
+      - entity: analysis_entity
+        required_when:
+          has_new_rows: measured_value
+
+  measured_value_dimension:
+    role: fact
+    required: false
+    description: Dimension measurement attached directly to a measured value.
+    aggregate_parent: measured_value
+    domains: [analysis]
+    target_table: tbl_measured_value_dimensions
+    public_id: measured_value_dimension_id
+    unique_sets:
+      - [measured_value_id, dimension_id]
+    columns:
+      dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_value:
+        required: true
+        type: decimal
+        nullable: false
+      measured_value_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: dimension
+        required_when:
+          has_new_rows: measured_value_dimension
+      - entity: measured_value
+        required_when:
+          has_new_rows: measured_value_dimension
 
   analysis_dating_range:
     role: fact
@@ -2326,6 +2733,184 @@ entities:
       - entity: taxa
         required: true
 
+  activity_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary describing biological activities recorded for taxa.
+    domains: [taxonomy]
+    target_table: tbl_activity_types
+    public_id: activity_type_id
+    unique_sets:
+      - [activity_type]
+    columns:
+      activity_type:
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+
+  species_association_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary describing species associations.
+    domains: [taxonomy]
+    target_table: tbl_species_association_types
+    public_id: association_type_id
+    unique_sets:
+      - [association_type_name]
+    columns:
+      association_type_name:
+        type: string
+        nullable: true
+      association_description:
+        type: string
+        nullable: true
+
+  species_association:
+    role: fact
+    required: false
+    description: A taxonomic association recorded between species.
+    aggregate_parent: taxa
+    domains: [taxonomy]
+    target_table: tbl_species_associations
+    public_id: species_association_id
+    unique_sets:
+      - [species_association_uuid]
+    columns:
+      associated_taxon_id:
+        required: true
+        type: integer
+        nullable: false
+      biblio_id:
+        type: integer
+        nullable: true
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+      association_type_id:
+        type: integer
+        nullable: true
+      referencing_type:
+        type: string
+        nullable: true
+      species_association_uuid:
+        required: true
+        type: uuid
+        nullable: false
+    foreign_keys:
+      - entity: citation
+        required: false
+      - entity: taxa
+        required_when:
+          has_new_rows: species_association
+      - entity: species_association_type
+        required: false
+
+  taxa_reference_specimen:
+    role: fact
+    required: false
+    description: A reference specimen contact associated with a taxon.
+    aggregate_parent: taxa
+    domains: [taxonomy]
+    target_table: tbl_taxa_reference_specimens
+    public_id: taxa_reference_specimen_id
+    unique_sets:
+      - [taxon_id, contact_id]
+    columns:
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+      contact_id:
+        required: true
+        type: integer
+        nullable: false
+      notes:
+        type: string
+        nullable: true
+    foreign_keys:
+      - entity: taxa
+        required_when:
+          has_new_rows: taxa_reference_specimen
+      - entity: contact
+        required_when:
+          has_new_rows: taxa_reference_specimen
+
+  taxa_seasonality:
+    role: bridge
+    required: false
+    description: Seasonal activity for a taxon at a location.
+    aggregate_parent: taxa
+    domains: [taxonomy]
+    target_table: tbl_taxa_seasonality
+    public_id: seasonality_id
+    unique_sets:
+      - [activity_type_id, season_id, taxon_id, location_id]
+    columns:
+      activity_type_id:
+        required: true
+        type: integer
+        nullable: false
+      season_id:
+        type: integer
+        nullable: true
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+      location_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: activity_type
+        required_when:
+          has_new_rows: taxa_seasonality
+      - entity: season
+        required: false
+      - entity: taxa
+        required_when:
+          has_new_rows: taxa_seasonality
+      - entity: location
+        required_when:
+          has_new_rows: taxa_seasonality
+
+  taxonomy_note:
+    role: fact
+    required: false
+    description: Bibliographic notes associated with a taxon.
+    aggregate_parent: taxa
+    domains: [taxonomy]
+    target_table: tbl_taxonomy_notes
+    public_id: taxonomy_notes_id
+    unique_sets:
+      - [taxonomy_notes_uuid]
+    columns:
+      biblio_id:
+        required: true
+        type: integer
+        nullable: false
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+      taxonomy_notes:
+        type: string
+        nullable: true
+      taxonomy_notes_uuid:
+        required: true
+        type: uuid
+        nullable: false
+    foreign_keys:
+      - entity: citation
+        required_when:
+          has_new_rows: taxonomy_note
+      - entity: taxa
+        required_when:
+          has_new_rows: taxonomy_note
+
   rdb_system:
     role: lookup
     required: false
@@ -2594,6 +3179,28 @@ entities:
       - entity: taxonomic_order_system
         required: true
 
+  taxonomic_order_biblio:
+    role: bridge
+    required: false
+    description: Bibliographic references associated with taxonomic order systems.
+    domains: [taxonomy]
+    target_table: tbl_taxonomic_order_biblio
+    public_id: taxonomic_order_biblio_id
+    unique_sets:
+      - [biblio_id, taxonomic_order_system_id]
+    columns:
+      biblio_id:
+        type: integer
+        nullable: true
+      taxonomic_order_system_id:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: citation
+        required: false
+      - entity: taxonomic_order_system
+        required: false
+
   # PHASE 1 ADDITIONS - Dating Domain
 
   season_type:
@@ -2809,6 +3416,33 @@ entities:
       - entity: location
         required: false
 
+  relative_age_reference:
+    role: bridge
+    required: false
+    description: Citation associated with a relative-age record.
+    aggregate_parent: relative_ages
+    domains: [dating, provenance, bibliography]
+    target_table: tbl_relative_age_refs
+    public_id: relative_age_ref_id
+    unique_sets:
+      - [relative_age_id, biblio_id]
+    columns:
+      biblio_id:
+        required: true
+        type: integer
+        nullable: false
+      relative_age_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: citation
+        required_when:
+          has_new_rows: relative_age_reference
+      - entity: relative_ages
+        required_when:
+          has_new_rows: relative_age_reference
+
   relative_dating:
     role: fact
     required: false
@@ -2896,6 +3530,33 @@ entities:
         required: false
       - entity: dating_uncertainty
         required: false
+
+  geochron_reference:
+    role: bridge
+    required: false
+    description: Citation associated with a geochronology record.
+    aggregate_parent: geochronology
+    domains: [dating, provenance, bibliography]
+    target_table: tbl_geochron_refs
+    public_id: geochron_ref_id
+    unique_sets:
+      - [geochron_id, biblio_id]
+    columns:
+      geochron_id:
+        required: true
+        type: integer
+        nullable: false
+      biblio_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: geochronology
+        required_when:
+          has_new_rows: geochron_reference
+      - entity: citation
+        required_when:
+          has_new_rows: geochron_reference
 
   dating_lab:
     role: lookup
