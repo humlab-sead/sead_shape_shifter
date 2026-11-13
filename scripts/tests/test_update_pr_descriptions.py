@@ -722,6 +722,51 @@ def test_promotion_draft_lists_included_pull_requests_and_issue_references() -> 
     assert "## User-facing release note\n\nNone - no user-visible change." in draft["body"]
 
 
+def test_collect_issue_numbers_reads_keywords_from_a_dev_pull_request_body() -> None:
+    # GitHub records no closing reference for a pull request into `dev`, so the keyword in
+    # the body is the only source for the issue the change resolves.
+    included = [
+        {
+            "number": 733,
+            "title": "Close resolved issues when a promotion reaches main",
+            "closingIssuesReferences": [],
+            "body": "## Summary\n\nCarried the closing references forward.\n\nCloses #732\n\n## Validation\n\n- pytest: all passed\n",
+        }
+    ]
+
+    assert update_pr_descriptions.collect_issue_numbers(included) == [732]
+
+
+def test_collect_issue_numbers_ignores_prose_that_mentions_a_keyword() -> None:
+    included = [
+        {
+            "number": 697,
+            "closingIssuesReferences": [],
+            "body": "## Summary\n\nThe PR body states this fixes #695; the linked issue details were not available.\n",
+        }
+    ]
+
+    assert update_pr_descriptions.collect_issue_numbers(included) == []
+
+
+def test_collect_issue_numbers_merges_recorded_references_and_body_keywords() -> None:
+    included = [
+        {"number": 1, "closingIssuesReferences": [{"number": 5}], "body": "## Summary\n\nCloses #5, #6\n"},
+        {"number": 2, "closingIssuesReferences": [], "body": "## Summary\n\nfixes: #7\n"},
+    ]
+
+    assert update_pr_descriptions.collect_issue_numbers(included) == [5, 6, 7]
+
+
+def test_promotion_draft_lists_an_issue_resolved_by_an_included_body() -> None:
+    metadata = {"headRefName": "dev", "baseRefName": "staging", "url": "https://github.com/owner/repo/pull/740"}
+    included = [{"number": 733, "title": "Carried", "closingIssuesReferences": [], "body": "## Summary\n\nCloses #732\n"}]
+
+    draft = update_pr_descriptions.build_promotion_draft(metadata, included)
+
+    assert "\nCloses #732\n" in draft["body"]
+
+
 def test_build_draft_uses_branch_history_for_promotions_without_a_model(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         update_pr_descriptions,
