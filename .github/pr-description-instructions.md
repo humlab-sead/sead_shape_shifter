@@ -46,7 +46,7 @@ Keep promotion bodies compact: put `## Summary` immediately after the marker, us
 
 Each promotion is usually built from another pull request in this repository, so the description states only what is being promoted and lists the pull request numbers it carries. Promotion pull requests use the `None` fallbacks for the release-note and upgrade sections, because the release-note generator reads those sections from the pull requests listed under `Included PRs`. Do not restate their notes here.
 
-List the issues the promotion resolves as `Closes #<issue>` lines in `## Summary`, copied from the closing references of the included pull requests. Merging the promotion into `main` closes them. Keep those issue references out of `Included PRs`, which the release generator reads as pull request numbers.
+List the issues the promotion resolves as `Closes #<issue>` lines in `## Summary`, copied from the closing references of the included pull requests, or from the `Closes` lines in their `## Summary` when GitHub recorded no closing reference. Merging the promotion into `main` closes them. Keep those issue references out of `Included PRs`, which the release generator reads as pull request numbers.
 
 ### Summary
 
@@ -55,7 +55,7 @@ State what changed and why. Explain the main behavior or result, focusing on inf
 ### Closing issues
 
 - Give each resolved issue its own `Closes #<issue>` line at the end of `## Summary`. A closing keyword is the only reference GitHub acts on; prose such as "this fixes #123" is ignored.
-- Standard pull requests target `dev`, which is not the default branch, so a closing keyword does not close the issue when they merge. GitHub still records it as a closing reference, and the promotion description copies it into the promotion body.
+- Standard pull requests target `dev`, which is not the default branch, so a closing keyword does not close the issue when they merge, and GitHub records no closing reference for them. Put the keyword on its own line at the end of `## Summary`, and repeat it in the commit message, which closes the issue once the commit reaches `main`.
 - Promotion pull requests repeat the closing references of every included pull request that resolves an issue, using the same `Closes #<issue>` form. The promotion into `main`, the default branch, then closes them; the `dev` into `staging` promotion only records the lines for the next promotion.
 - Do not put issue numbers under `## Included PRs`. The release-note generator reads every `#<number>` in that section as a pull request number.
 - Close an issue only when the change resolves it completely. When the change delivers part of the issue, keep it open and name the remaining scope.
