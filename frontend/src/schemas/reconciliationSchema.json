@@ -44,7 +44,7 @@
         },
         "auto_accept_threshold": {
           "default": 0.95,
-          "description": "Score threshold for auto-accepting matches (default 95%)",
+          "description": "Legacy score threshold (retained for compatibility; matching never auto-accepts)",
           "maximum": 1.0,
           "minimum": 0.0,
           "title": "Auto Accept Threshold",
@@ -71,6 +71,90 @@
         "remote"
       ],
       "title": "EntityResolutionSet",
+      "type": "object"
+    },
+    "ReconciliationCandidate": {
+      "description": "Candidate entity returned by reconciliation service.",
+      "properties": {
+        "id": {
+          "description": "Unique identifier URI",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "description": "Display name",
+          "title": "Name",
+          "type": "string"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Match confidence score (0-100)",
+          "title": "Score"
+        },
+        "match": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "High-confidence match flag",
+          "title": "Match"
+        },
+        "type": {
+          "description": "Entity type info",
+          "items": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "title": "Type",
+          "type": "array"
+        },
+        "distance_km": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Geographic distance (for sites)",
+          "title": "Distance Km"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Additional context",
+          "title": "Description"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "ReconciliationCandidate",
       "type": "object"
     },
     "ReconciliationRemote": {
@@ -131,9 +215,26 @@
     "ResolvedEntityPair": {
       "description": "Single entity resolution entry linking source identity to target identity.",
       "properties": {
+        "local_key_value": {
+          "description": "Encoded ordered business key",
+          "minLength": 1,
+          "title": "Local Key Value",
+          "type": "string"
+        },
         "source_value": {
-          "description": "Source field value",
+          "description": "Search label (not row identity)",
           "title": "Source Value"
+        },
+        "status": {
+          "default": "proposed",
+          "enum": [
+            "proposed",
+            "accepted",
+            "rejected",
+            "local-only"
+          ],
+          "title": "Status",
+          "type": "string"
         },
         "target_id": {
           "anyOf": [
@@ -145,8 +246,21 @@
             }
           ],
           "default": null,
-          "description": "Target entity ID (None if unmatched)",
+          "description": "Selected target ID for an accepted decision",
           "title": "Target Id"
+        },
+        "candidate_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact selected candidate URI",
+          "title": "Candidate Id"
         },
         "confidence": {
           "anyOf": [
@@ -173,14 +287,15 @@
             }
           ],
           "default": null,
-          "description": "Manual notes or auto-match info",
+          "description": "Operator notes",
           "title": "Notes"
         },
-        "will_not_match": {
-          "default": false,
-          "description": "User marked as will not match (local-only identifier)",
-          "title": "Will Not Match",
-          "type": "boolean"
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/ReconciliationCandidate"
+          },
+          "title": "Candidates",
+          "type": "array"
         },
         "created_at": {
           "anyOf": [
@@ -223,6 +338,7 @@
         }
       },
       "required": [
+        "local_key_value",
         "source_value"
       ],
       "title": "ResolvedEntityPair",
@@ -232,7 +348,7 @@
       "description": "Complete entity resolution catalog for all entities.",
       "properties": {
         "version": {
-          "default": "2.0",
+          "default": "3.0",
           "description": "Reconciliation format version",
           "title": "Version",
           "type": "string"

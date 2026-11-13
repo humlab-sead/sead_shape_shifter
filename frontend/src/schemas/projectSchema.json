@@ -152,6 +152,154 @@
       ],
       "title": "ProjectMetadata",
       "type": "object"
+    },
+    "ValidationCategory": {
+      "description": "Category of validation check.",
+      "enum": [
+        "structural",
+        "data",
+        "performance",
+        "conformance"
+      ],
+      "title": "ValidationCategory",
+      "type": "string"
+    },
+    "ValidationError": {
+      "description": "A validation error or warning.",
+      "properties": {
+        "severity": {
+          "description": "Severity level",
+          "enum": [
+            "error",
+            "warning",
+            "info"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "entity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Entity name where error occurred",
+          "title": "Entity"
+        },
+        "branch_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Merged-entity branch name, if issue is branch-scoped",
+          "title": "Branch Name"
+        },
+        "branch_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Merged-entity branch source, if issue is branch-scoped",
+          "title": "Branch Source"
+        },
+        "field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Field name where error occurred",
+          "title": "Field"
+        },
+        "message": {
+          "description": "Error message",
+          "title": "Message",
+          "type": "string"
+        },
+        "code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Error code for programmatic handling",
+          "title": "Code"
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Suggested fix",
+          "title": "Suggestion"
+        },
+        "category": {
+          "$ref": "#/$defs/ValidationCategory",
+          "default": "structural",
+          "description": "Validation category"
+        },
+        "priority": {
+          "$ref": "#/$defs/ValidationPriority",
+          "default": "medium",
+          "description": "Validation priority"
+        },
+        "auto_fixable": {
+          "default": false,
+          "description": "Whether this issue can be auto-fixed",
+          "title": "Auto Fixable",
+          "type": "boolean"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "description": "Additional issue details",
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "severity",
+        "message"
+      ],
+      "title": "ValidationError",
+      "type": "object"
+    },
+    "ValidationPriority": {
+      "description": "Priority level for validation checks.",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "ValidationPriority",
+      "type": "string"
     }
   },
   "description": "Schema for Shape Shifter project configuration files",
@@ -203,6 +351,14 @@
         "type": "string"
       },
       "title": "Load Warnings",
+      "type": "array"
+    },
+    "load_errors": {
+      "description": "Configuration errors detected while loading",
+      "items": {
+        "$ref": "#/$defs/ValidationError"
+      },
+      "title": "Load Errors",
       "type": "array"
     }
   },
