@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import jpype
 import pandas as pd
@@ -32,13 +33,15 @@ def initialize_jvm():
     # JVM shutdown is not recommended by JPype and causes issues with subsequent tests
 
 
-def test_can_load_ucanaccess():
+@pytest.mark.skipif(not Path(UCANACCESS_HOME).is_dir(), reason="ucanaccess not found")
+def test_can_load_ucanaccess(ucanaccess_required: None):  # pylint: disable=unused-argument
     loader = UCanAccessSqlLoader(DATA_SOURCE_CONFIG)
     df: pd.DataFrame = loader.read_sql_sync("SELECT * FROM [samples]")
     assert not df.empty
 
 
-def test_can_load_ucanaccess_queries() -> None:
+@pytest.mark.skipif(not Path(UCANACCESS_HOME).is_dir() or not jpype.isJVMStarted(), reason="JVM not started")
+def test_can_load_ucanaccess_queries(ucanaccess_required: None) -> None:  # pylint: disable=unused-argument
 
     loader: UCanAccessSqlLoader = UCanAccessSqlLoader(DATA_SOURCE_CONFIG)
     jar_files = loader._find_jar_files(UCANACCESS_HOME)  # pylint: disable=protected-access

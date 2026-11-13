@@ -16,6 +16,19 @@ export interface ExecuteRequest {
   default_entity?: string | null
 }
 
+export interface OutputExpectationResult {
+  name: string
+  entity: string
+  metric: string
+  // Configured group value; null for scalar metrics and for an explicitly configured null group.
+  group_value: string | boolean | number | null
+  // Measured count, or null when the expected entity was absent or incomplete.
+  measured_value: number | null
+  expected_limit: Record<string, number>
+  status: 'pass' | 'fail'
+  failure_reason: string | null
+}
+
 export interface ExecuteResult {
   success: boolean
   message: string
@@ -26,6 +39,7 @@ export interface ExecuteResult {
   validation_passed: boolean | null
   error_details: string | null
   download_path: string | null
+  output_expectation_results: OutputExpectationResult[]
 }
 
 export const executeApi = {

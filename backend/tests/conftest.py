@@ -1,6 +1,8 @@
 import os
 from collections.abc import AsyncIterator
+from pathlib import Path
 
+import jpype
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -11,6 +13,34 @@ from backend.app.core.config import get_settings
 from backend.app.core.config import settings as application_settings
 from backend.app.ingesters.registry import get_ingester_registry
 from backend.app.main import app, lifespan
+from src.loaders.sql_loaders import init_jvm_for_ucanaccess
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
+LOCAL_DATA_DIR = REPOSITORY_ROOT / "data"
+
+
+@pytest.fixture(scope="module", name="local_data_directory")
+def _local_data_directory() -> Path:
+    """Return the local data directory or skip tests that require it."""
+    if not LOCAL_DATA_DIR.is_dir():
+        pytest.skip(f"Local data directory not found: {LOCAL_DATA_DIR}")
+
+    if not (LOCAL_DATA_DIR / "test.env").is_file():
+        pytest.skip(f"Local data test environment not found: {LOCAL_DATA_DIR / 'test.env'}")
+
+    return LOCAL_DATA_DIR
+
+
+@pytest.fixture(scope="module")
+def ucanaccess_required(local_data_directory: Path) -> None:
+    """Skip Access-backed tests when the UCanAccess JARs are unavailable."""
+    ucanaccess_dir = local_data_directory.parent / "lib" / "ucanaccess"
+    jar_files = list(ucanaccess_dir.rglob("*.jar")) if ucanaccess_dir.is_dir() else []
+    if not jar_files:
+        pytest.skip(f"UCanAccess JARs not found under {ucanaccess_dir}")
+
+    if not jpype.isJVMStarted():
+        init_jvm_for_ucanaccess(str(ucanaccess_dir))
 
 
 @pytest.fixture(scope="session", autouse=True)

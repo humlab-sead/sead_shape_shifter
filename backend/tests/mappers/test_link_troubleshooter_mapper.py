@@ -42,7 +42,7 @@ def settings_report(
     return TrialSettingsReport(
         join_type=JoinTypeSetting(  # type: ignore[arg-type]
             requested=join_requested,
-            source=join_source,
+            source=join_source,  # type: ignore[arg-type]
             effective=join_effective,
         ),
         allow_null_keys=RequestedSetting(requested=allow_requested, source=allow_source),  # type: ignore[arg-type]

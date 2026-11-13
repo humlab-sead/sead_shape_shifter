@@ -4,39 +4,31 @@ import shutil
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
-import jpype
 import pytest
 from dotenv import dotenv_values
 
-from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 from src.model import ShapeShiftProject
 from src.utility import load_shape_file
 from src.workflow import validate_entity_shapes, workflow
 
 
-@pytest.fixture(scope="module", autouse=True)
-def initialize_jvm():
-    """Initialize JVM once for all tests in this module."""
-    if not jpype.isJVMStarted():
-        init_jvm_for_ucanaccess()
-    yield
-
-
 @pytest.fixture(name="project_environment")
-def _project_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+def _project_environment(monkeypatch: pytest.MonkeyPatch, local_data_directory: Path) -> None:
     """Set the project environment variables for a single test.
 
-    Reads data/test.env first and the local data/.env second, so a variable defined in
-    both files takes the value from data/.env. The values are applied through monkeypatch
-    so the process environment is restored after each test.
+    Reads test.env first and the local .env second, so a variable defined in both files
+    takes the value from .env. The values are applied through monkeypatch so the process
+    environment is restored after each test.
     """
-    for env_file, override in (("data/test.env", False), ("data/.env", True)):
+    for env_file, override in ((local_data_directory / "test.env", False), (local_data_directory / ".env", True)):
         for name, value in dotenv_values(env_file).items():
             if value is not None and (override or name not in os.environ):
                 monkeypatch.setenv(name, value)
 
 
-def test_access_database_csv_workflow(project_environment: None, tmp_path: Path):  # noqa: ARG001 ;pylint: disable=unused-argument
+def test_access_database_csv_workflow(
+    project_environment: None, ucanaccess_required: None, tmp_path: Path
+):  # noqa: ARG001 ;pylint: disable=unused-argument
     config_file: str = "./tests/test_data/projects/arbodat/shapeshifter.yml"
 
     config: ShapeShiftProject = ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file=None)

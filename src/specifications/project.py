@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 from src.model import TableConfig
+from src.specifications.output_expectations import OutputExpectationsSpecification
 from src.utility import dotget
 
 from .base import ProjectSpecification
@@ -273,6 +274,7 @@ class CompositeProjectSpecification(ProjectSpecification):
         """
         return [
             EntitiesSpecification(self.project_cfg),
+            OutputExpectationsSpecification(self.project_cfg),
             CircularDependencySpecification(self.project_cfg),
             DataSourceExistsSpecification(self.project_cfg),
             ForeignKeyValueSourceSpecification(self.project_cfg),

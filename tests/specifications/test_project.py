@@ -1,11 +1,13 @@
 """Tests for project-level specifications."""
 
+from datetime import date, datetime
 from unittest.mock import Mock
 
 import pytest
 
 from src.specifications.base import ProjectSpecification, SpecificationIssue
 from src.specifications.foreign_key import ForeignKeyRemotePublicIdSpecification
+from src.specifications.output_expectations import OutputExpectationsSpecification
 from src.specifications.project import (
     CircularDependencySpecification,
     CompositeProjectSpecification,
@@ -13,6 +15,204 @@ from src.specifications.project import (
     EntitiesSpecification,
     ForeignKeyValueSourceSpecification,
 )
+
+
+class TestOutputExpectationsSpecification:
+    """Tests for output expectation declaration validation."""
+
+    @staticmethod
+    def make_spec(expectations, *, entities=None):
+        project_cfg = {
+            "entities": entities
+            or {
+                "site": {"type": "sql", "keys": ["site_key"], "columns": ["site_key", "Projekt"]},
+                "no_keys": {"type": "fixed", "columns": ["name"], "values": [["one"]]},
+                "wide": {
+                    "type": "sql",
+                    "keys": ["site_key"],
+                    "columns": ["site_key", "amount"],
+                    "unnest": {
+                        "id_vars": ["site_key"],
+                        "value_vars": ["amount"],
+                        "var_name": "measure",
+                        "value_name": "value",
+                    },
+                },
+            },
+            "options": {"output_expectations": expectations},
+        }
+        return OutputExpectationsSpecification(project_cfg)
+
+    def test_accepts_all_metrics_and_comparison_modes(self):
+        spec = self.make_spec(
+            [
+                {"name": "count-equals", "entity": "site", "metric": "row_count", "equals": 7},
+                {"name": "count-min", "entity": "site", "metric": "row_count", "min": 1},
+                {"name": "count-max", "entity": "site", "metric": "row_count", "max": 8},
+                {"name": "count-range", "entity": "site", "metric": "row_count", "min": 1, "max": 8},
+                {"name": "key-count", "entity": "site", "metric": "distinct_key_count", "equals": 7},
+                {
+                    "name": "sites-by-project",
+                    "entity": "site",
+                    "metric": "grouped_row_count",
+                    "column": "Projekt",
+                    "groups": {"north": {"equals": 1}, "south": {"min": 1, "max": 4}},
+                },
+                {
+                    "name": "unnested-measures",
+                    "entity": "wide",
+                    "metric": "grouped_row_count",
+                    "column": "measure",
+                    "groups": {"amount": {"min": 1}},
+                },
+            ]
+        )
+
+        assert spec.is_satisfied_by() is True
+        assert not spec.errors
+
+    def test_accepts_null_group_value(self):
+        spec = self.make_spec(
+            [
+                {
+                    "name": "sites-without-project",
+                    "entity": "site",
+                    "metric": "grouped_row_count",
+                    "column": "Projekt",
+                    "groups": {None: {"equals": 0}},
+                }
+            ]
+        )
+
+        assert spec.is_satisfied_by() is True
+        assert not spec.errors
+
+    def test_accepts_json_scalar_group_values(self):
+        spec = self.make_spec(
+            [
+                {
+                    "name": "sites-by-json-value",
+                    "entity": "site",
+                    "metric": "grouped_row_count",
+                    "column": "Projekt",
+                    "groups": {
+                        "north": {"equals": 0},
+                        True: {"equals": 0},
+                        42: {"equals": 0},
+                        3.5: {"equals": 0},
+                        None: {"equals": 0},
+                    },
+                }
+            ]
+        )
+
+        assert spec.is_satisfied_by() is True
+        assert not spec.errors
+
+    @pytest.mark.parametrize(
+        "group_value",
+        [
+            date(2026, 11, 13),
+            datetime(2026, 11, 13, 12, 0),
+            b"binary",
+            float("nan"),
+            float("inf"),
+            float("-inf"),
+        ],
+    )
+    def test_rejects_non_json_scalar_group_values(self, group_value):
+        spec = self.make_spec(
+            [
+                {
+                    "name": "sites-by-invalid-value",
+                    "entity": "site",
+                    "metric": "grouped_row_count",
+                    "column": "Projekt",
+                    "groups": {group_value: {"equals": 0}},
+                }
+            ]
+        )
+
+        assert spec.is_satisfied_by() is False
+        issue = next(issue for issue in spec.errors if "JSON scalar" in issue.message)
+        assert issue.entity == "site"
+        assert issue.field == f"options.output_expectations[0].groups[{group_value!r}]"
+
+    def test_absent_expectations_are_valid(self):
+        spec = OutputExpectationsSpecification({"entities": {"site": {}}})
+
+        assert spec.is_satisfied_by() is True
+        assert not spec.errors
+
+    @pytest.mark.parametrize(
+        ("expectations", "expected_field"),
+        [
+            ({"name": "bad"}, "options.output_expectations"),
+            ([None], "options.output_expectations[0]"),
+            ([{"name": "bad", "entity": "missing", "metric": "row_count", "equals": 0}], ".entity"),
+            ([{"name": "bad", "entity": "site", "metric": "unsupported", "equals": 0}], ".metric"),
+            ([{"name": "bad", "entity": "no_keys", "metric": "distinct_key_count", "equals": 0}], ".metric"),
+            (
+                [{"name": "bad", "entity": "site", "metric": "grouped_row_count", "column": "unknown", "groups": {"x": {"min": 0}}}],
+                ".column",
+            ),
+            (
+                [{"name": "bad", "entity": "wide", "metric": "grouped_row_count", "column": "amount", "groups": {"x": {"min": 0}}}],
+                ".column",
+            ),
+            ([{"name": "bad", "entity": "site", "metric": "row_count"}], "options.output_expectations[0]"),
+            (
+                [{"name": "bad", "entity": "site", "metric": "grouped_row_count", "column": "Projekt", "groups": {}}],
+                ".groups",
+            ),
+            (
+                [{"name": "bad", "entity": "site", "metric": "grouped_row_count", "column": "Projekt", "groups": {"x": {}}}],
+                ".groups",
+            ),
+            (
+                [{"name": "bad", "entity": "site", "metric": "row_count", "equals": 0, "column": "Projekt"}],
+                ".column",
+            ),
+        ],
+    )
+    def test_rejects_invalid_declarations(self, expectations, expected_field):
+        spec = self.make_spec(expectations)
+
+        assert spec.is_satisfied_by() is False
+        assert spec.errors
+        assert any(expected_field in (issue.field or "") for issue in spec.errors)
+        assert all(issue.code == "OUTPUT_EXPECTATION_INVALID" for issue in spec.errors)
+
+    @pytest.mark.parametrize("limit", [True, -1, 1.5, None])
+    def test_rejects_invalid_numeric_limits(self, limit):
+        spec = self.make_spec([{"name": "bad", "entity": "site", "metric": "row_count", "equals": limit}])
+
+        assert spec.is_satisfied_by() is False
+        assert any(issue.field == "options.output_expectations[0].equals" for issue in spec.errors)
+
+    def test_rejects_conflicting_bounds_and_reversed_ranges(self):
+        for comparison in (
+            {"equals": 1, "min": 1},
+            {"min": 5, "max": 2},
+            {"min": 0, "extra": 1},
+        ):
+            spec = self.make_spec([{"name": "bad", "entity": "site", "metric": "row_count", **comparison}])
+
+            assert spec.is_satisfied_by() is False
+            assert spec.errors
+
+    def test_rejects_duplicate_names_and_invalid_metric_shape(self):
+        spec = self.make_spec(
+            [
+                {"name": "same", "entity": "site", "metric": "row_count", "equals": 1},
+                {"name": "same", "entity": "site", "metric": "row_count", "equals": 1},
+                {"name": "bad-metric", "entity": "site", "metric": [], "equals": 1},
+            ]
+        )
+
+        assert spec.is_satisfied_by() is False
+        assert any(issue.field.endswith(".name") for issue in spec.errors if issue.field)
+        assert any(issue.field.endswith(".metric") for issue in spec.errors if issue.field)
 
 
 class TestCircularDependencySpecification:
@@ -141,6 +341,7 @@ class TestForeignKeyValueSourceSpecification:
             assert specification.is_satisfied_by() is False
             assert specification.errors[0].code == "DIRECT_FK_VALUE_SOURCE_INVALID"
             assert specification.errors[0].entity == "location"
+            assert specification.errors[0].field is not None
             assert specification.errors[0].field.startswith("foreign_key_value_sources")
 
     def test_nonempty_map_requires_target_model(self):
@@ -374,12 +575,26 @@ class TestCompositeProjectSpecification:
         assert issue.entity == "child"
         assert "foreign key #1" in issue.message
 
+    def test_composite_validation_reports_invalid_output_expectations(self, valid_project_cfg):
+        project_cfg = {
+            **valid_project_cfg,
+            "options": {
+                **valid_project_cfg["options"],
+                "output_expectations": [{"name": "missing-site", "entity": "missing", "metric": "row_count", "equals": 0}],
+            },
+        }
+        spec = CompositeProjectSpecification(project_cfg)
+
+        assert spec.is_satisfied_by() is False
+        assert any(issue.code == "OUTPUT_EXPECTATION_INVALID" for issue in spec.errors)
+
     def test_default_specifications_used(self, valid_project_cfg):
         """Test that default specifications are used."""
         spec = CompositeProjectSpecification(valid_project_cfg)
 
         assert len(spec.specifications) > 0
         assert any(isinstance(s, EntitiesSpecification) for s in spec.specifications)
+        assert any(isinstance(s, OutputExpectationsSpecification) for s in spec.specifications)
         assert any(isinstance(s, CircularDependencySpecification) for s in spec.specifications)
         assert any(isinstance(s, DataSourceExistsSpecification) for s in spec.specifications)
 
@@ -390,7 +605,8 @@ class TestCompositeProjectSpecification:
         specs: list[ProjectSpecification] = spec.get_default_specifications()
 
         assert isinstance(specs, list)
-        assert len(specs) == 6
+        assert len(specs) == 7
+        assert any(isinstance(s, OutputExpectationsSpecification) for s in specs)
         assert any(isinstance(s, ForeignKeyValueSourceSpecification) for s in specs)
         assert any(isinstance(s, ForeignKeyRemotePublicIdSpecification) for s in specs)
 

@@ -5,6 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from backend.app.models.execute import OutputExpectationResult
+
 
 class IngesterMetadataResponse(BaseModel):
     """Response model for ingester metadata."""
@@ -191,4 +193,8 @@ class IngestResponse(BaseModel):
     pending_confirmation_report: dict[str, Any] | None = Field(
         default=None,
         description="Pending confirmation report when Binding Set confirmation blocks progress",
+    )
+    output_expectation_results: list[OutputExpectationResult] = Field(
+        default_factory=list,
+        description="Results of configured output expectation checks for a full project-table run",
     )
