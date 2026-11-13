@@ -66,6 +66,9 @@ DEFAULT_VALIDATION_LINES = (
 
 PR_URL_PATTERN = re.compile(r"/pull/(\d+)")
 
+# `--closes` accepts a bare number or a `#`-prefixed one, and nothing else.
+CLOSING_ISSUE_PATTERN = re.compile(r"^#?(?P<number>[1-9][0-9]*)$")
+
 # `<type>(<scope>): <description>`, with an optional `!` marking a breaking change.
 CONVENTIONAL_SUBJECT_PATTERN = re.compile(r"^(?P<type>[a-z]+)(?:\((?P<scope>[^)]+)\))?(?P<breaking>!)?: (?P<description>.+)$")
 
@@ -323,12 +326,46 @@ def generate_subject(preview: str) -> str:
 
 
 
-def render_body(*, summary: str, files: Sequence[str], release_note: str, upgrade_notes: str, validation: Sequence[str]) -> str:
-    """Return a pull request body that follows `.github/pull_request_template.md`."""
+def render_closing_lines(closing_issues: Sequence[int]) -> str:
+    """Return one `Closes #<issue>` line per issue, or an empty string when there are none."""
+    return "\n".join(f"Closes #{number}" for number in closing_issues)
+
+
+def parse_closing_issues(values: Sequence[str] | None) -> list[int]:
+    """Return the issue numbers named by `--closes`, in order and without duplicates.
+
+    Accepts `695` and `#695`. Anything else is rejected, because a malformed value would
+    otherwise reach the pull request body as text that GitHub ignores.
+    """
+    numbers: list[int] = []
+    for value in values or ():
+        match = CLOSING_ISSUE_PATTERN.match(value.strip())
+        if match is None:
+            raise WorkflowError(f"--closes expects an issue number such as 695 or #695; received {value!r}.")
+        numbers.append(int(match.group("number")))
+    return list(dict.fromkeys(numbers))
+
+
+def render_body(
+    *,
+    summary: str,
+    files: Sequence[str],
+    release_note: str,
+    upgrade_notes: str,
+    validation: Sequence[str],
+    closing_issues: Sequence[int] = (),
+) -> str:
+    """Return a pull request body that follows `.github/pull_request_template.md`.
+
+    Closing references end `Summary`, as the template asks. They give the pull request a
+    `closingIssuesReferences` entry, which the promotion description copies, and they also
+    stay out of the note sections that the release generator reads.
+    """
     file_lines = "\n".join(f"- `{name}`" for name in files) or "- None recorded."
     validation_lines = "\n".join(f"- {item}" for item in validation) or f"- {FALLBACK_VALIDATION}"
+    closing_block = f"\n\n{render_closing_lines(closing_issues)}" if closing_issues else ""
     return (
-        f"## Summary\n\n{summary}\n\nFiles changed:\n\n{file_lines}\n\n"
+        f"## Summary\n\n{summary}\n\nFiles changed:\n\n{file_lines}{closing_block}\n\n"
         f"## User-facing release note\n\n{release_note}\n\n"
         f"## Upgrade notes\n\n{upgrade_notes}\n\n"
         f"## Validation\n\n{validation_lines}\n"
@@ -409,6 +446,20 @@ class Plan:
     keep_branch: bool = False
     generate_description: bool = False
     commit_description_draft: bool = True
+    closing_issues: list[int] = field(default_factory=list)
+
+
+def commit_command(plan: Plan) -> list[str]:
+    """Return the commit command, repeating the closing references in the commit message.
+
+    The pull request targets `dev`, which is not the default branch, so the body reference does
+    not close anything by itself. The commit message carries the same keywords, which close the
+    issues when the commit reaches `main` through promotion.
+    """
+    command = ["git", "commit", "-m", plan.message]
+    if plan.closing_issues:
+        command.extend(["-m", render_closing_lines(plan.closing_issues)])
+    return command
 
 
 def pending_paths(runner: CommandRunner, paths: Sequence[str]) -> list[str]:
@@ -474,6 +525,7 @@ def build_plan(args: argparse.Namespace) -> Plan:
             raise WorkflowError(f"Required command not found: {command}")
 
     paths = resolve_paths(stage_all=args.all_paths, paths=args.paths)
+    closing_issues = parse_closing_issues(args.closes)
     base = args.base.strip()
     if base in PROMOTION_BASE_BRANCHES:
         raise WorkflowError(
@@ -512,6 +564,7 @@ def build_plan(args: argparse.Namespace) -> Plan:
         release_note=args.release_note,
         upgrade_notes=args.upgrade_notes,
         validation=compose_validation(defaults=args.default_validation, custom=args.validation),
+        closing_issues=closing_issues,
     )
     return Plan(
         runner=runner,
@@ -528,6 +581,7 @@ def build_plan(args: argparse.Namespace) -> Plan:
         keep_branch=args.keep_branch,
         generate_description=args.generate_description,
         commit_description_draft=args.commit_description_draft,
+        closing_issues=closing_issues,
     )
 
 
@@ -536,6 +590,8 @@ def print_plan(plan: Plan) -> None:
     print(f"Base branch : {plan.base}")
     print(f"New branch  : {plan.branch}")
     print(f"Commit      : {plan.message}")
+    for line in render_closing_lines(plan.closing_issues).splitlines():
+        print(f"  {line}")
     print(f"Files       : {len(plan.files)}")
     for name in plan.files:
         print(f"  {name}")
@@ -548,7 +604,7 @@ def print_plan(plan: Plan) -> None:
     print("Planned commands:")
     print(f"  git switch -c {plan.branch}")
     print(f"  git add {'-A' if plan.stage_all else '-- ' + ' '.join(plan.paths)}")
-    print(f"  git commit -m {plan.message!r}")
+    print(f"  git commit -m {plan.message!r}" + (" -m 'Closes #...'" if plan.closing_issues else ""))
     print(f"  git push -u origin {plan.branch}")
     print(f"  gh pr create --base {plan.base} --head {plan.branch} --title {plan.subject!r}")
     if plan.generate_description:
@@ -687,7 +743,7 @@ def execute(plan: Plan) -> int:
     ensure_no_new_changes(plan)
     runner.change(["git", "switch", "-c", plan.branch])
     runner.change(["git", "add", "-A"] if plan.stage_all else ["git", "add", "--", *plan.paths])
-    runner.change(["git", "commit", "-m", plan.message])
+    runner.change(commit_command(plan))
     runner.change(["git", "push", "-u", "origin", plan.branch])
     number = create_pull_request(plan)
     print(f"Opened pull request #{number} into {plan.base}.")
@@ -758,6 +814,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--summary", help="Summary paragraph for the pull request body; defaults to the commit subject.")
     parser.add_argument("--release-note", default=FALLBACK_RELEASE_NOTE, help="User-facing release note line.")
     parser.add_argument("--upgrade-notes", default=FALLBACK_UPGRADE_NOTES, help="Upgrade notes line.")
+    parser.add_argument(
+        "--closes",
+        action="append",
+        metavar="ISSUE",
+        help="Issue this change resolves, as 695 or #695; repeatable. Added to the body and commit message.",
+    )
     parser.add_argument("--validation", action="append", metavar="TEXT", help="Validation evidence line; repeatable.")
     parser.add_argument(
         "--default-validation",

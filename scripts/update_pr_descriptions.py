@@ -1088,7 +1088,10 @@ def build_promotion_draft(metadata: dict[str, Any], included: Sequence[dict[str,
     """Build a promotion description that lists the pull requests it carries.
 
     Promotion pull requests must not repeat release-note text from the pull requests they
-    carry, so the note sections use the template fallback wording.
+    carry, so the note sections use the template fallback wording. Issues the included pull
+    requests resolve are listed as `Closes #<number>` lines in `Summary`, so merging the
+    promotion into `main` closes them. Those references stay out of `Included PRs`, which the
+    release generator reads as pull request numbers.
     """
     head_ref = metadata.get("headRefName") or "the source branch"
     base_ref = metadata.get("baseRefName") or "the target branch"
@@ -1103,9 +1106,12 @@ def build_promotion_draft(metadata: dict[str, Any], included: Sequence[dict[str,
         "",
         "This pull request introduces no change of its own. It carries the pull requests listed below and adds no separate release note.",
         "",
-        "## Included PRs",
-        "",
     ]
+    issue_numbers = collect_issue_numbers(included)
+    if issue_numbers:
+        lines.extend(f"Closes #{number}" for number in issue_numbers)
+        lines.append("")
+    lines.extend(["## Included PRs", ""])
     if included:
         for record in included:
             number = record.get("number")
@@ -1114,9 +1120,6 @@ def build_promotion_draft(metadata: dict[str, Any], included: Sequence[dict[str,
                 lines.append(f"- [#{number}]({repository_url}/pull/{number}) {title}".rstrip())
             else:
                 lines.append(f"- #{number} {title}".rstrip())
-        issue_numbers = collect_issue_numbers(included)
-        if issue_numbers:
-            lines.extend(["", "Linked issues: " + ", ".join(f"#{number}" for number in issue_numbers) + "."])
     else:
         lines.append("None detected - list the included pull requests before merging.")
     lines.extend(

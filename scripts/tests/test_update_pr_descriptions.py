@@ -714,7 +714,11 @@ def test_promotion_draft_lists_included_pull_requests_and_issue_references() -> 
     assert draft["body"].startswith(update_pr_descriptions.PROMOTION_MARKER)
     assert "- [#626](https://github.com/owner/repo/pull/626) Enhance cached value reference UX" in draft["body"]
     assert "- [#621](https://github.com/owner/repo/pull/621) Simplify route inventory" in draft["body"]
-    assert "Linked issues: #612, #610." in draft["body"]
+    assert "Closes #612\nCloses #610" in draft["body"]
+    assert "Linked issues" not in draft["body"]
+    included_section = draft["body"].split("## Included PRs", 1)[1].split("##", 1)[0]
+    assert "#612" not in included_section
+    assert "#610" not in included_section
     assert "## User-facing release note\n\nNone - no user-visible change." in draft["body"]
 
 

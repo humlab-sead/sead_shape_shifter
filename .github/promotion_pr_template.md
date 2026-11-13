@@ -3,8 +3,16 @@
 
 Promotes `<source branch>` into `<target branch>`.
 
+Closes #<issue>
+
 <!-- Keep this short. Do not repeat the release-note text of the pull requests listed below.
-     Their notes are read from the pull requests themselves. -->
+     Their notes are read from the pull requests themselves.
+     Replace the single `Closes` line with one `Closes #<issue>` line per issue this promotion
+     resolves, copied from the closing references of the included pull requests. Remove the line
+     when no included pull request resolves an issue. Only the promotion into `main`, the default
+     branch, closes issues; `dev` into `staging` records the same lines for the next promotion.
+     Keep issue references out of `Included PRs`, which the release generator reads as pull
+     request numbers. -->
 
 ## Included PRs
 
