@@ -248,7 +248,7 @@ def _write_mapping_sidecar(
             }
         },
     }
-    (base_dir / f"{base_dir.name}-mapping.yml").write_text(yaml.safe_dump(sidecar))
+    (base_dir / "shapeshifter.mapping.yml").write_text(yaml.safe_dump(sidecar))
     return str(config_path)
 
 
@@ -306,7 +306,7 @@ class TestUpdateEntityByNameMappingGuard:
         previous = _fixed_site_entity([[1, 10, "S", "x"], [2, None, "U", "y"]])
         project = _make_project_at(config_path, {"site": previous})
         ops, _save_project, save_boundary = _make_operations(project, with_boundary=True)
-        sidecar_path = tmp_path / f"{tmp_path.name}-mapping.yml"
+        sidecar_path = tmp_path / "shapeshifter.mapping.yml"
         sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
         sidecar["entities"]["site"]["links"]["S"] = {
             "target_id": 10,
@@ -342,7 +342,7 @@ class TestUpdateEntityByNameMappingGuard:
         project = _make_project_at(config_path, {"site": _fixed_site_entity([[1, 10, "S", "x"]])})
         ops, _save_project, save_boundary = _make_operations(project, with_boundary=True)
         save_boundary.side_effect = OSError("row save failed")
-        sidecar_path = tmp_path / f"{tmp_path.name}-mapping.yml"
+        sidecar_path = tmp_path / "shapeshifter.mapping.yml"
         before = sidecar_path.read_bytes()
 
         with pytest.raises(OSError, match="row save failed"):
@@ -390,7 +390,7 @@ class TestUpdateEntityByNamePartialSave:
         project = _make_project_at(config_path, {"site": _fixed_site_entity([[1, 10, "S", "x"]])})
         sync_service = FixedEntityMappingSyncService(_FailingSaveManager())
         ops, _save_project, save_boundary = _make_operations(project, with_boundary=True, mapping_sync_service=sync_service)
-        sidecar_path = tmp_path / f"{tmp_path.name}-mapping.yml"
+        sidecar_path = tmp_path / "shapeshifter.mapping.yml"
         before = sidecar_path.read_bytes()
 
         result = ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, 11, "S", "x"]]))

@@ -50,7 +50,7 @@ class _FailingManager(MappingManager):
 
 
 def _sidecar_path(tmp_path: Path) -> Path:
-    return tmp_path / f"{tmp_path.name}-mapping.yml"
+    return tmp_path / "shapeshifter.mapping.yml"
 
 
 def _write_sidecar(tmp_path: Path, links: dict[str, dict], *, local_key="site_code", public_id="site_id") -> None:

@@ -560,7 +560,7 @@ class ShapeShifter:
     def map_to_remote(self, link_cfgs: dict[str, dict[str, Any]]) -> Self:
         """Deprecated no-op kept for compatibility with older callers."""
         if link_cfgs:
-            logger.warning("options.mappings is deprecated and ignored during normalization; use <project>-mapping.yml instead")
+            logger.warning("options.mappings is deprecated and ignored during normalization; use shapeshifter.mapping.yml instead")
         return self
 
     def _apply_mapping_sidecar_links(self, entity_name: str, table_cfg: TableConfig) -> None:

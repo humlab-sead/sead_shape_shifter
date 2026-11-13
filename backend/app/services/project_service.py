@@ -694,7 +694,7 @@ class ProjectService:
 
         Copies entire project directory including:
         - shapeshifter.yml with updated metadata.name
-        - reconciliation.yml (if exists)
+        - shapeshifter.reconciliation.yml (if exists)
         - translations.tsv (if exists)
         - backups/ (if exists)
         - Any other project-specific files
