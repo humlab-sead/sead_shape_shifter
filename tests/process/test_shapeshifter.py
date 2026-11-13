@@ -1484,7 +1484,7 @@ class TestShapeShifter:
         project_dir.mkdir()
         project_file = project_dir / "shapeshifter.yml"
         project_file.write_text("entities: {}\n", encoding="utf-8")
-        (project_dir / "demo-project-reconciliation.yml").write_text(
+        (project_dir / "shapeshifter.reconciliation.yml").write_text(
             """version: "3.0"
 service_url: http://localhost:8000
 entities:

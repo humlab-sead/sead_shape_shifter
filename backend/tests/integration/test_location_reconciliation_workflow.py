@@ -83,11 +83,11 @@ def _project_file(tmp_path: Path) -> Path:
 
 
 def _catalog_path(tmp_path: Path) -> Path:
-    return tmp_path / PROJECT_NAME / f"{PROJECT_NAME}-reconciliation.yml"
+    return tmp_path / PROJECT_NAME / "shapeshifter.reconciliation.yml"
 
 
 def _sidecar_path(tmp_path: Path) -> Path:
-    return tmp_path / PROJECT_NAME / f"{PROJECT_NAME}-mapping.yml"
+    return tmp_path / PROJECT_NAME / "shapeshifter.mapping.yml"
 
 
 def _read_catalog_decisions(tmp_path: Path) -> dict[str, tuple[str, int | None, str | None]]:

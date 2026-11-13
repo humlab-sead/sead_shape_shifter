@@ -48,7 +48,7 @@ options:           # Global options (optional)
   data_sources:    # named data sources associated to this project
   output_expectations:  # Expected counts checked on full-run output
   fixed_entity_types:  # Project-level fixed-entity type conventions (optional)
-  mappings:        # (Legacy) Remote entity mappings — use <project>-mapping.yml sidecar instead
+  mappings:        # (Legacy) Remote entity mappings — use shapeshifter.mapping.yml sidecar instead
 ```
 
 ---
@@ -187,7 +187,7 @@ This architecture separates concerns between:
 - **Business logic**: `keys` for entity identification in source data
 - **Global scope**: `public_id` for target system integration and FK relationships
 
-**Core link rule**: Core FK links use local `system_id` values. Their FK columns contain the referenced entity's local `system_id`, not an external ID. When an ID from the source is used for reconciliation, it can still be configured as a business key and mapped through the mapping sidecar (`<project>-mapping.yml`).
+**Core link rule**: Core FK links use local `system_id` values. Their FK columns contain the referenced entity's local `system_id`, not an external ID. When an ID from the source is used for reconciliation, it can still be configured as a business key and mapped through the mapping sidecar (`shapeshifter.mapping.yml`).
 
 The SEAD change-request ingester also supports a project-specific direct target-ID value for an eligible target-model FK. This changes only the FK value written to the change-request package; it does not create a Core link or change Core FK values.
 
@@ -398,7 +398,7 @@ entities:
 **Critical Architectural Principle**: 
 - **All relationships use local `system_id` values** - FK columns contain parent's `system_id` (1, 2, 3...), never external IDs
 - **FK column naming**: Child FK column = parent's `public_id` (avoids `system_id` collision)
-- **SEAD ID mapping**: Applied separately via the mapping sidecar (`<project>-mapping.yml`) as a decoration step
+- **SEAD ID mapping**: Applied separately via the mapping sidecar (`shapeshifter.mapping.yml`) as a decoration step
 - **Local domain integrity**: All processing happens with sequential integer references
 
 ---
@@ -2624,7 +2624,7 @@ options:
     sead: "@include: sead-options.yml"
     arbodat_lookup: "@include: arbodat-lookup-options.yml"
 
-# Mapping sidecar is auto-loaded from <project>-mapping.yml; no @include needed
+# Mapping sidecar is auto-loaded from shapeshifter.mapping.yml; no @include needed
 ```
 
 ### `@load:` Load Syntax
@@ -3947,7 +3947,7 @@ entities: dict[string, EntityConfig]
 options:
   translations: TranslationConfig
   data_sources: dict[string, DataSourceConfig]
-  mappings: dict[string, any]  # Legacy; use <project>-mapping.yml sidecar
+  mappings: dict[string, any]  # Legacy; use shapeshifter.mapping.yml sidecar
 
 # EntityConfig
 EntityConfig:

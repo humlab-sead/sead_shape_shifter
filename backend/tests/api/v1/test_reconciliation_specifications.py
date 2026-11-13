@@ -110,7 +110,7 @@ def sample_recon_config(tmp_path):
         },
     )
 
-    config_file = project_dir / "test_project-reconciliation.yml"
+    config_file = project_dir / "shapeshifter.reconciliation.yml"
     with open(config_file, "w", encoding="utf-8") as f:
         yaml.dump(config.model_dump(exclude_none=True), f)
 
@@ -136,7 +136,7 @@ def _write_mapping_sidecar(tmp_path, links: dict[str, dict], local_only_approval
             }
         },
     }
-    (project_dir / "test_project-mapping.yml").write_text(yaml.safe_dump(sidecar, sort_keys=False), encoding="utf-8")
+    (project_dir / "shapeshifter.mapping.yml").write_text(yaml.safe_dump(sidecar, sort_keys=False), encoding="utf-8")
 
 
 def _owned_link(owner: str, field: str, target_id: int = 101) -> dict:
@@ -191,7 +191,7 @@ class TestListSpecifications:
 
         # Create empty recon config in nested project structure
         config = dto.EntityResolutionCatalog(version="3.0", service_url="http://localhost:8000", entities={})
-        config_file = tmp_path / "test_project" / "test_project-reconciliation.yml"
+        config_file = tmp_path / "test_project" / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)
 
@@ -449,7 +449,7 @@ class TestDeleteSpecification:
         assert body["removed_owned_approvals"] == 1
         assert set(body) == {"version", "service_url", "entities", "removed_owned_links", "removed_owned_approvals"}
         assert "site_name" not in body["entities"]["site"]
-        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         links = sidecar["entities"]["site"]["links"]
         assert "owned-name" not in links
         assert {"owned-code", "other-owner", "manual", "unowned"} <= links.keys()
@@ -472,7 +472,7 @@ class TestDeleteSpecification:
         assert response.status_code == 200, response.text
         assert response.json()["removed_owned_links"] == 1
         assert response.json()["removed_owned_approvals"] == 1
-        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert sidecar["entities"]["site"]["links"] == {}
         assert sidecar["entities"]["site"]["local_only_approvals"] == {}
 
@@ -485,7 +485,7 @@ class TestDeleteSpecification:
             {"owned-code": _owned_link("site", "site_code")},
             {"owned-approval": _owned_approval("site", "site_code")},
         )
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
         original_sidecar = sidecar_path.read_bytes()
 
         def fail_save(*_args, **_kwargs):
@@ -497,7 +497,7 @@ class TestDeleteSpecification:
         assert response.status_code == 409
         assert "changed during specification removal" in response.json()["detail"]["message"]
         assert sidecar_path.read_bytes() == original_sidecar
-        catalog = yaml.safe_load((tmp_path / "test_project" / "test_project-reconciliation.yml").read_text(encoding="utf-8"))
+        catalog = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.reconciliation.yml").read_text(encoding="utf-8"))
         assert "site_code" in catalog["entities"]["site"]
 
     async def test_sidecar_write_failure_keeps_specification(
@@ -509,7 +509,7 @@ class TestDeleteSpecification:
             {"owned-code": _owned_link("site", "site_code")},
             {"owned-approval": _owned_approval("site", "site_code")},
         )
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
         original_sidecar = sidecar_path.read_bytes()
 
         def fail_save(*_args, **_kwargs):
@@ -520,7 +520,7 @@ class TestDeleteSpecification:
 
         assert response.status_code == 500
         assert sidecar_path.read_bytes() == original_sidecar
-        catalog = yaml.safe_load((tmp_path / "test_project" / "test_project-reconciliation.yml").read_text(encoding="utf-8"))
+        catalog = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.reconciliation.yml").read_text(encoding="utf-8"))
         assert "site_code" in catalog["entities"]["site"]
 
     async def test_catalog_write_failure_reports_partial_cleanup(
@@ -545,9 +545,9 @@ class TestDeleteSpecification:
         assert response.status_code == 500
         assert "still present" in response.json()["detail"]["message"]
         assert "1 owned mapping link(s) and 1 local-only approval(s) were already removed" in response.json()["detail"]["message"]
-        catalog = yaml.safe_load((tmp_path / "test_project" / "test_project-reconciliation.yml").read_text(encoding="utf-8"))
+        catalog = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.reconciliation.yml").read_text(encoding="utf-8"))
         assert "site_code" in catalog["entities"]["site"]
-        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert set(sidecar["entities"]["site"]["links"]) == {"manual"}
         assert sidecar["entities"]["site"]["local_only_approvals"] == {}
 
@@ -592,7 +592,7 @@ async def test_whole_catalog_update_cleans_removed_spec_owned_links(
     assert response.status_code == 200, response.text
     body = response.json()
     assert "site_name" not in body["entities"]["site"]
-    sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+    sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
     links = sidecar["entities"]["site"]["links"]
     assert "owned-name" not in links
     assert {"owned-code", "manual"} <= links.keys()
@@ -614,7 +614,7 @@ def test_catalog_save_uses_atomic_replace_and_preserves_old_file_on_failure(tmp_
         manager.save_catalog("test_project", catalog)
 
     assert sample_recon_config.read_bytes() == original
-    assert not list(sample_recon_config.parent.glob(".test_project-reconciliation.yml.*.tmp"))
+    assert not list(sample_recon_config.parent.glob(".shapeshifter.reconciliation.yml.*.tmp"))
 
 
 class TestGetAvailableFields:

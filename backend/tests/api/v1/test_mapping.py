@@ -64,7 +64,7 @@ def _write_mapping_sidecar(tmp_path: Path) -> None:
             }
         },
     }
-    with open(tmp_path / "test_project" / "test_project-mapping.yml", "w", encoding="utf-8") as handle:
+    with open(tmp_path / "test_project" / "shapeshifter.mapping.yml", "w", encoding="utf-8") as handle:
         yaml.dump(sidecar, handle, sort_keys=False)
 
 
@@ -130,7 +130,7 @@ class TestMappingApi:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         await _create_project(authorized_client)
         _write_mapping_sidecar(tmp_path)
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
         sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
         sidecar["entities"]["site"]["links"]["owned"] = {
             "target_id": 101,
@@ -179,7 +179,7 @@ class TestMappingApi:
         assert body["link"]["confidence"] == 0.99
         assert body["link"]["notes"] == "Manual override"
 
-        with open(tmp_path / "test_project" / "test_project-mapping.yml", "r", encoding="utf-8") as handle:
+        with open(tmp_path / "test_project" / "shapeshifter.mapping.yml", "r", encoding="utf-8") as handle:
             sidecar = yaml.safe_load(handle)
         assert sidecar["entities"]["site"]["links"]["B"]["target_id"] == 20
 
@@ -218,7 +218,7 @@ class TestMappingApi:
             assert loaded.json()["local_key_value"] == key
             assert loaded.json()["link"]["source"] == "manual"
 
-        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert sidecar["entities"]["site"]["links"]["A/B"]["target_id"] == 1
 
     async def test_put_mapping_link_rejects_non_integer_target_id(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
@@ -243,7 +243,7 @@ class TestMappingApi:
             )
             assert response.status_code == 422, response.text
 
-        assert not (tmp_path / "test_project" / "test_project-mapping.yml").exists()
+        assert not (tmp_path / "test_project" / "shapeshifter.mapping.yml").exists()
 
     async def test_delete_mapping_link_removes_saved_link(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -255,7 +255,7 @@ class TestMappingApi:
         assert response.status_code == 200
         assert response.json() == {"entity_name": "site", "local_key_value": "A", "deleted": True}
 
-        with open(tmp_path / "test_project" / "test_project-mapping.yml", "r", encoding="utf-8") as handle:
+        with open(tmp_path / "test_project" / "shapeshifter.mapping.yml", "r", encoding="utf-8") as handle:
             sidecar = yaml.safe_load(handle)
         assert sidecar["entities"]["site"]["links"] == {}
 
@@ -315,7 +315,7 @@ def _write_bare_sidecar(tmp_path: Path, links: dict | None = None) -> None:
             }
         },
     }
-    with open(tmp_path / "test_project" / "test_project-mapping.yml", "w", encoding="utf-8") as handle:
+    with open(tmp_path / "test_project" / "shapeshifter.mapping.yml", "w", encoding="utf-8") as handle:
         yaml.dump(sidecar, handle, sort_keys=False)
 
 
@@ -371,7 +371,7 @@ class TestRetryFixedEntityMapping:
         body = response.json()
         assert body["status"] == "applied"
         assert body["changed"] is True
-        with open(tmp_path / "test_project" / "test_project-mapping.yml", encoding="utf-8") as handle:
+        with open(tmp_path / "test_project" / "shapeshifter.mapping.yml", encoding="utf-8") as handle:
             sidecar = yaml.safe_load(handle)
         assert sidecar["entities"]["site"]["links"]["A"]["target_id"] == 11
         assert sidecar["entities"]["site"]["links"]["A"]["source"] == "manual"
@@ -382,7 +382,7 @@ class TestRetryFixedEntityMapping:
         _write_bare_sidecar(tmp_path)
 
         first = await authorized_client.patch(_retry_url(), json=_pending_payload())
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
         after_first = sidecar_path.read_bytes()
         second = await authorized_client.patch(_retry_url(), json=_pending_payload())
 
@@ -411,7 +411,7 @@ class TestRetryFixedEntityMapping:
         response = await authorized_client.patch(_retry_url(), json=_pending_payload())
 
         assert response.status_code == 200
-        with open(tmp_path / "test_project" / "test_project-mapping.yml", encoding="utf-8") as handle:
+        with open(tmp_path / "test_project" / "shapeshifter.mapping.yml", encoding="utf-8") as handle:
             sidecar = yaml.safe_load(handle)
         assert sidecar["entities"]["site"]["links"]["A"]["target_id"] == 11
         assert sidecar["entities"]["site"]["links"]["B"]["target_id"] == 99
@@ -429,7 +429,7 @@ class TestRetryFixedEntityMapping:
         assert response.status_code == 409
         body = response.json()["detail"]
         assert body["context"]["changed_keys"] == ["A"]
-        with open(tmp_path / "test_project" / "test_project-mapping.yml", encoding="utf-8") as handle:
+        with open(tmp_path / "test_project" / "shapeshifter.mapping.yml", encoding="utf-8") as handle:
             sidecar = yaml.safe_load(handle)
         assert sidecar["entities"]["site"]["links"] == {}
 
@@ -462,7 +462,7 @@ class TestRetryFixedEntityMapping:
         response = await authorized_client.patch(_retry_url(), json=_pending_payload())
 
         assert response.status_code in (400, 409)
-        with open(tmp_path / "test_project" / "test_project-mapping.yml", encoding="utf-8") as handle:
+        with open(tmp_path / "test_project" / "shapeshifter.mapping.yml", encoding="utf-8") as handle:
             sidecar = yaml.safe_load(handle)
         assert sidecar["entities"]["site"]["links"] == {}
 

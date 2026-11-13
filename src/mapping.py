@@ -13,7 +13,7 @@ class LinkToRemoteService:
         self.remote_link_cfgs: dict[str, dict[str, Any]] = remote_link_cfgs
 
     def link_to_remote(self, entity_name: str, table: pd.DataFrame) -> pd.DataFrame:
-        """Uses content from mapping.yml to local PK values to target (SEAD) identities.
+        """Uses content from the mapping sidecar to local PK values to target (SEAD) identities.
         The mapping configuration consists of mappings for various (but not all) entities.
         Each mapping has the following structure:
             entity-name:

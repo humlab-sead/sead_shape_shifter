@@ -778,7 +778,7 @@ You need:
 8. Adjust **Match Thresholds** if needed. The **Review Threshold** marks rows that need attention. The **Auto-accept Threshold** is kept for compatibility and does not accept candidates on its own.
 9. Select **Save**.
 
-The specification is saved in the project folder as `<project>-reconciliation.yml`, alongside `shapeshifter.yml`.
+The specification is saved in the project folder as `shapeshifter.reconciliation.yml`, alongside `shapeshifter.yml`.
 
 To enter the same content as raw YAML, use the **YAML** tab inside the specification dialog, or the project's **Reconciliation → YAML** tab.
 
@@ -808,7 +808,7 @@ Select **Find Candidates** on the specification row to search the normalized row
 
 ## How Mappings Are Stored
 
-Applied ID links and manual overrides are persisted in a **mapping sidecar file** (`<project>-mapping.yml`) stored alongside `shapeshifter.yml`. This file is the source of truth for links applied during normalization. Reconciliation candidates and review decisions are held separately in `<project>-reconciliation.yml` and do not become applied links merely by being accepted there.
+Applied ID links and manual overrides are persisted in a **mapping sidecar file** (`shapeshifter.mapping.yml`) stored alongside `shapeshifter.yml`. This file is the source of truth for links applied during normalization. Reconciliation candidates and review decisions are held separately in `shapeshifter.reconciliation.yml` and do not become applied links merely by being accepted there.
 
 Shape Shifter blocks renaming an entity that has a mapping entry, including an entry with no links. Ask a project maintainer to move or remove that entry before renaming the entity.
 

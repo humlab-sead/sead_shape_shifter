@@ -57,11 +57,11 @@ class CaseConfig:
 
     @property
     def sidecar_path(self) -> str:
-        return f"{self.project_name}-mapping.yml"
+        return "shapeshifter.mapping.yml"
 
     @property
     def catalog_path(self) -> str:
-        return f"{self.project_name}-reconciliation.yml"
+        return "shapeshifter.reconciliation.yml"
 
 
 CASES: list[CaseConfig] = [

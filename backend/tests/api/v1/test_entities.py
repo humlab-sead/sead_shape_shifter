@@ -555,7 +555,7 @@ class TestEntitiesUpdate:
 
         project_dir = tmp_path / "test_project"
         project_file = project_dir / "shapeshifter.yml"
-        sidecar_file = project_dir / "test_project-mapping.yml"
+        sidecar_file = project_dir / "shapeshifter.mapping.yml"
         sidecar_file.write_text(
             yaml.safe_dump(
                 {
@@ -857,7 +857,7 @@ class TestEntityValues:
             },
         )
 
-        sidecar_path = project_folder / "test_project-mapping.yml"
+        sidecar_path = project_folder / "shapeshifter.mapping.yml"
         sidecar_path.write_text(
             yaml.safe_dump(
                 {
@@ -937,7 +937,7 @@ class TestEntityValues:
             },
         )
 
-        sidecar_path = project_folder / "test_project-mapping.yml"
+        sidecar_path = project_folder / "shapeshifter.mapping.yml"
         sidecar_path.write_text(
             yaml.safe_dump(
                 {
@@ -1054,7 +1054,7 @@ class TestEntityValues:
             },
         )
 
-        sidecar_path = project_folder / "test_project-mapping.yml"
+        sidecar_path = project_folder / "shapeshifter.mapping.yml"
         sidecar_path.write_text(
             yaml.safe_dump(
                 {
@@ -1150,7 +1150,7 @@ class TestEntityValues:
             }
         ).to_parquet(materialized_folder / "test_entity.parquet", index=False)
 
-        sidecar_path = project_folder / "test_project-mapping.yml"
+        sidecar_path = project_folder / "shapeshifter.mapping.yml"
         sidecar_path.write_text(
             yaml.safe_dump(
                 {
@@ -1263,7 +1263,7 @@ class TestEntityValues:
 
         assert response.status_code == 200, response.text
         assert response.json()["manual_links_added"] == 1
-        sidecar = yaml.safe_load((project_folder / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((project_folder / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         entry = sidecar["entities"]["test_entity"]
         assert entry["local_key"] == ["country_code", "site_code"]
         assert entry["links"]["SE|S1"]["target_id"] == 12
@@ -1301,7 +1301,7 @@ class TestEntityValues:
 
         assert response.status_code == 400
         assert "share the same encoded key" in response.json()["detail"]
-        assert not (project_folder / "test_project-mapping.yml").exists()
+        assert not (project_folder / "shapeshifter.mapping.yml").exists()
 
     async def test_patch_from_materialized_requires_authentication(self, tmp_path, monkeypatch):
         """The rebuild route rejects unauthenticated requests."""
@@ -1339,7 +1339,7 @@ class TestEntityValues:
 
         assert response.status_code == 400
         assert "not materialized" in response.json()["detail"]
-        assert not (tmp_path / "test_project" / "test_project-mapping.yml").exists()
+        assert not (tmp_path / "test_project" / "shapeshifter.mapping.yml").exists()
 
     async def test_update_entity_values_no_load_directive(self, tmp_path, monkeypatch, reset_services, authorized_client):
         """Test error when trying to update entity without @load: directive."""
@@ -1561,7 +1561,7 @@ def _fail_mapping_save(self, catalog, project_path, expected_version=None):
 
 def _write_sidecar_entry(project_folder, entity_name: str, *, local_key: str, public_id: str) -> None:
     """Write a bare sidecar entry so a fixed entity is eligible for save-time sync."""
-    sidecar_path = project_folder / f"{project_folder.name}-mapping.yml"
+    sidecar_path = project_folder / "shapeshifter.mapping.yml"
     sidecar_path.write_text(
         yaml.safe_dump(
             {
@@ -1632,7 +1632,7 @@ class TestFixedRowMappingLifecycle:
         )
         assert manual.status_code == 200, manual.text
 
-        sidecar_path = project_folder / "test_project-mapping.yml"
+        sidecar_path = project_folder / "shapeshifter.mapping.yml"
         sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
         untouched_link = {
             "target_id": 200,
