@@ -18,7 +18,7 @@ Measured against the declared source of truth below:
 | Model entities | 136 (135 declare a `target_table`; `abundance_element_group` declares none) |
 | Source-of-truth tables (effective surface) | 150 |
 | Mapped by a model entity | 133 |
-| Unmapped (candidate gaps) | 17 — classified in [TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md](TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md) |
+| Unmapped (candidate gaps) | 17 — listed in [TARGET_MODEL_COVERAGE_REVIEW.md](../../docs/proposals/TARGET_MODEL_PROJECT_REQUIREMENTS/TARGET_MODEL_COVERAGE_REVIEW.md) |
 | Model `target_table` values absent from the source | 0 |
 
 ### Source of truth
@@ -76,6 +76,11 @@ declarations.
 | File | Purpose | Status |
 |---|---|---|
 | `sead_standard_model.yml` | The standard target model | Current |
-| `TARGET_MODEL_MISSING_ENTITY_CANDIDATES.md` | Gap triage by tier | Updated 2026-11-12 with the authoritative recount (18 gaps) |
-| `TARGET_MODEL_CONDITIONAL_CANDIDATES.md` | Inventory of conditional-FK candidates (2026-10-14) | Inventory; predates the 2026-11-10 recount |
-| `TARGET_MODEL_REVIEW.md` | Entity-by-entity review notes | In progress; see README for current completeness state |
+| `sead_superset_model.yml` | Symlink to the standard model | Current |
+
+The review notes, gap triage, and conditional-FK inventory moved on 2026-11-12 to
+[docs/proposals/TARGET_MODEL_PROJECT_REQUIREMENTS/archive/](../../docs/proposals/TARGET_MODEL_PROJECT_REQUIREMENTS/archive/).
+Open model and Shape Shifter work is now tracked by
+[Target Model Project Requirements](../../docs/proposals/TARGET_MODEL_PROJECT_REQUIREMENTS/TARGET_MODEL_PROJECT_REQUIREMENTS.md);
+the current coverage state is recorded in
+[TARGET_MODEL_COVERAGE_REVIEW.md](../../docs/proposals/TARGET_MODEL_PROJECT_REQUIREMENTS/TARGET_MODEL_COVERAGE_REVIEW.md).

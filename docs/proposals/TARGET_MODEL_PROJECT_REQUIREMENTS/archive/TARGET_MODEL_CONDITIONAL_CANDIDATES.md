@@ -1,8 +1,8 @@
 # Target Model Conditional Foreign Key Candidates
 
-**Model scanned:** [sead_standard_model.yml](sead_standard_model.yml)
+**Model scanned:** [sead_standard_model.yml](../../../../resources/target_models/sead_standard_model.yml)
 **Feature:** `foreign_keys[].required_when: {has_new_rows: <source entity>}`
-**Generated:** 2026-10-14, by parsing the model with `src.target_model.models.TargetModel` and applying the rules in `src/target_model/spec_validator.py` and [Target Model Guide](../../docs/TARGET_MODEL_GUIDE.md).
+**Generated:** 2026-10-14, by parsing the model with `src.target_model.models.TargetModel` and applying the rules in `src/target_model/spec_validator.py` and [Target Model Guide](../../../TARGET_MODEL_GUIDE.md).
 
 This document lists every place in the shared SEAD superset model where the conditional
 required feature can be applied. It is an inventory, not a decision record. Applying any
@@ -327,7 +327,7 @@ PY
 
 ## References
 
-- [Target Model Guide](../../docs/TARGET_MODEL_GUIDE.md)
-- [Target Model Schema Reference](../../docs/TARGET_MODEL_SCHEMA_REFERENCE.md)
-- [Conditional Target Model Requirements](../../docs/proposals/done/CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md)
+- [Target Model Guide](../../../TARGET_MODEL_GUIDE.md)
+- [Target Model Schema Reference](../../../TARGET_MODEL_SCHEMA_REFERENCE.md)
+- [Conditional Target Model Requirements](../../done/CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md)
 - [Target Model Review 2026-10-13](TARGET_MODEL_REVIEW.md)
