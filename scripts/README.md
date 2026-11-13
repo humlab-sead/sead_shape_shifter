@@ -140,7 +140,7 @@ python3 scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned --s
 python3 scripts/update_pr_descriptions.py 620-634 --publish
 ```
 
-Promotion pull requests (`dev` into `staging`, or `staging` into `main`) are drafted from branch history without a model, listing the pull requests merged into the source branch and absent from the target branch.
+Promotion pull requests (`dev` into `staging`, or `staging` into `main`) are drafted from branch history without a model, listing the pull requests merged into the source branch and absent from the target branch. Issues resolved by those pull requests are listed as `Closes #<issue>` lines in `Summary`, so merging the promotion into `main` closes them; they are kept out of `Included PRs`, which the release generator reads as pull request numbers.
 
 `--include-orphaned` appends a `Detected orphaned commits` section covering the commits pushed to the base branch between the previous merged pull request and this one. Generated output, release bookkeeping, documentation-only commits, and contributor configuration are filtered out of that section by default, and the filtered counts stay visible in the section and on standard error. See [the What's New workflow](../docs/whats-new/README.md#recording-commits-without-a-pull-request).
 
@@ -187,6 +187,11 @@ uv run python scripts/create_change_pr.py \
 # Let Copilot draft the commit subject from the pending diff
 uv run python scripts/create_change_pr.py \
   --generate-subject --all --default-validation --dry-run
+
+# Record the issues this change resolves
+uv run python scripts/create_change_pr.py \
+  --type fix --subject "evaluate deferred extra columns before post-unnest fk linking" \
+  --path src --closes 695 --default-validation
 ```
 
 The script stages only the paths given with `--path`, so unrelated work stays
@@ -195,9 +200,16 @@ whole working tree is one logical commit; it is mutually exclusive with `--path`
 Both modes refuse the literal blanket values such as `.`, reject a dirty index,
 and refuse `staging` and `main` as targets because those are promotion branches.
 The pull request body uses the four sections required by
-[.github/pull_request_template.md](../.github/pull_request_template.md);
+[.github/pull_request_template.md](../github/pull_request_template.md);
 `--release-note`, `--upgrade-notes`, and `--validation` supply the content that
 the author knows, and the template fallback text is used otherwise.
+
+`--closes` records the issues a change resolves. It accepts `695` or `#695`,
+repeats one `Closes #<issue>` line per issue at the end of `Summary`, and adds
+the same lines to the commit message body. The body line gives the pull request
+a closing reference that the promotion description copies; the commit message
+line closes the issue when the commit reaches `main`. A pull request into `dev`
+closes nothing on its own, because `dev` is not the default branch.
 
 `--generate-description` runs `update_pr_descriptions.py` for the new pull
 request once it exists, so the Copilot-written description replaces the scaffold
