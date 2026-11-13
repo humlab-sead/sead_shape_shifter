@@ -17,6 +17,7 @@ from src.loaders import DataLoader
 from src.loaders.base_loader import DataLoaders, LoaderType
 from src.loaders.duckdb_loader import DuckDbWorkspace
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
+from src.output_expectations import OutputExpectationEvaluation
 from src.path_resolution import resolve_managed_file_path
 from src.process_state import ProcessState
 from src.reconciliation.mapping_manager import MappingManager
@@ -119,6 +120,7 @@ class ShapeShifter:
         self.extra_col_evaluator: ExtraColumnEvaluator = ExtraColumnEvaluator()
         self.unresolved_extra_columns: dict[str, dict[str, dict[str, Any]]] = {}
         self.incomplete_entities: dict[str, str] = {}
+        self.output_expectation_evaluation: OutputExpectationEvaluation | None = None
         self.mapping_manager: MappingManager = MappingManager()
         self.mapping_catalog: MappingCatalog | None = None
 

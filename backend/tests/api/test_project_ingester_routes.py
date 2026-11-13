@@ -16,6 +16,7 @@ from backend.app.authorization.repository import SQLiteAuthorizationRepository
 from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import settings
 from backend.app.main import app
+from backend.app.models.execute import OutputExpectationResult as OutputExpectationResultModel
 from backend.app.models.ingester import IngestResponse, ProjectIngesterRequest, ValidateResponse
 from backend.app.services import project_ingester_service as project_ingester_module
 from backend.app.services.project_ingester_service import ProjectIngesterService
@@ -193,7 +194,100 @@ async def test_project_routes_forward_authorized_resource_request_and_response(
     assert request.project_name == "project-a"
 
 
-@pytest.mark.parametrize("path,method_name", [(VALIDATE_PATH, "validate_project_tables"), (INGEST_PATH, "ingest_project_tables")])
+async def test_project_ingest_route_serializes_output_expectation_results(
+    authorization_repository: SQLiteAuthorizationRepository,  # pylint: disable=unused-argument
+    monkeypatch,
+) -> None:
+    """Return every expectation result, including grouped and missing-entity values, over HTTP."""
+    await create_project()
+    response_model = IngestResponse(
+        success=False,
+        records_processed=0,
+        message="Output expectation checks failed; no tables were ingested.",
+        output_path=None,
+        error_details="Expected 2 rows but measured 3.",
+        output_expectation_results=[
+            OutputExpectationResultModel(
+                name="site-count",
+                entity="site",
+                metric="row_count",
+                group_value=None,
+                measured_value=3,
+                expected_limit={"equals": 2},
+                status="fail",
+                failure_reason="Expected 2 rows but measured 3.",
+            ),
+            OutputExpectationResultModel(
+                name="site-group",
+                entity="site",
+                metric="grouped_row_count",
+                group_value=True,
+                measured_value=2,
+                expected_limit={"equals": 2},
+                status="pass",
+            ),
+            OutputExpectationResultModel(
+                name="site-group-null",
+                entity="site",
+                metric="grouped_row_count",
+                group_value=None,
+                measured_value=1,
+                expected_limit={"min": 1},
+                status="pass",
+            ),
+            OutputExpectationResultModel(
+                name="missing-site",
+                entity="missing_site",
+                metric="row_count",
+                group_value=None,
+                measured_value=None,
+                expected_limit={"equals": 1},
+                status="fail",
+                failure_reason="Expected entity 'missing_site' is missing from the normalized output.",
+            ),
+        ],
+    )
+    helper_method = AsyncMock(return_value=response_model)
+    install_project_ingester_stub(monkeypatch, ingest_project_tables=helper_method)
+
+    async with client_for_principal("project-admin") as client:
+        response = await client.post(INGEST_PATH, json=PROJECT_REQUEST)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body == response_model.model_dump()
+    results = body["output_expectation_results"]
+    assert [item["name"] for item in results] == ["site-count", "site-group", "site-group-null", "missing-site"]
+    assert [item["group_value"] for item in results] == [None, True, None, None]
+    assert [item["metric"] for item in results] == ["row_count", "grouped_row_count", "grouped_row_count", "row_count"]
+    assert results[3]["measured_value"] is None
+    assert results[3]["failure_reason"] == "Expected entity 'missing_site' is missing from the normalized output."
+    assert body["success"] is False
+    assert body["output_path"] is None
+    helper_method.assert_awaited_once()
+
+
+async def test_project_validate_route_reports_no_output_expectation_results(
+    authorization_repository: SQLiteAuthorizationRepository,  # pylint: disable=unused-argument
+    monkeypatch,
+) -> None:
+    """Validation-only requests never evaluate full-output expectations."""
+    await create_project()
+    helper_method = AsyncMock(return_value=ValidateResponse(is_valid=True))
+    install_project_ingester_stub(monkeypatch, validate_project_tables=helper_method)
+
+    async with client_for_principal("project-admin") as client:
+        response = await client.post(VALIDATE_PATH, json=PROJECT_REQUEST)
+
+    assert response.status_code == 200
+    assert "output_expectation_results" not in response.json()
+    helper_method.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    "path,method_name",
+    [(VALIDATE_PATH, "validate_project_tables"), (INGEST_PATH, "ingest_project_tables")],
+)
 @pytest.mark.parametrize(
     "extra_fields",
     [
