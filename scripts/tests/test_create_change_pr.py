@@ -279,6 +279,46 @@ def test_render_body_uses_fallbacks_when_evidence_is_missing() -> None:
     )
     assert "- None recorded." in body
     assert f"- {create_change_pr.FALLBACK_VALIDATION}" in body
+    assert "Closes #" not in body
+
+
+def test_render_body_ends_the_summary_with_closing_references() -> None:
+    body = create_change_pr.render_body(
+        summary="Fixed the deferred link.",
+        files=["src/normalizer.py"],
+        release_note="None - no user-visible change.",
+        upgrade_notes="None - no user action required.",
+        validation=["pytest: all passed"],
+        closing_issues=[695, 700],
+    )
+    summary_section = body.split("## Summary", 1)[1].split("## User-facing release note", 1)[0]
+    assert summary_section.rstrip().endswith("Closes #695\nCloses #700")
+    assert body.count("Closes #") == 2
+
+
+def test_parse_closing_issues_accepts_plain_and_prefixed_numbers() -> None:
+    assert create_change_pr.parse_closing_issues(["695", "#700", "695"]) == [695, 700]
+
+
+def test_parse_closing_issues_returns_empty_without_values() -> None:
+    assert create_change_pr.parse_closing_issues(None) == []
+
+
+@pytest.mark.parametrize("value", ["abc", "#0", "695x", "", "Closes #695"])
+def test_parse_closing_issues_rejects_anything_but_an_issue_number(value: str) -> None:
+    with pytest.raises(create_change_pr.WorkflowError, match="--closes expects"):
+        create_change_pr.parse_closing_issues([value])
+
+
+def test_commit_command_repeats_closing_references_in_the_commit_message() -> None:
+    plan = make_plan([], "")
+    plan.closing_issues = [695]
+
+    assert create_change_pr.commit_command(plan) == ["git", "commit", "-m", "chore: test", "-m", "Closes #695"]
+
+
+def test_commit_command_omits_a_body_without_closing_references() -> None:
+    assert create_change_pr.commit_command(make_plan([], "")) == ["git", "commit", "-m", "chore: test"]
 
 
 def test_ensure_specific_paths_rejects_empty_list() -> None:

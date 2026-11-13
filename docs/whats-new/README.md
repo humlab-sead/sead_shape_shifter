@@ -45,7 +45,7 @@ flowchart TB
 ```
 
 1. **Add notes to the change PR.** Complete `User-facing release note` and `Upgrade notes` in [the PR template](../../.github/pull_request_template.md). Use one or two plain-language sentences and the template's exact `None` text when a section does not apply.
-2. **List included PRs on promotions.** For `dev` to `staging` or `staging` to `main`, use [the promotion template](../../.github/promotion_pr_template.md), keep its `<!-- promotion-pr -->` marker, and list carried PRs under `Included PRs`. The release generator uses those PRs' notes instead of the promotion's.
+2. **List included PRs on promotions.** For `dev` to `staging` or `staging` to `main`, use [the promotion template](../../.github/promotion_pr_template.md), keep its `<!-- promotion-pr -->` marker, and list carried PRs under `Included PRs`. The release generator uses those PRs' notes instead of the promotion's. List issues the promotion resolves as `Closes #<issue>` lines in `Summary`; merging the promotion into `main` closes them, and issue references do not belong under `Included PRs`.
 3. **Review the release draft.** At release, semantic-release runs `scripts/generate_whats_new.py`. The versioned note includes PRs shipped since the previous release. Every run also refreshes [`PENDING.md`](PENDING.md) with merged PRs not yet on `main`; the What's New page displays this snapshot above the versioned release archive. It is not part of a versioned note or GitHub release body.
 
    To generate a draft manually:
