@@ -25,8 +25,10 @@ into `dev`, even when it looks like maintenance.
 1. Read the working tree once, then choose the paths.
 2. Pass one `--path` per file or directory that belongs to the change.
 3. Choose the commit type and subject.
-4. Run the script with `--dry-run`, read the printed plan and pull request body.
-5. Run it for real, then report the pull request number.
+4. Pass one `--closes` per issue the change resolves, when it answers an existing
+   issue.
+5. Run the script with `--dry-run`, read the printed plan and pull request body.
+6. Run it for real, then report the pull request number.
 
 ```bash
 uv run python scripts/create_change_pr.py \
@@ -87,6 +89,25 @@ exist only to satisfy the upgraded tools.
   commands first and only use the flag when their real outcome matches. Pass
   `--validation` instead when the evidence is narrower, since the default pytest
   line claims the whole configured test path set.
+
+## Closing Issues
+
+- Pass `--closes` once per issue the change resolves: `--closes 661 --closes
+  662`. A bare number and a `#`-prefixed number both work: `695` and `#695` are
+  the same issue. Anything else, such as a full URL or `owner/repo#695`, is
+  rejected instead of being written as text GitHub ignores.
+- Repeating the same number reports it once, and the issues keep the order you
+  passed them in.
+- The script writes one `Closes #<issue>` line per issue at the end of
+  `## Summary`, and repeats the same lines in the commit message. Keep them out of
+  the release-note and upgrade-note sections, which the release generator reads.
+- **The merge does not close the issue.** GitHub closes an issue from a `Closes`
+  line only when the pull request merges into the default branch, or when a
+  commit carrying the line reaches that branch. This workflow targets `dev`, and
+  this repository's default branch is `main`, so a merged change pull request
+  leaves each named issue open with no `closingIssuesReferences` entry. After the
+  merge, close each issue yourself and name the merged pull request number in the
+  comment.
 
 ## Copilot Description
 
