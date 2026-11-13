@@ -94,7 +94,7 @@ def _write_catalog(tmp_path) -> None:
             }
         },
     }
-    (tmp_path / "review" / "review-reconciliation.yml").write_text(yaml.safe_dump(catalog), encoding="utf-8")
+    (tmp_path / "review" / "shapeshifter.reconciliation.yml").write_text(yaml.safe_dump(catalog), encoding="utf-8")
 
 
 class TestReconciliationDecisionRoutes:
@@ -224,7 +224,7 @@ class TestReconciliationDecisionRoutes:
         ):
             response = await authorized_client.post(f"{path}/mapping", json=payload)
             assert response.status_code == 422, response.text
-        catalog_path = tmp_path / "review" / "review-reconciliation.yml"
+        catalog_path = tmp_path / "review" / "shapeshifter.reconciliation.yml"
         original_catalog = catalog_path.read_bytes()
         mismatch = await authorized_client.post(
             f"{path}/mapping",
@@ -245,7 +245,7 @@ class TestReconciliationDecisionRoutes:
 
     async def test_old_catalog_is_ignored_and_recreated(self, authorized_client, tmp_path, monkeypatch) -> None:
         await _create_project(authorized_client, tmp_path, monkeypatch)
-        path = tmp_path / "review" / "review-reconciliation.yml"
+        path = tmp_path / "review" / "shapeshifter.reconciliation.yml"
         path.write_text("version: '2.0'\nservice_url: http://localhost\nentities: {site: {site_name: {mapping: []}}}\n", encoding="utf-8")
         original = path.read_bytes()
         response = await authorized_client.get("/api/v1/projects/review/reconciliation")
@@ -263,7 +263,7 @@ class TestReconciliationDecisionRoutes:
 
     async def test_invalid_catalogs_return_clear_errors_without_rewriting(self, authorized_client, tmp_path, monkeypatch) -> None:
         await _create_project(authorized_client, tmp_path, monkeypatch)
-        path = tmp_path / "review" / "review-reconciliation.yml"
+        path = tmp_path / "review" / "shapeshifter.reconciliation.yml"
         for contents, message in (
             ("version: '4.0'\nentities: {}\n", "Unsupported reconciliation catalog version"),
             ("version: [\n", "Malformed reconciliation catalog"),
@@ -308,7 +308,7 @@ class TestReconciliationDecisionRoutes:
 
         assert response.status_code == 200, response.text
         assert response.json()["outcomes"] == [{"local_key_value": "A", "outcome": "verified", "reason": None}]
-        sidecar = yaml.safe_load((tmp_path / "review" / "review-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "review" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert sidecar["entities"]["site"]["links"]["A"]["verified_at"]
 
     async def test_sync_and_async_routes_use_keyed_candidate_matching(self, authorized_client, tmp_path, monkeypatch) -> None:
@@ -365,7 +365,7 @@ class TestReconciliationDecisionRoutes:
     async def test_matching_routes_fail_when_manifest_does_not_support_saved_type(self, authorized_client, tmp_path, monkeypatch) -> None:
         await _create_project(authorized_client, tmp_path, monkeypatch)
         _write_catalog(tmp_path)
-        catalog_path = tmp_path / "review" / "review-reconciliation.yml"
+        catalog_path = tmp_path / "review" / "shapeshifter.reconciliation.yml"
         original_catalog = catalog_path.read_bytes()
         unsupported_manifest = {
             "defaultTypes": [{"id": "site", "name": "Site"}],
@@ -400,7 +400,7 @@ class TestReconciliationDecisionRoutes:
     async def test_suggestions_block_saved_properties_not_declared_for_type(self, authorized_client, tmp_path, monkeypatch) -> None:
         await _create_project(authorized_client, tmp_path, monkeypatch)
         _write_catalog(tmp_path)
-        catalog_path = tmp_path / "review" / "review-reconciliation.yml"
+        catalog_path = tmp_path / "review" / "shapeshifter.reconciliation.yml"
         catalog = yaml.safe_load(catalog_path.read_text(encoding="utf-8"))
         catalog["entities"]["site"]["site_name"]["property_mappings"] = {"old_property": "site_name"}
         catalog_path.write_text(yaml.safe_dump(catalog), encoding="utf-8")

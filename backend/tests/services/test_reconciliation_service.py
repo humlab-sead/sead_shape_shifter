@@ -501,7 +501,7 @@ class TestReconciliationService:
     def test_get_default_registry_filename(self, reconciliation_service: ReconciliationService):
         """Test default reconciliation config filename generation."""
         path = reconciliation_service.catalog_manager._get_default_catalog_filename("my_config")
-        assert path.name == "my_config-reconciliation.yml"
+        assert path.name == "shapeshifter.reconciliation.yml"
 
     def test_load_reconciliation_config_creates_empty_if_missing(self, reconciliation_service: ReconciliationService):
         """Test load creates empty config if file doesn't exist."""
@@ -660,7 +660,7 @@ class TestReconciliationService:
             # Create empty config file with v2 format in nested project structure
             project_dir = tmp_path / "test"
             project_dir.mkdir(exist_ok=True)
-            config_file = project_dir / "test-reconciliation.yml"
+            config_file = project_dir / "shapeshifter.reconciliation.yml"
             config = {
                 "version": "3.0",
                 "service_url": RECONCILIATION_SERVICE_URL,
@@ -720,7 +720,7 @@ class TestReconciliationService:
             # Create config in nested structure
             project_dir = tmp_path / "test"
             project_dir.mkdir(exist_ok=True)
-            config_file = project_dir / "test-reconciliation.yml"
+            config_file = project_dir / "shapeshifter.reconciliation.yml"
             config = {
                 "version": "3.0",
                 "service_url": RECONCILIATION_SERVICE_URL,
@@ -768,7 +768,7 @@ class TestReconciliationService:
             # Create config in nested structure
             project_dir = tmp_path / "test"
             project_dir.mkdir(exist_ok=True)
-            config_file = project_dir / "test-reconciliation.yml"
+            config_file = project_dir / "shapeshifter.reconciliation.yml"
             config = {
                 "version": "3.0",
                 "service_url": RECONCILIATION_SERVICE_URL,
@@ -809,7 +809,7 @@ class TestReconciliationService:
             # Create config in nested structure
             project_dir = tmp_path / "test"
             project_dir.mkdir(exist_ok=True)
-            config_file = project_dir / "test-reconciliation.yml"
+            config_file = project_dir / "shapeshifter.reconciliation.yml"
             config = {
                 "version": "3.0",
                 "service_url": RECONCILIATION_SERVICE_URL,
@@ -844,7 +844,7 @@ class TestReconciliationService:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -885,7 +885,7 @@ class TestReconciliationService:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -925,7 +925,7 @@ class TestReconciliationService:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -938,7 +938,7 @@ class TestReconciliationService:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         config_file.write_text(yaml.dump({"version": "3.0", "service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
 
         with pytest.raises(NotFoundError, match="Entity mapping for entity 'nonexistent' and target field 'field' not found"):
@@ -952,7 +952,7 @@ class TestReconciliationService:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -993,7 +993,7 @@ class TestReconciliationService:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1267,7 +1267,7 @@ class TestReconciliationService:
     async def test_old_catalog_rows_can_be_proposed_again(self, reconciliation_service, sample_entity_spec, mock_recon_client, tmp_path):
         project_dir = tmp_path / "old"
         project_dir.mkdir()
-        catalog = project_dir / "old-reconciliation.yml"
+        catalog = project_dir / "shapeshifter.reconciliation.yml"
         catalog.write_text("version: '2.0'\nentities: {site: {site_name: {mapping: []}}}\n", encoding="utf-8")
         source = ResolvedSourceRows(rows=[{"site_code": "A", "site_name": "Same"}], local_key="site_code")
         mock_recon_client.reconcile_batch.return_value = {"q0": []}
@@ -1288,7 +1288,7 @@ class TestSpecificationManagement:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)
 
@@ -1351,7 +1351,7 @@ class TestSpecificationManagement:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)
 
@@ -1397,7 +1397,7 @@ class TestSpecificationManagement:
         # Save initial config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1440,7 +1440,7 @@ class TestSpecificationManagement:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1474,7 +1474,7 @@ class TestSpecificationManagement:
         mock_mapper_instance.to_core_config.return_value = MagicMock(entities={"site": MagicMock()})
         mock_mapper.return_value = mock_mapper_instance
 
-        config_file = tmp_path / "test-reconciliation.yml"
+        config_file = tmp_path / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1512,7 +1512,7 @@ class TestSpecificationManagement:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1542,7 +1542,7 @@ class TestSpecificationManagement:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1563,7 +1563,7 @@ class TestSpecificationManagement:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1597,7 +1597,7 @@ class TestSpecificationManagement:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1637,7 +1637,7 @@ class TestSpecificationManagement:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1657,7 +1657,7 @@ class TestSpecificationManagement:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1672,7 +1672,7 @@ class TestSpecificationManagement:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1700,7 +1700,7 @@ class TestSpecificationManagement:
         mock_ss_service.preview_entity = AsyncMock(return_value=mock_preview_result)
         reconciliation_service.shapeshift_service = mock_ss_service
 
-        config_file = tmp_path / "test-reconciliation.yml"
+        config_file = tmp_path / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1749,7 +1749,7 @@ class TestSpecificationManagement:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1762,7 +1762,7 @@ class TestSpecificationManagement:
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
-        config_file = project_dir / "test-reconciliation.yml"
+        config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 

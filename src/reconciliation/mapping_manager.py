@@ -1,4 +1,4 @@
-"""Mapping sidecar file I/O and in-memory cache (`<project>-mapping.yml`).
+"""Mapping sidecar file I/O and in-memory cache (`shapeshifter.mapping.yml`).
 
 ``MappingManager`` is the single authority for reading, writing, and
 caching the mapping sidecar file.  It provides convenience methods that
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 
 
 class MappingManager:
-    """CRUD operations and file I/O for ``<project>-mapping.yml`` sidecar files.
+    """CRUD operations and file I/O for ``shapeshifter.mapping.yml`` sidecar files.
 
     Maintains an in-memory cache of loaded catalogs so that repeated reads
     within a single process lifetime do not re-parse the YAML file.  The
@@ -56,6 +56,8 @@ class MappingManager:
         manager.save(catalog, "/path/to/project/shapeshifter.yml")
     """
 
+    SIDECAR_FILENAME = "shapeshifter.mapping.yml"
+
     def __init__(self) -> None:
         self._cache: dict[str, MappingCatalog] = {}
         self._cache_versions: dict[str, str] = {}
@@ -69,20 +71,20 @@ class MappingManager:
         """Resolve the sidecar file path from a project path.
 
         If *project_path* points to a ``shapeshifter.yml`` (or any regular
-        file), the parent directory is used.  The sidecar file is always
-        ``<dirname>-mapping.yml``.
+        file), the parent directory is used.  The sidecar file always has the
+        fixed name ``shapeshifter.mapping.yml``.
 
         Args:
             project_path: Either a project directory or the path to the
                 project's ``shapeshifter.yml`` file.
 
         Returns:
-            The absolute path to ``<project>-mapping.yml``.
+            The absolute path to ``shapeshifter.mapping.yml``.
         """
         pp = Path(project_path).resolve()
         if pp.is_file():
             pp = pp.parent
-        return pp / f"{pp.name}-mapping.yml"
+        return pp / MappingManager.SIDECAR_FILENAME
 
     @staticmethod
     def _cache_key(project_path: str | Path) -> str:

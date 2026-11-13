@@ -178,7 +178,7 @@ def test_mapping_manager_persists_owner_and_null_verification_without_changing_l
 
     MappingManager().save(catalog, project_dir)
 
-    sidecar = yaml.safe_load((project_dir / "demo-project-mapping.yml").read_text(encoding="utf-8"))
+    sidecar = yaml.safe_load((project_dir / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
     links = sidecar["entities"]["samples"]["links"]
     assert links[owned_key]["owner"] == {"entity_name": "samples", "target_field": "sample_code"}
     assert links[owned_key]["verified_at"] is None
@@ -199,7 +199,7 @@ def test_mapping_manager_persists_local_only_approval_separately_from_links(tmp_
 
     MappingManager().save(catalog, project_dir)
 
-    sidecar = yaml.safe_load((project_dir / "demo-project-mapping.yml").read_text(encoding="utf-8"))
+    sidecar = yaml.safe_load((project_dir / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
     entity = sidecar["entities"]["samples"]
     assert set(entity["links"]) == set(catalog.entities["samples"].links)
     assert encoded_key not in entity["links"]
@@ -262,7 +262,7 @@ def test_mapping_manager_snapshot_uses_exact_bytes_and_separate_missing_version(
     assert missing_snapshot.content_version != missing_snapshot.catalog.version
 
     manager.save(make_catalog(), project_dir, expected_version=missing_snapshot.content_version)
-    sidecar_path = project_dir / "demo-project-mapping.yml"
+    sidecar_path = project_dir / "shapeshifter.mapping.yml"
     original_bytes = sidecar_path.read_bytes()
     original_snapshot = manager.load_snapshot(project_dir)
 
@@ -284,7 +284,7 @@ def test_mapping_manager_rejects_stale_save_without_mutating_cache_or_disk(tmp_p
     second_catalog = make_catalog()
     second_manager = MappingManager()
     second_manager.save(second_catalog, project_dir, expected_version=snapshot.content_version)
-    sidecar_path = project_dir / "demo-project-mapping.yml"
+    sidecar_path = project_dir / "shapeshifter.mapping.yml"
     external_bytes = sidecar_path.read_bytes()
 
     with pytest.raises(MappingVersionConflictError):
@@ -322,7 +322,7 @@ def test_mapping_manager_cleans_temporary_file_when_atomic_replace_fails(tmp_pat
     with pytest.raises(OSError, match="replace failed"):
         manager.save(make_catalog(), project_dir, expected_version=MISSING_CONTENT_VERSION)
 
-    assert not (project_dir / "demo-project-mapping.yml").exists()
+    assert not (project_dir / "shapeshifter.mapping.yml").exists()
     assert list(project_dir.glob(".tmp-mapping-*.yml")) == []
 
 
