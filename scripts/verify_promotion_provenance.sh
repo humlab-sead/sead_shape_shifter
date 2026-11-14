@@ -31,6 +31,7 @@ set -euo pipefail
 
 readonly DEFAULT_PROTECTED_PATHS="scripts/:src/:backend/:frontend/:ingesters/:tests/:.github/workflows/"
 readonly PROMOTION_BASE_BRANCHES="staging main"
+readonly LOCAL_COMMIT_BLOCKED_BRANCHES="dev staging main"
 readonly PULL_REQUEST_MERGE_SUBJECT='^Merge pull request #[0-9]+'
 readonly SUMMARY_TITLE="Promotion provenance"
 
@@ -40,10 +41,12 @@ Verify that commits touching code paths in a promotion carry pull request proven
 
 Usage:
   verify_promotion_provenance.sh --base <ref> [--head <ref>]
+  verify_promotion_provenance.sh --check-local-commit
 
 Options:
   --base <ref>   Commit or branch the promotion targets. Required.
   --head <ref>   Commit or branch the promotion introduces. Defaults to HEAD.
+  --check-local-commit  Check staged paths against the local branch policy.
   -h, --help     Print this help.
 
 Environment:
@@ -115,8 +118,31 @@ is_protected_path() {
   return 1
 }
 
+check_local_commit() {
+  local branch path
+  local -a matched_paths=()
+
+  branch="$(git symbolic-ref --quiet --short HEAD)" || return 0
+  case " ${LOCAL_COMMIT_BLOCKED_BRANCHES} " in
+    *" ${branch} "*) ;;
+    *) return 0 ;;
+  esac
+
+  while IFS= read -r -d '' path; do
+    is_protected_path "$path" && matched_paths+=("$path")
+  done < <(git diff --cached --name-only --no-renames -z)
+
+  [[ ${#matched_paths[@]} -gt 0 ]] || return 0
+
+  printf 'Commit blocked on branch "%s"; protected paths require a pull request:\n' "$branch" >&2
+  printf '  %s\n' "${matched_paths[@]}" >&2
+  printf 'Create a feature branch and merge it through a pull request.\n' >&2
+  return 1
+}
+
 base_ref=""
 head_ref="HEAD"
+local_commit_mode=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -130,6 +156,10 @@ while [[ $# -gt 0 ]]; do
       head_ref="$2"
       shift 2
       ;;
+    --check-local-commit)
+      local_commit_mode=true
+      shift
+      ;;
     -h | --help)
       usage
       exit 0
@@ -140,12 +170,25 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+command -v git >/dev/null || die "git is required"
+
+IFS=':' read -r -a protected_prefixes <<< "${PROTECTED_PATHS:-${DEFAULT_PROTECTED_PATHS}}"
+[[ ${#protected_prefixes[@]} -gt 0 ]] || die "PROTECTED_PATHS is empty"
+
+if [[ "$local_commit_mode" == true ]]; then
+  [[ -z "$base_ref" ]] || die "--base cannot be used with --check-local-commit"
+  if check_local_commit; then
+    exit 0
+  else
+    exit 1
+  fi
+fi
+
 [[ -n "$base_ref" ]] || {
   usage >&2
   die "--base is required"
 }
 
-command -v git >/dev/null || die "git is required"
 command -v gh >/dev/null || die "the GitHub CLI (gh) is required"
 
 if ! git rev-parse --verify --quiet "${base_ref}^{commit}" >/dev/null; then
@@ -159,9 +202,6 @@ repository="${GITHUB_REPOSITORY:-}"
 if [[ -z "$repository" ]]; then
   repository="$(gh repo view --json nameWithOwner --jq '.nameWithOwner')" || die "cannot determine repository; set GITHUB_REPOSITORY"
 fi
-
-IFS=':' read -r -a protected_prefixes <<< "${PROTECTED_PATHS:-${DEFAULT_PROTECTED_PATHS}}"
-[[ ${#protected_prefixes[@]} -gt 0 ]] || die "PROTECTED_PATHS is empty"
 
 mapfile -t chain < <(git rev-list --first-parent "${base_ref}..${head_ref}")
 
