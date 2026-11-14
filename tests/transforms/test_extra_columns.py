@@ -5,7 +5,59 @@ Tests for extra_columns evaluation with interpolated string support.
 import pandas as pd
 import pytest
 
-from src.transforms.extra_columns import ExtraColumnEvaluator
+from src.transforms.extra_columns import (
+    EXTRA_COLUMN_STRATEGIES,
+    EscapedEqualsStrategy,
+    ExtraColumnEvaluator,
+    FormulaStrategy,
+    InterpolationStrategy,
+    StringConstantStrategy,
+)
+
+
+class TestExtraColumnStrategyRefactor:
+    """Test strategy registration and dispatch in the refactored evaluator."""
+
+    def test_registered_strategies_are_instantiated_in_priority_order(self):
+        strategy_names = [type(strategy).__name__ for strategy in EXTRA_COLUMN_STRATEGIES.instances]
+
+        assert strategy_names == [
+            "ConstantStrategy",
+            "EscapedEqualsStrategy",
+            "FormulaStrategy",
+            "InterpolationStrategy",
+            "ColumnCopyStrategy",
+            "StringConstantStrategy",
+        ]
+
+    def test_default_strategies_evaluate_each_string_mode(self):
+        evaluator = ExtraColumnEvaluator()
+        df = pd.DataFrame({"first": ["Ada"], "last": ["Lovelace"], "Source": [7]})
+
+        result, deferred = evaluator.evaluate_extra_columns(
+            df,
+            {
+                "full": "{first} {last}",
+                "copy": "source",
+                "formula": "=concat(first, ' ', last)",
+                "escaped": "==literal",
+                "numeric": "53",
+            },
+            "person",
+        )
+
+        assert not deferred
+        assert result["full"].tolist() == ["Ada Lovelace"]
+        assert result["copy"].tolist() == [7]
+        assert result["formula"].tolist() == ["Ada Lovelace"]
+        assert result["escaped"].tolist() == ["=literal"]
+        assert result["numeric"].tolist() == [53]
+
+    def test_explicit_strategy_sequence_is_used(self):
+        strategy = StringConstantStrategy()
+        evaluator = ExtraColumnEvaluator(strategies=[strategy])
+
+        assert evaluator.strategies == [strategy]
 
 
 class TestInterpolationDetection:
@@ -13,42 +65,42 @@ class TestInterpolationDetection:
 
     def test_detects_simple_interpolation(self):
         """Single column interpolation is detected."""
-        assert ExtraColumnEvaluator.is_interpolated_string("{col}")
+        assert InterpolationStrategy.is_interpolated_string("{col}")
 
     def test_detects_multiple_interpolations(self):
         """Multiple column interpolations are detected."""
-        assert ExtraColumnEvaluator.is_interpolated_string("{first} {last}")
+        assert InterpolationStrategy.is_interpolated_string("{first} {last}")
 
     def test_detects_interpolation_with_text(self):
         """Interpolation mixed with literal text is detected."""
-        assert ExtraColumnEvaluator.is_interpolated_string("Name: {name}")
+        assert InterpolationStrategy.is_interpolated_string("Name: {name}")
 
     def test_escaped_braces_not_detected(self):
         """Escaped braces {{}} are not detected as interpolation."""
-        assert not ExtraColumnEvaluator.is_interpolated_string("{{literal}}")
+        assert not InterpolationStrategy.is_interpolated_string("{{literal}}")
 
     def test_constant_string_not_detected(self):
         """Plain string constant is not detected as interpolation."""
-        assert not ExtraColumnEvaluator.is_interpolated_string("constant")
+        assert not InterpolationStrategy.is_interpolated_string("constant")
 
     def test_non_string_not_detected(self):
         """Non-string values are not detected as interpolation."""
-        assert not ExtraColumnEvaluator.is_interpolated_string(123)
-        assert not ExtraColumnEvaluator.is_interpolated_string(None)
-        assert not ExtraColumnEvaluator.is_interpolated_string([])
+        assert not InterpolationStrategy.is_interpolated_string(123)
+        assert not InterpolationStrategy.is_interpolated_string(None)
+        assert not InterpolationStrategy.is_interpolated_string([])
 
     def test_empty_braces_not_detected(self):
         """Empty braces {} are not valid interpolation."""
-        assert not ExtraColumnEvaluator.is_interpolated_string("{}")
+        assert not InterpolationStrategy.is_interpolated_string("{}")
 
     def test_invalid_column_name_not_detected(self):
         """Invalid column names (starting with number) are not detected."""
-        assert not ExtraColumnEvaluator.is_interpolated_string("{123invalid}")
+        assert not InterpolationStrategy.is_interpolated_string("{123invalid}")
 
     def test_detects_unicode_column_name(self):
         """Column names starting with a non-ASCII letter are detected."""
-        assert ExtraColumnEvaluator.is_interpolated_string("ArboDat {Ökogruppe}")
-        assert ExtraColumnEvaluator.is_interpolated_string("{Ångström}")
+        assert InterpolationStrategy.is_interpolated_string("ArboDat {Ökogruppe}")
+        assert InterpolationStrategy.is_interpolated_string("{Ångström}")
 
 
 class TestDslFormulaDetection:
@@ -56,13 +108,13 @@ class TestDslFormulaDetection:
 
     def test_detects_dsl_formula(self):
         """Single leading '=' indicates a DSL formula."""
-        assert ExtraColumnEvaluator.is_dsl_formula("=concat(first, last)")
+        assert FormulaStrategy.is_dsl_formula("=concat(first, last)")
 
     def test_doubled_prefix_escapes_formula_marker(self):
         """Double leading '=' is treated as a literal string, not a DSL formula."""
-        assert not ExtraColumnEvaluator.is_dsl_formula("==literal")
-        assert ExtraColumnEvaluator.is_escaped_equals_literal("==literal")
-        assert ExtraColumnEvaluator.unescape_equals_literal("==literal") == "=literal"
+        assert not FormulaStrategy.is_dsl_formula("==literal")
+        assert EscapedEqualsStrategy.is_escaped_equals_literal("==literal")
+        assert EscapedEqualsStrategy.unescape_equals_literal("==literal") == "=literal"
 
 
 class TestDependencyExtraction:
@@ -70,47 +122,47 @@ class TestDependencyExtraction:
 
     def test_extracts_single_column(self):
         """Single column dependency is extracted."""
-        result = ExtraColumnEvaluator.extract_column_dependencies("{col}")
+        result = InterpolationStrategy.extract_column_dependencies("{col}")
         assert result == ["col"]
 
     def test_extracts_multiple_columns(self):
         """Multiple column dependencies are extracted."""
-        result = ExtraColumnEvaluator.extract_column_dependencies("{first} {last}")
+        result = InterpolationStrategy.extract_column_dependencies("{first} {last}")
         assert result == ["first", "last"]
 
     def test_preserves_order(self):
         """Column order is preserved."""
-        result = ExtraColumnEvaluator.extract_column_dependencies("{z} {a} {m}")
+        result = InterpolationStrategy.extract_column_dependencies("{z} {a} {m}")
         assert result == ["z", "a", "m"]
 
     def test_removes_duplicates(self):
         """Duplicate columns appear only once."""
-        result = ExtraColumnEvaluator.extract_column_dependencies("{a} {b} {a}")
+        result = InterpolationStrategy.extract_column_dependencies("{a} {b} {a}")
         assert result == ["a", "b"]
 
     def test_handles_underscores(self):
         """Column names with underscores are extracted."""
-        result = ExtraColumnEvaluator.extract_column_dependencies("{first_name} {last_name}")
+        result = InterpolationStrategy.extract_column_dependencies("{first_name} {last_name}")
         assert result == ["first_name", "last_name"]
 
     def test_handles_numbers(self):
         """Column names with numbers (not at start) are extracted."""
-        result = ExtraColumnEvaluator.extract_column_dependencies("{col1} {col2}")
+        result = InterpolationStrategy.extract_column_dependencies("{col1} {col2}")
         assert result == ["col1", "col2"]
 
     def test_ignores_escaped_braces(self):
         """Escaped braces {{}} are ignored."""
-        result = ExtraColumnEvaluator.extract_column_dependencies("{{literal}} {real}")
+        result = InterpolationStrategy.extract_column_dependencies("{{literal}} {real}")
         assert result == ["real"]
 
     def test_extracts_unicode_column_name(self):
         """Column names starting with a non-ASCII letter are extracted."""
-        result = ExtraColumnEvaluator.extract_column_dependencies("ArboDat {Ökogruppe}")
+        result = InterpolationStrategy.extract_column_dependencies("ArboDat {Ökogruppe}")
         assert result == ["Ökogruppe"]
 
     def test_empty_pattern(self):
         """Pattern with no columns returns empty list."""
-        result = ExtraColumnEvaluator.extract_column_dependencies("no columns here")
+        result = InterpolationStrategy.extract_column_dependencies("no columns here")
         assert result == []
 
 
@@ -119,22 +171,22 @@ class TestBraceEscaping:
 
     def test_unescapes_double_braces(self):
         """Double braces are unescaped to single braces."""
-        result = ExtraColumnEvaluator.unescape_braces("{{literal}}")
+        result = InterpolationStrategy.unescape_braces("{{literal}}")
         assert result == "{literal}"
 
     def test_unescapes_multiple(self):
         """Multiple escaped braces are all unescaped."""
-        result = ExtraColumnEvaluator.unescape_braces("{{a}} and {{b}}")
+        result = InterpolationStrategy.unescape_braces("{{a}} and {{b}}")
         assert result == "{a} and {b}"
 
     def test_leaves_single_braces(self):
         """Single braces are left unchanged."""
-        result = ExtraColumnEvaluator.unescape_braces("{normal}")
+        result = InterpolationStrategy.unescape_braces("{normal}")
         assert result == "{normal}"
 
     def test_mixed_escaped_and_normal(self):
         """Mixed escaped and normal braces are handled correctly."""
-        result = ExtraColumnEvaluator.unescape_braces("{{escaped}} {normal}")
+        result = InterpolationStrategy.unescape_braces("{{escaped}} {normal}")
         assert result == "{escaped} {normal}"
 
 
@@ -144,38 +196,38 @@ class TestInterpolationEvaluation:
     def test_simple_interpolation(self):
         """Simple two-column interpolation works."""
         df = pd.DataFrame({"first": ["John"], "last": ["Doe"]})
-        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{first} {last}", "test")
+        result = InterpolationStrategy.evaluate_interpolation(df, "{first} {last}", "test")
         assert result.iloc[0] == "John Doe"
 
     def test_interpolation_with_nulls(self):
         """Null values are converted to empty strings."""
         df = pd.DataFrame({"a": [1, None, 3], "b": ["x", "y", None]})
-        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{a}-{b}", "test")
+        result = InterpolationStrategy.evaluate_interpolation(df, "{a}-{b}", "test")
         assert result.tolist() == ["1-x", "-y", "3-"]
 
     def test_interpolation_with_numbers(self):
         """Numeric values are converted to strings."""
         df = pd.DataFrame({"num": [1, 2, 3], "text": ["a", "b", "c"]})
-        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{num}:{text}", "test")
+        result = InterpolationStrategy.evaluate_interpolation(df, "{num}:{text}", "test")
         assert result.tolist() == ["1:a", "2:b", "3:c"]
 
     def test_interpolation_with_literal_text(self):
         """Literal text is preserved."""
         df = pd.DataFrame({"name": ["John"]})
-        result = ExtraColumnEvaluator.evaluate_interpolation(df, "Hello, {name}!", "test")
+        result = InterpolationStrategy.evaluate_interpolation(df, "Hello, {name}!", "test")
         assert result.iloc[0] == "Hello, John!"
 
     def test_interpolation_with_escaping(self):
         """Escaped braces are unescaped after interpolation."""
         df = pd.DataFrame({"name": ["John"]})
-        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{{name}}: {name}", "test")
+        result = InterpolationStrategy.evaluate_interpolation(df, "{{name}}: {name}", "test")
         assert result.iloc[0] == "{name}: John"
 
     def test_interpolation_without_placeholders_returns_series(self):
         """Literal templates still return one value per input row."""
         df = pd.DataFrame({"name": ["John", "Jane"]}, index=[2, 2])
 
-        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{{literal}}", "test")
+        result = InterpolationStrategy.evaluate_interpolation(df, "{{literal}}", "test")
 
         assert result.tolist() == ["{literal}", "{literal}"]
         assert result.index.equals(df.index)
@@ -189,7 +241,7 @@ class TestInterpolationEvaluation:
             }
         )
 
-        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{category}|{all_null}", "test")
+        result = InterpolationStrategy.evaluate_interpolation(df, "{category}|{all_null}", "test")
 
         assert result.tolist() == ["x|", "|"]
 
@@ -198,7 +250,7 @@ class TestInterpolationEvaluation:
         marker = "\x00LEFTBRACE\x00"
         df = pd.DataFrame({"value": [marker]})
 
-        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{{literal}}:{value}", "test")
+        result = InterpolationStrategy.evaluate_interpolation(df, "{{literal}}:{value}", "test")
 
         assert result.tolist() == ["{literal}:" + marker]
 
@@ -206,24 +258,24 @@ class TestInterpolationEvaluation:
         """ValueError raised if required column missing."""
         df = pd.DataFrame({"a": [1]})
         with pytest.raises(ValueError, match="columns not found"):
-            ExtraColumnEvaluator.evaluate_interpolation(df, "{a} {missing}", "test")
+            InterpolationStrategy.evaluate_interpolation(df, "{a} {missing}", "test")
 
     def test_error_message_includes_entity_name(self):
         """Error message includes entity name for context."""
         df = pd.DataFrame({"a": [1]})
         with pytest.raises(ValueError, match="for entity 'person'"):
-            ExtraColumnEvaluator.evaluate_interpolation(df, "{missing}", "person")
+            InterpolationStrategy.evaluate_interpolation(df, "{missing}", "person")
 
     def test_multiple_rows(self):
         """Interpolation works correctly for multiple rows."""
         df = pd.DataFrame({"first": ["John", "Jane", "Bob"], "last": ["Doe", "Smith", "Jones"]})
-        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{first} {last}", "test")
+        result = InterpolationStrategy.evaluate_interpolation(df, "{first} {last}", "test")
         assert result.tolist() == ["John Doe", "Jane Smith", "Bob Jones"]
 
     def test_same_column_multiple_times(self):
         """Same column can be referenced multiple times."""
         df = pd.DataFrame({"val": [5]})
-        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{val} + {val}", "test")
+        result = InterpolationStrategy.evaluate_interpolation(df, "{val} + {val}", "test")
         assert result.iloc[0] == "5 + 5"
 
     def test_interpolation_preserves_mixed_values_and_template_escaping(self):
@@ -231,7 +283,7 @@ class TestInterpolationEvaluation:
         df = pd.DataFrame({"value": [1, 1.0, 2.5, None, float("nan"), pd.NA], "suffix": list("abcdef")})
         df.index = [3, 3, 2, 2, 1, 1]
 
-        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{{value}}[{value}]/[{value}]-{suffix}", "test")
+        result = InterpolationStrategy.evaluate_interpolation(df, "{{value}}[{value}]/[{value}]-{suffix}", "test")
 
         assert result.tolist() == [
             "{value}[1]/[1]-a",
@@ -246,7 +298,7 @@ class TestInterpolationEvaluation:
     def test_interpolates_unicode_column_name(self):
         """A column whose name starts with a non-ASCII letter interpolates."""
         df = pd.DataFrame({"Ökogruppe": ["12", "34"]})
-        result = ExtraColumnEvaluator.evaluate_interpolation(df, "ArboDat {Ökogruppe}", "test")
+        result = InterpolationStrategy.evaluate_interpolation(df, "ArboDat {Ökogruppe}", "test")
         assert result.tolist() == ["ArboDat 12", "ArboDat 34"]
 
 
@@ -317,7 +369,7 @@ class TestExtraColumnsEvaluation:
         """Column copy is case-insensitive."""
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"Source": [10, 20]})
-        result, deferred = evaluator.evaluate_extra_columns(df, {"copy": "source"}, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, {"copy": "source"}, "test")
 
         assert "copy" in result.columns
         assert result["copy"].tolist() == [10, 20]
@@ -347,7 +399,7 @@ class TestExtraColumnsEvaluation:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1], "b": [2]})
         extra = {"const": 99, "copy": "a", "interp": "{a}-{b}"}
-        result, deferred = evaluator.evaluate_extra_columns(df, extra, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, extra, "test")
 
         assert list(result.columns) == ["a", "b", "const", "copy", "interp"]
         assert result["const"].iloc[0] == 99
@@ -481,7 +533,7 @@ class TestEdgeCases:
         """Works on empty DataFrame."""
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame(columns=["a"])
-        result, deferred = evaluator.evaluate_extra_columns(df, {"const": 99}, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, {"const": 99}, "test")
 
         assert "const" in result.columns
         assert len(result) == 0
@@ -490,7 +542,7 @@ class TestEdgeCases:
         """Interpolation on empty DataFrame works."""
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame(columns=["a", "b"])
-        result, deferred = evaluator.evaluate_extra_columns(df, {"x": "{a} {b}"}, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, {"x": "{a} {b}"}, "test")
 
         assert "x" in result.columns
         assert len(result) == 0
@@ -499,7 +551,7 @@ class TestEdgeCases:
         """Special characters in values are handled."""
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"name": ["O'Brien", "Smith & Co"]})
-        result, deferred = evaluator.evaluate_extra_columns(df, {"full": "Name: {name}"}, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, {"full": "Name: {name}"}, "test")
 
         assert result["full"].tolist() == ["Name: O'Brien", "Name: Smith & Co"]
 
@@ -507,7 +559,7 @@ class TestEdgeCases:
         """Unicode characters are handled."""
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"city": ["São Paulo", "北京"]})
-        result, deferred = evaluator.evaluate_extra_columns(df, {"loc": "City: {city}"}, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, {"loc": "City: {city}"}, "test")
 
         assert result["loc"].tolist() == ["City: São Paulo", "City: 北京"]
 
@@ -515,7 +567,7 @@ class TestEdgeCases:
         """Handles large DataFrames reasonably."""
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"first": ["Name"] * 10000, "last": ["Test"] * 10000})
-        result, deferred = evaluator.evaluate_extra_columns(df, {"full": "{first} {last}"}, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, {"full": "{first} {last}"}, "test")
 
         assert len(result) == 10000
         assert all(result["full"] == "Name Test")
@@ -525,7 +577,7 @@ class TestEdgeCases:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1], "b": [2], "c": [3], "d": [4]})
         pattern = "{a}-{b}-{c}-{d}-{a}-{b}-{c}-{d}"
-        result, deferred = evaluator.evaluate_extra_columns(df, {"long": pattern}, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, {"long": pattern}, "test")
 
         assert result["long"].iloc[0] == "1-2-3-4-1-2-3-4"
 
@@ -534,7 +586,7 @@ class TestEdgeCases:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1]})
         # This creates "a" as an interpolated column (original "a" exists)
-        result, deferred = evaluator.evaluate_extra_columns(df, {"b": "{a}"}, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, {"b": "{a}"}, "test")
 
         assert result["b"].iloc[0] == "1"
 
@@ -603,7 +655,7 @@ class TestIdempotentEvaluation:
         df = pd.DataFrame({"a": [1], "existing": ["old"]})
 
         # Try to add "existing" (should skip) and "new" (should add)
-        result, deferred = evaluator.evaluate_extra_columns(df, {"existing": "new_value", "new": "added"}, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, {"existing": "new_value", "new": "added"}, "test")
 
         # existing should be skipped, new should be added
         assert result["existing"].iloc[0] == "old"  # Not overwritten
@@ -792,7 +844,7 @@ class TestGetUnresolvedExtraColumns:
 
         unresolved = evaluator.get_unresolved_extra_columns(df, {})
 
-        assert unresolved == {}
+        assert not unresolved
 
     def test_all_resolved(self):
         """All evaluated columns return empty dict."""
@@ -802,7 +854,7 @@ class TestGetUnresolvedExtraColumns:
 
         unresolved = evaluator.get_unresolved_extra_columns(df, extra)
 
-        assert unresolved == {}
+        assert not unresolved
 
     def test_interpolation_missing_dependencies(self):
         """Unresolved interpolation reports missing columns."""
@@ -838,8 +890,8 @@ class TestGetUnresolvedExtraColumns:
 
         assert unresolved["result"]["missing_dependencies"] == ["b", "c"]
 
-    def test_column_copy_missing(self):
-        """Column copy to non-existent column is tracked."""
+    def test_unknown_string_has_no_missing_dependencies(self):
+        """Unknown strings are treated as constants, not missing column copies."""
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1]})
         extra = {"copy": "missing_col"}
@@ -848,7 +900,7 @@ class TestGetUnresolvedExtraColumns:
 
         assert "copy" in unresolved
         assert unresolved["copy"]["expression"] == "missing_col"
-        assert unresolved["copy"]["missing_dependencies"] == ["missing_col"]
+        assert unresolved["copy"]["missing_dependencies"] == []
 
     def test_mixed_resolved_and_unresolved(self):
         """Mix of resolved and unresolved columns."""
@@ -875,7 +927,7 @@ class TestGetUnresolvedExtraColumns:
         unresolved = evaluator.get_unresolved_extra_columns(df, extra)
 
         # Constant column exists (was evaluated), so not unresolved
-        assert unresolved == {}
+        assert not unresolved
 
     def test_partially_resolved_interpolation(self):
         """Interpolation with some missing columns tracked properly."""

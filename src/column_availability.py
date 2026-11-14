@@ -5,7 +5,7 @@ from typing import Any
 
 from src.model import ShapeShiftProject, TableConfig, UnnestConfig
 from src.transforms.dsl import DSLException, extract_column_references
-from src.transforms.extra_columns import ExtraColumnEvaluator
+from src.transforms.extra_columns import EscapedEqualsStrategy, ExtraColumnEvaluator, FormulaStrategy, InterpolationStrategy
 from src.transforms.filter import normalize_filter_stage
 
 
@@ -194,17 +194,17 @@ def _apply_extra_columns(columns: Sequence[str], extra_columns: Mapping[str, Any
 
 
 def _extra_column_dependencies(evaluator: ExtraColumnEvaluator, expression: Any, available: Sequence[str]) -> set[str] | None:
-    if not isinstance(expression, str) or evaluator.is_escaped_equals_literal(expression):
+    if not isinstance(expression, str) or EscapedEqualsStrategy.is_escaped_equals_literal(expression):
         return set()
 
-    if evaluator.is_dsl_formula(expression):
+    if FormulaStrategy.is_dsl_formula(expression):
         try:
             return extract_column_references(evaluator.formula_engine.parse(expression))
         except DSLException:  # Formula errors are reported by normal validation and execution.
             return None
 
-    if evaluator.is_interpolated_string(expression):
-        return set(evaluator.extract_column_dependencies(expression))
+    if InterpolationStrategy.is_interpolated_string(expression):
+        return set(InterpolationStrategy.extract_column_dependencies(expression))
 
     return {expression} if expression in available else set()
 
