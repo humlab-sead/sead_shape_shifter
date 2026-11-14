@@ -16,3 +16,11 @@ repos:
       - id: isort
         args: ["--profile", "black", "--line-length", "142"]
         language_version: python3.13
+  - repo: local
+    hooks:
+      - id: protected-branch-commit
+        name: Block protected-path commits on protected branches
+        entry: bash scripts/verify_promotion_provenance.sh --check-local-commit
+        language: system
+        pass_filenames: false
+        always_run: true

@@ -7,7 +7,12 @@ FRONTEND_PORT ?= 5173
 install:
 	@uv venv
 	@uv pip install -e ".[all]"
+	@$(MAKE) install-hooks
 	@echo "✓ Installed shape-shifter with all dependencies (core + api + dev)"
+
+.PHONY: install-hooks
+install-hooks:
+	@uv run --extra all pre-commit install
 
 # Re-sync the shared .venv/ from uv.lock without pruning the api/dev extras.
 # Plain `uv sync` syncs to base + dependency-group dev only and silently
@@ -17,6 +22,7 @@ install:
 .PHONY: sync
 sync:
 	@uv sync --extra all
+	@$(MAKE) install-hooks
 	@echo "✓ Synced .venv/ (core + api + dev) from uv.lock"
 
 .PHONY: install-core
