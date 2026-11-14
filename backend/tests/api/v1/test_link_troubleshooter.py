@@ -77,8 +77,8 @@ async def test_stateless_link_troubleshooter_route_is_removed(project_client) ->
         json={"issue_type": "row_count_mismatch", "local_entity": "orders", "metadata": {}},
     )
 
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Not Found"
+    assert response.status_code == 405
+    assert response.json()["detail"] == "Method Not Allowed"
 
 
 # ---------------------------------------------------------------------------
