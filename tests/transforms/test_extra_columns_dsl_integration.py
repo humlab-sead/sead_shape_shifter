@@ -14,7 +14,7 @@ Tests verify:
 import pandas as pd
 import pytest
 
-from src.transforms.extra_columns import ExtraColumnEvaluator
+from src.transforms.extra_columns import ExtraColumnEvaluator, FormulaStrategy
 
 
 class TestDSLIntegration:
@@ -55,8 +55,8 @@ class TestDSLIntegration:
         result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "test")
 
         assert result["lookup_id"].tolist() == [1, 2, None]
-        assert type(result["lookup_id"].iloc[0]) is int
-        assert deferred == {}
+        assert isinstance(result["lookup_id"].iloc[0], int)
+        assert not deferred
 
     def test_dsl_with_string_functions(self, evaluator, sample_df):
         """Test DSL with string manipulation functions."""
@@ -67,7 +67,7 @@ class TestDSLIntegration:
             "initials": "=concat(upper(substr(first, 0, 1)), upper(substr(last, 0, 1)))",
         }
 
-        result, deferred = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
+        result, _ = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
 
         assert list(result["upper_first"]) == ["JOHN", "JANE", "BOB"]
         assert list(result["lower_city"]) == ["new york", "los angeles", "chicago"]
@@ -86,7 +86,7 @@ class TestDSLIntegration:
 
         extra_cols = {"display": '=coalesce(first, middle, "Unknown")'}
 
-        result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, extra_cols, "test")
 
         assert list(result["display"]) == ["John", "Marie", "Bob"]
 
@@ -97,7 +97,7 @@ class TestDSLIntegration:
             "location_info": '=concat(city, " (", age, " years old)")',
         }
 
-        result, deferred = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
+        result, _ = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
 
         assert list(result["age_formatted"]) == ["Age: 30", "Age: 25", "Age: 35"]
         assert list(result["location_info"]) == [
@@ -132,7 +132,7 @@ class TestDSLIntegration:
             "dsl_upper": "=upper(first)",
         }
 
-        result, deferred = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
+        result, _ = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
 
         # Both DSL and interpolation work
         assert list(result["dsl_full"]) == ["John Doe", "Jane Smith", "Bob Johnson"]
@@ -147,7 +147,7 @@ class TestDSLIntegration:
             "formatted": '=concat(prefix, " ", first, " ", last)',  # DSL using constant
         }
 
-        result, deferred = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
+        result, _ = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
 
         assert all(result["country"] == "US")
         assert all(result["prefix"] == "Mr.")
@@ -163,7 +163,7 @@ class TestDSLIntegration:
             "step5_string": "final",
         }
 
-        result, deferred = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
+        result, _ = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
 
         # Constants processed first
         assert all(result["step1_const"] == "CONSTANT")
@@ -224,7 +224,7 @@ class TestDSLIntegration:
             "status": "active",
         }
 
-        result, deferred = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
+        result, _ = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
 
         # Verify all columns added
         expected_cols = set(extra_cols.keys())
@@ -237,17 +237,17 @@ class TestDSLIntegration:
         assert list(result["display_name"]) == ["John Doe", "Jane Smith", "Bob Johnson"]
         assert list(result["badge_id"]) == ["JD_Sales_US", "JS_Sales_US", "BJ_Sales_US"]
 
-    def test_dsl_formula_detection(self, evaluator):
+    def test_dsl_formula_detection(self):
         """Test is_dsl_formula() detection."""
-        assert evaluator.is_dsl_formula("=concat(first, last)")
-        assert evaluator.is_dsl_formula("=upper(name)")
-        assert evaluator.is_dsl_formula("= trim(value)")  # Space after =
+        assert FormulaStrategy.is_dsl_formula("=concat(first, last)")
+        assert FormulaStrategy.is_dsl_formula("=upper(name)")
+        assert FormulaStrategy.is_dsl_formula("= trim(value)")  # Space after =
 
-        assert not evaluator.is_dsl_formula("const_value")
-        assert not evaluator.is_dsl_formula("{first} {last}")
-        assert not evaluator.is_dsl_formula("column_name")
-        assert not evaluator.is_dsl_formula("")
-        assert not evaluator.is_dsl_formula("equals = value")  # = not at start
+        assert not FormulaStrategy.is_dsl_formula("const_value")
+        assert not FormulaStrategy.is_dsl_formula("{first} {last}")
+        assert not FormulaStrategy.is_dsl_formula("column_name")
+        assert not FormulaStrategy.is_dsl_formula("")
+        assert not FormulaStrategy.is_dsl_formula("equals = value")  # = not at start
 
     def test_empty_extra_columns(self, evaluator, sample_df):
         """Test with empty extra_columns dict."""
@@ -262,7 +262,7 @@ class TestDSLIntegration:
             "nested": "=upper(trim(concat(substr(first, 0, 1), substr(last, 0, 1))))",
         }
 
-        result, deferred = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
+        result, _ = evaluator.evaluate_extra_columns(sample_df, extra_cols, "test")
 
         assert list(result["nested"]) == ["JD", "JS", "BJ"]
 
@@ -280,7 +280,7 @@ class TestDSLIntegration:
             "concat_with_null": "=concat(first, last)",  # May produce NaN or empty
         }
 
-        result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, extra_cols, "test")
 
         # Coalesce handles nulls
         assert result["safe"].iloc[0] == "John"
@@ -304,7 +304,7 @@ class TestDSLIntegrationEdgeCases:
             "newline": '=concat(name, "\\n(new)")',  # Newline
         }
 
-        result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, extra_cols, "test")
 
         assert list(result["quoted"]) == ['Alice"s profile', 'Bob"s profile']
         # Note: actual newline handling depends on DSL implementation
@@ -315,7 +315,7 @@ class TestDSLIntegrationEdgeCases:
 
         extra_cols = {"upper_name": "=upper(name)"}
 
-        result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, extra_cols, "test")
 
         assert len(result) == 0
         assert "upper_name" in result.columns
@@ -329,7 +329,7 @@ class TestDSLIntegrationEdgeCases:
             "upper_name": "=upper(name)",  # Lowercase n
         }
 
-        result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "test")
+        result, _ = evaluator.evaluate_extra_columns(df, extra_cols, "test")
 
         assert result["upper_Name"].iloc[0] == "ALICE"
         assert result["upper_name"].iloc[0] == "BOB"

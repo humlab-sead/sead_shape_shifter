@@ -7,7 +7,7 @@ import pandas as pd
 
 from src.model import TableConfig
 from src.transforms.dsl import FormulaEngine, extract_column_references
-from src.transforms.extra_columns import ExtraColumnEvaluator
+from src.transforms.extra_columns import EscapedEqualsStrategy, FormulaStrategy, InterpolationStrategy
 from src.transforms.filter import Filters, normalize_filter_stage
 from src.types.fixed_entity_types import (
     FixedEntityColumnTypeDeclarationError,
@@ -918,16 +918,16 @@ class ExtraColumnsExpressionSpecification(ProjectSpecification):
                 current_available.add(new_col)
                 continue
 
-            if ExtraColumnEvaluator.is_escaped_equals_literal(value):
+            if EscapedEqualsStrategy.is_escaped_equals_literal(value):
                 current_available.add(new_col)
                 continue
 
-            if ExtraColumnEvaluator.is_dsl_formula(value):
+            if FormulaStrategy.is_dsl_formula(value):
                 self._validate_formula_expression(entity_name, field_name, new_col, value, current_available, eventual_available)
                 current_available.add(new_col)
                 continue
 
-            if ExtraColumnEvaluator.is_interpolated_string(value):
+            if InterpolationStrategy.is_interpolated_string(value):
                 self._validate_interpolated_expression(entity_name, field_name, new_col, value, current_available, eventual_available)
                 current_available.add(new_col)
                 continue
@@ -999,7 +999,7 @@ class ExtraColumnsExpressionSpecification(ProjectSpecification):
         current_available: set[str],
         eventual_available: set[str],
     ) -> None:
-        references = ExtraColumnEvaluator.extract_column_dependencies(expression)
+        references = InterpolationStrategy.extract_column_dependencies(expression)
         impossible = sorted(reference for reference in references if reference not in eventual_available)
 
         if impossible:
