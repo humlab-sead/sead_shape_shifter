@@ -353,6 +353,12 @@ scripts/verify_promotion_provenance.sh --base 7a90e566 --head f4c8a177
 
 `scripts/`, `src/`, `backend/`, `frontend/`, `ingesters/`, `tests/`, and `.github/workflows/`. Override with the colon-separated `PROTECTED_PATHS` environment variable, for example `PROTECTED_PATHS="src/:backend/"` to check only backend code.
 
+### Local Commit Hook
+
+The pre-commit hook rejects commits on `dev`, `staging`, or `main` when staged files use a protected path. It uses the same path list and `PROTECTED_PATHS` override as the promotion check. `make install` and `make sync` install the hook; run `make install-hooks` to install it separately.
+
+The hook is a local safeguard and can be bypassed with `git commit --no-verify`. The promotion guard remains the enforced check for pull requests into `staging` and `main`.
+
 ### Exit Codes
 
 - `0`: every commit touching a protected path carries pull request provenance.
