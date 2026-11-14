@@ -98,6 +98,8 @@ async def test_workflow_does_not_use_legacy_project_mappings(tmp_path: Path):
     )
     fake_shapeshifter = Mock()
     fake_shapeshifter.normalize = AsyncMock()
+    fake_shapeshifter.output_expectation_evaluation = None
+    fake_shapeshifter.incomplete_entities = {}
     fake_shapeshifter.drop_foreign_key_columns = Mock()
     fake_shapeshifter.translate = Mock()
     fake_shapeshifter.map_to_remote = Mock()
