@@ -34,14 +34,14 @@ def initialize_jvm():
 
 
 @pytest.mark.skipif(not Path(UCANACCESS_HOME).is_dir(), reason="ucanaccess not found")
-def test_can_load_ucanaccess(ucanaccess_required: None):  # pylint: disable=unused-argument
+def test_can_load_ucanaccess():  # pylint: disable=unused-argument
     loader = UCanAccessSqlLoader(DATA_SOURCE_CONFIG)
     df: pd.DataFrame = loader.read_sql_sync("SELECT * FROM [samples]")
     assert not df.empty
 
 
-@pytest.mark.skipif(not Path(UCANACCESS_HOME).is_dir() or not jpype.isJVMStarted(), reason="JVM not started")
-def test_can_load_ucanaccess_queries(ucanaccess_required: None) -> None:  # pylint: disable=unused-argument
+@pytest.mark.skipif(not Path(UCANACCESS_HOME).is_dir(), reason="JVM not started")
+def test_can_load_ucanaccess_queries() -> None:  # pylint: disable=unused-argument
 
     loader: UCanAccessSqlLoader = UCanAccessSqlLoader(DATA_SOURCE_CONFIG)
     jar_files = loader._find_jar_files(UCANACCESS_HOME)  # pylint: disable=protected-access

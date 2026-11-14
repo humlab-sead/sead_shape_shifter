@@ -15,7 +15,7 @@ from backend.app.ingesters.registry import get_ingester_registry
 from backend.app.main import app, lifespan
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 LOCAL_DATA_DIR = REPOSITORY_ROOT / "data"
 
 
@@ -32,9 +32,9 @@ def _local_data_directory() -> Path:
 
 
 @pytest.fixture(scope="module")
-def ucanaccess_required(local_data_directory: Path) -> None:
+def ucanaccess_required() -> None:
     """Skip Access-backed tests when the UCanAccess JARs are unavailable."""
-    ucanaccess_dir = local_data_directory.parent / "lib" / "ucanaccess"
+    ucanaccess_dir = REPOSITORY_ROOT / "lib" / "ucanaccess"
     jar_files = list(ucanaccess_dir.rglob("*.jar")) if ucanaccess_dir.is_dir() else []
     if not jar_files:
         pytest.skip(f"UCanAccess JARs not found under {ucanaccess_dir}")
