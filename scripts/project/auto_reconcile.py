@@ -115,10 +115,10 @@ def print_results(result: AutoReconcileResult, verbose: bool) -> None:
         click.echo()
 
         # Show first 5 candidates
-        for i, (key, candidates) in enumerate(list(result.candidates.items())[:5]):
+        for _, (key, candidates) in enumerate(list(result.candidates.items())[:5]):
             click.echo(f"  Query: {key}")
             if candidates:
-                for j, candidate in enumerate(candidates[:3]):  # Top 3 per query
+                for _, candidate in enumerate(candidates[:3]):  # Top 3 per query
                     score: float = candidate.score if candidate.score is not None else 0.0
                     match_symbol = "✓" if candidate.match else "○"
                     score_color = "green" if score >= 0.95 else "yellow" if score >= 0.8 else "white"
