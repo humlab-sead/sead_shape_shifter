@@ -8,14 +8,11 @@ import difflib
 import sys
 from pathlib import Path
 
-from scripts._shared import REPO_ROOT, add_repository_to_sys_path
+from scripts._shared.paths import REPO_ROOT
+from src.target_model.schema_reference import generate_target_model_schema_reference
 
 PROJECT_ROOT = REPO_ROOT
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "docs" / "TARGET_MODEL_SCHEMA_REFERENCE.md"
-
-add_repository_to_sys_path()
-
-from src.target_model.schema_reference import generate_target_model_schema_reference
 
 
 def build_parser() -> argparse.ArgumentParser:

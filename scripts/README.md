@@ -28,29 +28,45 @@ package, so `scripts.project.sort_project_yaml` is importable and backs the
 
 ## Shared Setup
 
-`scripts/_shared/` holds the two pieces of plumbing that every script used to
-repeat:
+`scripts/_shared/` holds the two things that more than one script needs. Import
+from the concrete module, so a script that only needs the repository root does
+not pull in the environment-file dependencies:
 
 ```python
-from scripts._shared import REPO_ROOT, add_repository_to_sys_path, apply_env_files
-
-add_repository_to_sys_path()  # before importing src.* or backend.*
+from scripts._shared.paths import REPO_ROOT
+from scripts._shared.env import apply_env_files
 ```
 
 - `REPO_ROOT` is the repository root, derived from the package location, so a
   script keeps working when it moves between the folders above.
-- `add_repository_to_sys_path()` puts `REPO_ROOT` on `sys.path` once. A script
-  started by path has only its own directory there, which is why every script
-  calls it before its first project import.
 - `apply_env_files()` merges environment files with a per-file override flag.
 - `load_local_env()` copies only the named keys from a file into `os.environ`.
 
+### Running a script
+
+Run scripts inside the project environment, from the repository root:
+
+```bash
+uv run python scripts/project/validate_project.py <project>   # or: make <target>
+```
+
+That environment installs the repository in editable mode, so `src`, `backend`,
+`ingesters`, and `scripts` are all importable from any directory; a script needs
+no `sys.path` changes of its own.
+
+If you invoke a script with an interpreter that has no such install, the module
+imports fail before the script runs. Set the path explicitly instead:
+
+```bash
+PYTHONPATH=. python scripts/target_model/generate_target_model_docs.py <model.yml>
+```
+
 `scripts/` is formatted and ruff-checked by `make tidy` and `make ruff`. It is
-not yet part of `make pylint`, because the `src`/`backend` imports that follow
-`add_repository_to_sys_path()` trip `wrong-import-position`, and
-`project/auto_reconcile.py` still imports model names that no longer exist. See
-[the reconciliation guide](../docs/other/RECONCILIATION_GUIDE.md) for that
-script's current state.
+not yet part of `make pylint`. Most of the remaining messages are
+`import-outside-toplevel` in the diagnostic scripts, which defer imports until
+they have set up the environment they need. That is intentional, so pylint stays
+off the folder until its configuration can express the intent instead of
+suppressing it file by file.
 
 ## Script Index
 
@@ -83,7 +99,7 @@ worked examples.
 | `validate_project.py` | Run structural, data, and target-model conformance validation for one project file. |
 | `sort_project_yaml.py` | Re-order entity keys the way a full project save does, to remove key-order noise from diffs. |
 | `generate_schemas.py` | Generate the frontend Monaco JSON schemas from the backend Pydantic models. |
-| `auto_reconcile.py` | Run the entity reconciliation workflow from the command line. Currently broken; see the note below. |
+| `auto_reconcile.py` | Run the entity reconciliation workflow from the command line. |
 | `record_sims_site_no_match.py` | Record a reviewer-approved site no-match in a project after checking the source row and saved mapping. |
 
 ### `target_model/`
@@ -869,26 +885,25 @@ deployment/container-host/deploy/install_systemd_service.sh shapeshifter-test
 
 ## Auto-Reconcile Script
 
-> **Currently broken.** `auto_reconcile.py` imports `EntityMapping` and
-> `EntityMappingRegistry` from `backend.app.models.reconciliation`, and the
-> reconciliation service no longer has the members it calls. The import fails
-> before any argument is parsed, so every command below raises `ImportError`
-> today. Use the web interface or the API routes until the script is repaired.
-> See [the reconciliation guide](../docs/other/RECONCILIATION_GUIDE.md).
-
-The `auto_reconcile.py` script runs the entity reconciliation workflow from the command line.
+`auto_reconcile.py` runs the entity reconciliation workflow from the command
+line. It loads the project's reconciliation catalog, asks the reconciliation
+service for candidates, and writes the proposed decisions back to that catalog.
+Review them in the web interface before exporting them to the mapping.
 
 ### Usage
 
 ```bash
-# Basic usage
+# Basic usage: the entity's only configured target field is used
 python scripts/project/auto_reconcile.py PROJECT_NAME ENTITY_NAME
 
 # Using make
 make reconcile ARGS="PROJECT_NAME ENTITY_NAME"
 
-# With custom threshold (0.90 = 90% confidence)
-python scripts/project/auto_reconcile.py my_project site --threshold 0.90
+# Name the target field when the entity has several configured fields
+python scripts/project/auto_reconcile.py my_project site --target-field site_name
+
+# With custom thresholds (0.90 = 90% confidence)
+python scripts/project/auto_reconcile.py my_project site --threshold 0.90 --review-threshold 0.40
 
 # With custom service URL
 python scripts/project/auto_reconcile.py my_project site --service-url http://localhost:8000
@@ -898,6 +913,7 @@ python scripts/project/auto_reconcile.py my_project site -v
 
 # All options combined
 python scripts/project/auto_reconcile.py my_project site \
+    --target-field site_name \
     --threshold 0.90 \
     --max-candidates 5 \
     --service-url http://reconciliation:8000 \
@@ -906,11 +922,22 @@ python scripts/project/auto_reconcile.py my_project site \
 
 ### Options
 
-- `--threshold, -t`: Auto-accept threshold (0.0-1.0). Default: 0.95
+- `--target-field, -f`: Reconciliation target field. Default: the entity's only
+  configured field. An entity with several fields is reported instead of
+  guessed, so pass this option or reconcile each field separately.
+- `--threshold, -t`: Auto-accept threshold (0.0-1.0). Default: the value saved in
+  the specification.
+- `--review-threshold, -r`: Review threshold (0.0-1.0). Default: the value saved
+  in the specification.
 - `--max-candidates, -m`: Maximum candidates per query. Default: 3
 - `--service-url, -s`: Reconciliation service URL. Default: from settings
+- `--project-dir, -p`: Directory containing the project folders. Default:
+  `settings.PROJECTS_DIR`.
 - `--verbose, -v`: Enable verbose logging (DEBUG level)
 - `--help`: Show help message
+
+Omitting `--threshold` or `--review-threshold` keeps whatever the specification
+already holds, so a routine run does not silently change a tuned setting.
 
 ### Examples
 
@@ -944,9 +971,9 @@ curl http://localhost:8000/reconcile
 python scripts/project/auto_reconcile.py arbodat-test site --verbose
 
 # 3. Review the results
-# Auto-accepted: matches with score >= 0.95 (default threshold)
-# Needs review: matches with score 0.8-0.95
-# Unmatched: no suitable candidates found
+# Decisions proposed: rows where a candidate was proposed for review
+# Unmatched: rows with no suitable candidates
+# Rows not reconciled: rows skipped for a data problem, with the reason
 
 # 4. Adjust threshold if needed and re-run
 python scripts/project/auto_reconcile.py arbodat-test site --threshold 0.90
@@ -955,30 +982,27 @@ python scripts/project/auto_reconcile.py arbodat-test site --threshold 0.90
 ### Exit Codes
 
 - `0`: Success - reconciliation completed
-- `1`: Unexpected error
-- `2`: Warning - no queries processed
-- `3`: Warning - all queries unmatched
-- `4`: Entity not found in reconciliation config
-- `5`: Bad request (e.g., unsaved changes)
-- `6`: Service unavailable
+- `1`: Invalid argument, or an unexpected error
+- `2`: Warning - no rows were processed
+- `3`: Warning - every row was unmatched
+- `4`: Entity or target field not found in the reconciliation catalog
+- `5`: Bad request, including an entity with several target fields and no
+  `--target-field`
+- `6`: Reconciliation service unavailable
 
 ### Output
 
-The script provides formatted output showing:
-- Total queries processed
-- Auto-accepted matches (green)
-- Matches needing review (yellow)
-- Unmatched queries (red)
-- Acceptance rate percentage
-- Sample candidates (with `--verbose`)
+The report shows the target field used, the number of rows considered, the
+number of decisions proposed, the number of unmatched rows, the proposal rate,
+any rows that could not be reconciled with their reason, and sample candidates
+with `--verbose`.
 
 ### Requirements
 
-The script reuses the existing reconciliation service code and requires:
 - Python virtual environment activated
 - Backend dependencies installed (`uv pip install -e ".[api]"`)
-- Valid project configuration with reconciliation spec
-- Running reconciliation service (check with health endpoint)
+- A project with a reconciliation specification for the entity
+- A running reconciliation service (check the health endpoint first)
 
 ### Logging
 

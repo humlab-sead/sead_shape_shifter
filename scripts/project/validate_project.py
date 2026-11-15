@@ -22,12 +22,11 @@ import click
 from dotenv import load_dotenv
 from loguru import logger
 
-from scripts._shared import REPO_ROOT, add_repository_to_sys_path
+from scripts._shared.paths import REPO_ROOT
 
 PROJECT_ROOT: Path = REPO_ROOT
-add_repository_to_sys_path()
 
-# pylint: disable=wrong-import-position, no-value-for-parameter, redefined-outer-name
+# pylint: disable=no-value-for-parameter
 # pyright: ignore[reportMissingImports]
 
 from backend.app.models.validation import ValidationError

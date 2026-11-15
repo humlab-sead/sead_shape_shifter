@@ -14,11 +14,6 @@ from pathlib import Path
 
 import yaml
 
-from scripts._shared import add_repository_to_sys_path
-
-# The script imports src modules below; the repository must be importable first.
-add_repository_to_sys_path()
-
 from src.target_model import DocumentFormat, TargetModel, TargetModelDocumentGenerator
 
 

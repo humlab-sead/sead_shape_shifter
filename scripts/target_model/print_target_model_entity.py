@@ -10,10 +10,6 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from scripts._shared import add_repository_to_sys_path
-
-add_repository_to_sys_path()
-
 from src.target_model.models import TargetModel
 
 

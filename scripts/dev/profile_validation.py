@@ -22,7 +22,8 @@ from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from scripts._shared import REPO_ROOT, add_repository_to_sys_path, apply_env_files
+from scripts._shared.env import apply_env_files
+from scripts._shared.paths import REPO_ROOT
 
 if TYPE_CHECKING:
     from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
@@ -32,8 +33,6 @@ if TYPE_CHECKING:
 
 CONFIG_FILE: Path = REPO_ROOT / "tests/test_data/projects/arbodat/shapeshifter.yml"
 PROJECT_NAME: str = "arbodat"
-
-add_repository_to_sys_path()
 
 
 def setup() -> ShapeShiftProject:
