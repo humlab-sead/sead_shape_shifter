@@ -43,12 +43,12 @@ test:
 
 .PHONY: test-validate
 test-validate:
-	@uv run python scripts/validate_project.py tests/test_data/projects/arbodat/shapeshifter.yml \
+	@uv run python scripts/project/validate_project.py tests/test_data/projects/arbodat/shapeshifter.yml \
 		--workflow all --log-level ERROR --ignore EMPTY_RESULT > validation_issues.csv 
 
 .PHONY: profile-validate
 profile-validate:
-	@uv run pyinstrument scripts/validate_project.py tests/test_data/projects/arbodat/shapeshifter.yml --workflow all
+	@uv run pyinstrument scripts/project/validate_project.py tests/test_data/projects/arbodat/shapeshifter.yml --workflow all
 
 .PHONY: profile
 profile-test:
@@ -65,7 +65,7 @@ profile-stats:
 
 .PHONY: profile-projects
 profile-projects:
-	@uv run python scripts/profile_projects_listing.py
+	@uv run python scripts/dev/profile_projects_listing.py
 
 .PHONY: publish
 publish:
@@ -117,23 +117,19 @@ pyright:
 
 .PHONY: ruff
 ruff:
-	@uv run ruff check --fix --output-format concise src tests backend ingesters
+	@uv run ruff check --fix --output-format concise src tests backend ingesters scripts
 
 .PHONY: tidy
 tidy:
-	@uv run isort src tests backend ingesters
-	@uv run black src tests backend ingesters
+	@uv run isort src tests backend ingesters scripts
+	@uv run black src tests backend ingesters scripts
 
 .PHONY: lint
 lint: tidy ruff pylint check-target-model-schema-reference check-doc-links
 
-.PHONY: check-imports
-check-imports:
-	@python scripts/check_imports.py
-
 .PHONY: check-doc-links
 check-doc-links:
-	@scripts/check_doc_links.sh
+	@scripts/ci/check_doc_links.sh
 
 .PHONY: check-doc-links-lychee
 check-doc-links-lychee:
@@ -180,12 +176,12 @@ development-authorization:
 .PHONY: generate-schemas
 generate-schemas:
 	@echo "Generating JSON schemas from Pydantic models..."
-	@PYTHONPATH=.:backend uv run python scripts/generate_schemas.py
+	@PYTHONPATH=.:backend uv run python scripts/project/generate_schemas.py
 
 .PHONY: check-schemas
 check-schemas:
 	@echo "Checking if JSON schemas are in sync with Pydantic models..."
-	@PYTHONPATH=.:backend uv run python scripts/generate_schemas.py --check
+	@PYTHONPATH=.:backend uv run python scripts/project/generate_schemas.py --check
 
 ################################################################################
 # Target-model schema reference generation
@@ -194,12 +190,12 @@ check-schemas:
 .PHONY: generate-target-model-schema-reference
 generate-target-model-schema-reference:
 	@echo "Generating target-model schema reference from Pydantic models..."
-	@uv run python scripts/generate_target_model_schema_reference.py
+	@uv run python scripts/target_model/generate_target_model_schema_reference.py
 
 .PHONY: check-target-model-schema-reference
 check-target-model-schema-reference:
 	@echo "Checking if target-model schema reference is in sync with Pydantic models..."
-	@uv run python scripts/generate_target_model_schema_reference.py --check
+	@uv run python scripts/target_model/generate_target_model_schema_reference.py --check
 
 ################################################################################
 # Target-model data export (Excel)
@@ -212,7 +208,7 @@ EXPORT_ROLES ?= lookup classifier
 export-target-tables:
 	@echo "Exporting target-model tables (roles: $(EXPORT_ROLES)) to $(EXPORT_OUTPUT)..."
 	@mkdir -p $(dir $(EXPORT_OUTPUT))
-	@uv run python scripts/export_target_tables.py $(EXPORT_OUTPUT) $(addprefix --role ,$(EXPORT_ROLES))
+	@uv run python scripts/target_model/export_target_tables.py $(EXPORT_OUTPUT) $(addprefix --role ,$(EXPORT_ROLES))
 
 ################################################################################
 # Target-model template generation
@@ -328,7 +324,7 @@ backend-test:
 .PHONY: reconcile
 reconcile:
 	@echo "Running auto-reconciliation CLI..."
-	@PYTHONPATH=.:backend uv run python scripts/auto_reconcile.py $(ARGS)
+	@PYTHONPATH=.:backend uv run python scripts/project/auto_reconcile.py $(ARGS)
 
 ################################################################################
 # AI Coding Assistants recipes
@@ -447,10 +443,6 @@ frontend-preview:
 # Other stuff
 ################################################################################
 
-.PHONY: fix-imports
-fix-imports:
-	@python scripts/fix_imports.py
-
 isort:
 	@uv run isort src tests backend/app backend/tests ingesters
 
@@ -471,20 +463,20 @@ test-coverage:
 
 .PHONY: pg-disposable-up
 pg-disposable-up:
-	@uv run python scripts/spinup_disposable_postgres.py up
+	@uv run python scripts/dev/spinup_disposable_postgres.py up
 
 .PHONY: pg-disposable-env
 pg-disposable-env:
 	@echo 'Usage: eval $$(make pg-disposable-env)' >&2
-	@uv run python scripts/spinup_disposable_postgres.py env
+	@uv run python scripts/dev/spinup_disposable_postgres.py env
 
 .PHONY: pg-disposable-status
 pg-disposable-status:
-	@uv run python scripts/spinup_disposable_postgres.py status
+	@uv run python scripts/dev/spinup_disposable_postgres.py status
 
 .PHONY: pg-disposable-down
 pg-disposable-down:
-	@uv run python scripts/spinup_disposable_postgres.py down
+	@uv run python scripts/dev/spinup_disposable_postgres.py down
 
 .PHONY: dead-code
 dead-code:
@@ -513,17 +505,17 @@ arbodat-schema: arbodat-data-schema arbodat-lookup-schema
 .PHONY: release-notes-list
 release-notes-list:
 	@echo "Available versions in CHANGELOG.md:"
-	@uv run python scripts/generate_user_release_notes.py --list-versions
+	@uv run python scripts/workflow/generate_user_release_notes.py --list-versions
 
 .PHONY: release-notes-missing
 release-notes-missing:
 	@echo "Generating release notes for all missing versions..."
-	@uv run python scripts/generate_user_release_notes.py --generate-missing --force-heuristic
+	@uv run python scripts/workflow/generate_user_release_notes.py --generate-missing --force-heuristic
 
 .PHONY: release-notes-missing-ai
 release-notes-missing-ai:
 	@echo "Generating release notes for all missing versions (with AI)..."
-	@uv run python scripts/generate_user_release_notes.py --generate-missing
+	@uv run python scripts/workflow/generate_user_release_notes.py --generate-missing
 
 .PHONY: release-notes
 release-notes:
@@ -532,7 +524,7 @@ release-notes:
 		exit 1; \
 	fi
 	@echo "Generating release notes for version $(VERSION)..."
-	@uv run python scripts/generate_whats_new.py --version $(VERSION) --force-heuristic
+	@uv run python scripts/workflow/generate_whats_new.py --version $(VERSION) --force-heuristic
 
 .PHONY: release-notes-ai
 release-notes-ai:
@@ -541,12 +533,12 @@ release-notes-ai:
 		exit 1; \
 	fi
 	@echo "Generating release notes for version $(VERSION) with AI..."
-	@uv run python scripts/generate_whats_new.py --version $(VERSION)
+	@uv run python scripts/workflow/generate_whats_new.py --version $(VERSION)
 
 # Create a draft dev-to-staging promotion PR and prepare its description.
 .PHONY: promote-dev-to-staging
 promote-dev-to-staging:
-	@scripts/promote_dev_to_staging.sh prepare
+	@scripts/workflow/promote_dev_to_staging.sh prepare
 
 # Fast-track: stage every pending change, let Copilot draft the commit subject and the PR
 # description, and merge into dev. The commit type comes from the drafted subject, so review
@@ -554,21 +546,21 @@ promote-dev-to-staging:
 .PHONY: push-chore-pr
 push-chore-pr:
 	@echo "Creating a chore pull request from every pending change..."
-	@uv run python scripts/create_change_pr.py --type chore \
+	@uv run python scripts/workflow/create_change_pr.py --type chore \
 		--generate-subject --all --generate-description --default-validation
 	@echo "✓ Change pull request merged into dev"
 
 .PHONY: push-fix-pr
 push-fix-pr:
 	@echo "Creating a fix pull request from every pending change..."
-	@uv run python scripts/create_change_pr.py --type fix \
+	@uv run python scripts/workflow/create_change_pr.py --type fix \
 		--generate-subject --all --generate-description --default-validation
 	@echo "✓ Change pull request merged into dev"
 
 # Same workflow without creating anything: prints the drafted subject, file list, and body.
 .PHONY: push-chore-pr-dry
 push-chore-pr-dry:
-	@uv run python scripts/create_change_pr.py \
+	@uv run python scripts/workflow/create_change_pr.py \
 		--generate-subject --all --generate-description --default-validation --dry-run
 
 

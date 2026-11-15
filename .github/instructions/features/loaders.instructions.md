@@ -43,7 +43,7 @@ class MyLoader(DataLoader):
 
 - `init_jvm_for_ucanaccess(ucanaccess_dir)` must be called **once** at application startup — JPype cannot restart the JVM.
 - Call it before any `UCanAccessLoader` is instantiated.
-- JAR files are loaded from `lib/ucanaccess/` — see `scripts/install-uncanccess.sh` for setup.
+- JAR files are loaded from `lib/ucanaccess/` — see `scripts/dev/install-uncanccess.sh` for setup.
 - All UCanAccess operations use `jaydebeapi` over the JDBC bridge — SQL syntax is MS Access SQL, not PostgreSQL.
 
 ## Local File Resolution
