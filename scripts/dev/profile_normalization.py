@@ -22,11 +22,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from scripts._shared import REPO_ROOT, add_repository_to_sys_path, apply_env_files
+from scripts._shared.env import apply_env_files
+from scripts._shared.paths import REPO_ROOT
 
 DEFAULT_PROJECT: Path = Path("data/projects/copy_strucke_MS/shapeshifter.yml")
-
-add_repository_to_sys_path()
 
 if TYPE_CHECKING:
     from src.extract import SubsetService

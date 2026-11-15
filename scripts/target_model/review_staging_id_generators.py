@@ -37,10 +37,9 @@ from typing import Any
 import psycopg
 import yaml
 
-from scripts._shared import REPO_ROOT, add_repository_to_sys_path
+from scripts._shared.paths import REPO_ROOT
 
 PROJECT_ROOT: Path = REPO_ROOT
-add_repository_to_sys_path()
 
 from src.target_model.effective_identity import resolve_aggregate_chain  # noqa: E402
 from src.target_model.models import TargetModel  # noqa: E402
@@ -353,7 +352,10 @@ def _fetch_id_column(cursor: psycopg.Cursor, relation: RelationMatch, public_id:
 def _fetch_sequence(cursor: psycopg.Cursor, relation: RelationMatch, public_id: str) -> SequenceInfo | None:
     """Return the sequence owned by the ID column, or ``None`` when none is associated."""
     cursor.execute("SELECT pg_get_serial_sequence(%s, %s)", (relation.qualified_name, public_id))
-    sequence_name = cursor.fetchone()[0]
+    data = cursor.fetchone()
+    if data is None:
+        return None
+    sequence_name = data[0] if data else None
     if sequence_name is None:
         return None
 

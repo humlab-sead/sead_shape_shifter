@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from scripts._shared import REPO_ROOT, add_repository_to_sys_path
+from scripts._shared.paths import REPO_ROOT
 
 PROJECT_ROOT = REPO_ROOT
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "frontend" / "src" / "schemas"
@@ -27,10 +27,7 @@ JSON_SCHEMA_VERSION = "http://json-schema.org/draft-07/schema#"
 REF_TEMPLATE = "#/$defs/{model}"
 SCRIPT_COMMAND = "python scripts/project/generate_schemas.py"
 
-# The script imports backend models below; the repository must be importable first.
-add_repository_to_sys_path()
-
-# pylint: disable=import-error,wrong-import-position
+# pylint: disable=wrong-import-position
 
 from backend.app.models.entity import Entity  # type: ignore  # noqa: E402
 from backend.app.models.project import Project  # type: ignore  # noqa: E402

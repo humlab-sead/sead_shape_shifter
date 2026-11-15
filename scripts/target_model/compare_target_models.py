@@ -6,11 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from scripts._shared import REPO_ROOT, add_repository_to_sys_path
-
-# The script imports src modules below; the repository must be importable first.
-add_repository_to_sys_path()
-
+from scripts._shared.paths import REPO_ROOT
 from src.model import ShapeShiftProject
 from src.target_model.conformance import TargetModelConformanceValidator
 from src.target_model.models import TargetModel
