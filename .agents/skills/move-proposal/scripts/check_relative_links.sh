@@ -4,7 +4,7 @@
 # Usage: check_relative_links.sh <file> [<file>...]
 #
 # Resolves each "](target)" link against the file's own directory, matching the
-# repository checker in scripts/check_doc_links.sh. Skips fragments, absolute
+# repository checker in scripts/ci/check_doc_links.sh. Skips fragments, absolute
 # paths, and external schemes. Exits non-zero when any link is broken.
 
 set -euo pipefail
@@ -19,7 +19,7 @@ failed=0
 # Print the lines of a file that are not inside a fenced code block. Markdown
 # treats fenced content as opaque, so link syntax shown as an example inside a
 # fence is documentation, not a link. Mirrors the handling in
-# scripts/check_doc_links.sh.
+# scripts/ci/check_doc_links.sh.
 strip_fenced_blocks() {
     awk '
         {

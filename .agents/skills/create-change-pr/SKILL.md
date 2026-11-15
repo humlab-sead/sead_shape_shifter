@@ -1,18 +1,18 @@
 ---
 name: create-change-pr
-description: Commit uncommitted work to a new branch and merge it into dev through a pull request, using scripts/create_change_pr.py. Use when the user has local changes that must reach dev through review, or when a direct commit to dev would break later promotion to staging. Do not use for promotion pull requests (dev into staging or staging into main) or for reviewing pull requests.
+description: Commit uncommitted work to a new branch and merge it into dev through a pull request, using scripts/workflow/create_change_pr.py. Use when the user has local changes that must reach dev through review, or when a direct commit to dev would break later promotion to staging. Do not use for promotion pull requests (dev into staging or staging into main) or for reviewing pull requests.
 ---
 
 # Create A Change Pull Request
 
 Move uncommitted work onto a branch and merge it into `dev` through a pull
-request. The mechanical steps are in `scripts/create_change_pr.py`; this skill
+request. The mechanical steps are in `scripts/workflow/create_change_pr.py`; this skill
 covers the decisions that the script cannot make for you.
 
 ## Why A Pull Request Into Dev
 
 `docs`-level rules allow commits directly on `dev`, but
-`scripts/verify_promotion_provenance.sh` runs on every promotion pull request and
+`scripts/ci/verify_promotion_provenance.sh` runs on every promotion pull request and
 fails when a commit touching `scripts/`, `src/`, `backend/`, `frontend/`,
 `ingesters/`, `tests/`, or `.github/workflows/` reached `dev` without its own
 pull request. Unrecorded commits block `dev` into `staging`.
@@ -31,7 +31,7 @@ into `dev`, even when it looks like maintenance.
 6. Run it for real, then report the pull request number.
 
 ```bash
-uv run python scripts/create_change_pr.py \
+uv run python scripts/workflow/create_change_pr.py \
   --type chore \
   --scope deps \
   --subject "upgrade dev tooling and adapt code to new checks" \
@@ -111,7 +111,7 @@ exist only to satisfy the upgraded tools.
 
 ## Copilot Description
 
-`--generate-description` runs `scripts/update_pr_descriptions.py <n> --draft`
+`--generate-description` runs `scripts/workflow/update_pr_descriptions.py <n> --draft`
 followed by `--publish` after the pull request exists. It reads
 `REPO_SCRIPTS_DEFAULT_*` from the repository-root `.env` or the equivalent
 `COPILOT_PROVIDER_*` variables; the values may be quoted and may have spaces

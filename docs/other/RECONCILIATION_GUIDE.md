@@ -501,7 +501,7 @@ Neither candidate-search route accepts a candidate.
 
 ### Command-Line Matching Currently Fails
 
-`scripts/auto_reconcile.py` and the `make reconcile` target fail on import because the script uses model names that no longer exist (`EntityMapping`, `EntityMappingRegistry`). Use the web interface or the API routes above until the script is repaired.
+`scripts/project/auto_reconcile.py` and the `make reconcile` target fail on import because the script uses model names that no longer exist (`EntityMapping`, `EntityMappingRegistry`). Use the web interface or the API routes above until the script is repaired.
 
 ## Workflow Checklist
 

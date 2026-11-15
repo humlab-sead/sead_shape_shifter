@@ -80,7 +80,7 @@ The log line is not enough to identify this on its own: `handle_endpoint_errors`
 - Compared source bytes; they matched.
 - Ran `ProjectMapper.to_api_config()` followed by `ProjectMapper.to_core()` on `tests/test_data/projects/arbodat/shapeshifter.yml`; reproduced the exact `data_provider` exception and an empty `load_warnings` list.
 - Added the mapper regression test and updated the coercer to accept identity-inclusive positional rows.
-- Ran `uv run python scripts/validate_project.py tests/test_data/projects/arbodat/shapeshifter.yml --workflow structural --log-level ERROR`; validation completed with one `relative_ages` warning and no `data_provider` error.
+- Ran `uv run python scripts/project/validate_project.py tests/test_data/projects/arbodat/shapeshifter.yml --workflow structural --log-level ERROR`; validation completed with one `relative_ages` warning and no `data_provider` error.
 - Ran `uv run pytest backend/tests/mappers/test_entity_config_mapper.py backend/tests/validators/test_data_validation_orchestrator.py tests/types/test_fixed_entity_types.py -q`; **77 passed**.
 - Tried structural CLI validation on the detached attachment; it stopped because the referenced `reconciliation.yml` was not present beside the attachment.
 - No project configuration was changed.
