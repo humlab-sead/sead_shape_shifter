@@ -17,7 +17,7 @@
             size="small"
             aria-hidden="true"
           />
-          {{ stats.proposed }}
+          Proposed ({{ stats.proposed }})
         </v-chip>
         <v-chip
           data-testid="status-filter-accepted"
@@ -33,7 +33,7 @@
             size="small"
             aria-hidden="true"
           />
-          {{ stats.accepted }}
+          Accepted ({{ stats.accepted }})
         </v-chip>
         <v-chip
           data-testid="status-filter-rejected"
@@ -49,7 +49,7 @@
             size="small"
             aria-hidden="true"
           />
-          {{ stats.rejected }}
+          Rejected ({{ stats.rejected }})
         </v-chip>
         <v-chip
           data-testid="status-filter-local-only"
@@ -65,7 +65,7 @@
             size="small"
             aria-hidden="true"
           />
-          {{ stats.localOnly }}
+          New ({{ stats.localOnly }})
         </v-chip>
         <v-chip
           data-testid="status-filter-unresolved"
@@ -81,7 +81,7 @@
             size="small"
             aria-hidden="true"
           />
-          {{ stats.unresolved }}
+          Unresolved ({{ stats.unresolved }})
         </v-chip>
         <v-chip
           data-testid="status-filter-errors"
@@ -97,7 +97,7 @@
             size="small"
             aria-hidden="true"
           />
-          {{ stats.errors }}
+          Errors ({{ stats.errors }})
         </v-chip>
       </v-chip-group>
 
@@ -154,7 +154,7 @@
         :columnDefs="columnDefs"
         :rowData="gridData"
         :defaultColDef="defaultColDef"
-        :rowHeight="36"
+        :rowHeight="32"
         :rowClassRules="rowClassRules"
         :quickFilterText="appliedSearchQuery"
         :suppressRowClickSelection="true"
@@ -401,9 +401,9 @@ const columnDefs = computed<ColDef[]>(() => {
     { field: 'target_id', headerName: 'Decision ID', width: 120 },
     {
       field: 'confidence_percent',
-      headerName: 'Decision confidence',
+      headerName: 'Score',
       width: 150,
-      valueFormatter: (params) => (params.value == null ? 'Unknown' : `${Math.round(params.value)}%`),
+      valueFormatter: (params) => (params.value == null ? '' : `${Math.round(params.value)}%`),
     },
     {
       field: 'status_display',
@@ -817,6 +817,7 @@ async function confirmLocalOnly() {
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
+  height: 28px;
   margin: 2px;
   padding: 5px 8px;
   vertical-align: middle;
@@ -854,6 +855,7 @@ async function confirmLocalOnly() {
 }
 
 :deep(.reconciliation-ag-grid .ag-cell[col-id='candidates']) {
+  background-color: var(--ag-header-background-color);
   overflow: visible;
 }
 

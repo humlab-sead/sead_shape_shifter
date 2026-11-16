@@ -18,7 +18,7 @@ vi.mock('ag-grid-vue3', () => ({
         <div v-for="row in rowData.slice().reverse()" :key="row.local_key_value" data-testid="grid-row">
           <span data-testid="row-class">{{ row.row_style_class }}</span>
           <span data-testid="row-status">{{ row.status_display }}</span>
-          <span data-testid="row-confidence">{{ row.confidence_percent == null ? 'Unknown' : Math.round(row.confidence_percent) + '%' }}</span>
+          <span data-testid="row-confidence">{{ row.confidence_percent == null ? '' : Math.round(row.confidence_percent) + '%' }}</span>
           <span data-testid="row-errors">{{ row.errors_display || '—' }}</span>
           <span data-testid="current-id" :data-key="row.local_key_value">{{ row.current_id ?? '' }}</span>
           <span data-testid="current-id-source" :data-key="row.local_key_value">{{ row.current_id_source_label }}</span>
@@ -206,6 +206,20 @@ describe('ReconciliationGrid', () => {
     expect(html.indexOf('data-action="review"')).toBeGreaterThan(html.indexOf('data-action="manual-link"'))
   })
 
+  it('shows confidence as Score and leaves missing values empty', () => {
+    const { wrapper } = mountGrid()
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as ColDef[]
+    const scoreColumn = columnDefs.find((column) => column.field === 'confidence_percent')
+    expect(scoreColumn?.headerName).toBe('Score')
+
+    const valueFormatter = scoreColumn?.valueFormatter
+    if (typeof valueFormatter !== 'function') throw new Error('Score column formatter is unavailable')
+    expect(valueFormatter({ value: null } as Parameters<typeof valueFormatter>[0])).toBe('')
+    expect(valueFormatter({ value: 0 } as Parameters<typeof valueFormatter>[0])).toBe('0%')
+    expect(wrapper.get('[data-testid="row-confidence"]').text()).toBe('')
+  })
+
   it('renders icon row actions with accessible names and tooltips', () => {
     const { wrapper } = mountGrid()
     const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
@@ -316,7 +330,7 @@ describe('ReconciliationGrid', () => {
     expect(wrapper.get('[data-testid="row-status"]').text()).toBe('New')
   })
 
-  it('renders state filters as colored icons with accessible names and tooltips', () => {
+  it('renders state filters with labels, counts, colored icons, and accessible names', () => {
     const { wrapper } = mountGrid()
     const filters = [
       { id: 'proposed', label: 'Proposed', icon: 'mdi-lightbulb-outline', color: 'blue', count: 1 },
@@ -329,6 +343,7 @@ describe('ReconciliationGrid', () => {
 
     for (const filter of filters) {
       const chip = wrapper.get(`[data-testid="status-filter-${filter.id}"]`)
+      expect(chip.text().trim()).toBe(`${filter.label} (${filter.count})`)
       expect(chip.attributes('title')).toBe(filter.label)
       expect(chip.attributes('aria-label')).toBe(`${filter.label} (${filter.count})`)
       expect(chip.attributes('color')).toBe(filter.color)
@@ -471,7 +486,7 @@ describe('PreviewMatchedDataDialog', () => {
     const grid = wrapper.get('[data-testid="grid-stub"]')
     // autoHeight would disable virtualization and render every row at once.
     expect(grid.attributes('domlayout')).toBe('normal')
-    expect(wrapper.get('[data-testid="grid-row-height"]').text()).toBe('36')
+    expect(wrapper.get('[data-testid="grid-row-height"]').text()).toBe('32')
   })
 
   it('assigns a row class name instead of a per-render style object', () => {
