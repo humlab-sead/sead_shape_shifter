@@ -129,7 +129,7 @@ git status --short --find-renames
 
 The grep should return only references that intentionally point at the new location.
 
-External `http(s)` links are out of scope for a move, and no checker in this repository validates them. `scripts/check_doc_links.sh` and the bundled checker both skip them, and VS Code validation never leaves the workspace. Do not add an external-link check to a move; it needs network access and cannot detect what a move breaks.
+External `http(s)` links are out of scope for a move, and no checker in this repository validates them. `scripts/ci/check_doc_links.sh` and the bundled checker both skip them, and VS Code validation never leaves the workspace. Do not add an external-link check to a move; it needs network access and cannot detect what a move breaks.
 
 ## Commit
 
