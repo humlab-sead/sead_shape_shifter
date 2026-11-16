@@ -53,7 +53,7 @@ The missing `dataset_id` and `analysis_entity_id` findings follow from the missi
 Conformance-only command:
 
 ```bash
-rtk uv run python scripts/validate_project.py tests/test_data/projects/arbodat/shapeshifter.yml --workflow conformance --log-level ERROR
+rtk uv run python scripts/project/validate_project.py tests/test_data/projects/arbodat/shapeshifter.yml --workflow conformance --log-level ERROR
 ```
 
 The run reproduced the reported conformance findings. The broader data warnings above are from the supplied `--workflow all` output and may require access to the configured source databases to investigate further.

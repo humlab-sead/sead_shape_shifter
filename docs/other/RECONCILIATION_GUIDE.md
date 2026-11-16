@@ -499,9 +499,24 @@ All routes are under the `/api/v1` prefix. `{field}` is the search field name, s
 
 Neither candidate-search route accepts a candidate.
 
-### Command-Line Matching Currently Fails
+### Command-Line Matching
 
-`scripts/auto_reconcile.py` and the `make reconcile` target fail on import because the script uses model names that no longer exist (`EntityMapping`, `EntityMappingRegistry`). Use the web interface or the API routes above until the script is repaired.
+`scripts/project/auto_reconcile.py` and the `make reconcile` target run the same
+matching operation from a terminal:
+
+```bash
+# The entity's only configured target field is used
+uv run python scripts/project/auto_reconcile.py my_project site
+
+# Name the field when the entity has several, and override the saved thresholds
+uv run python scripts/project/auto_reconcile.py my_project site --target-field site_name --threshold 0.90
+```
+
+The script writes proposed decisions to the project's reconciliation catalog, so
+review them in the web interface before exporting them to the mapping. Exit
+status 4 means the entity or target field is not in the catalog, 5 means the
+entity has several target fields and none was named, and 6 means the
+reconciliation service is unreachable.
 
 ## Workflow Checklist
 

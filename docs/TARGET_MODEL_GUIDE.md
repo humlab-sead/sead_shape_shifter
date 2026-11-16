@@ -552,7 +552,7 @@ The model uses `naming.public_id_suffix: "_id"`. It also enables `no_orphan_fact
 
 ## Generating Documentation from a Target Model
 
-Use `scripts/generate_target_model_docs.py` to create readable documentation from a target model YAML file. It supports four output formats:
+Use `scripts/target_model/generate_target_model_docs.py` to create readable documentation from a target model YAML file. It supports four output formats:
 
 | Format     | Best for                              | Output file   |
 |------------|---------------------------------------|---------------|
@@ -563,22 +563,22 @@ Use `scripts/generate_target_model_docs.py` to create readable documentation fro
 
 ```bash
 # Generate all formats (default)
-python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml
+python scripts/target_model/generate_target_model_docs.py resources/target_models/sead_standard_model.yml
 
 # HTML only — recommended for sharing with archaeologists and data managers
-python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format html
+python scripts/target_model/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format html
 
 # Excel for gap-analysis workshops
-python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format excel
+python scripts/target_model/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format excel
 
 # Target-model reference for Authority Service docs
-python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format sims
+python scripts/target_model/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format sims
 
 # Custom output directory
-python scripts/generate_target_model_docs.py my_model.yml --format all --output-dir /tmp/model-docs
+python scripts/target_model/generate_target_model_docs.py my_model.yml --format all --output-dir /tmp/model-docs
 ```
 
-Files are saved to `docs/generated/` by default. Run `python scripts/generate_target_model_docs.py --help` to see all options and format details.
+Files are saved to `docs/generated/` by default. Run `python scripts/target_model/generate_target_model_docs.py --help` to see all options and format details.
 
 ---
 

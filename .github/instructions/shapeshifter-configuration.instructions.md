@@ -154,7 +154,7 @@ Do treat an omitted non-merged entity `type` as a Core structural issue. Do not 
 
 - For a changed project, or when structural validation is requested, start with:
   ```bash
-  rtk uv run python scripts/validate_project.py <path-to-shapeshifter.yml> --workflow structural --log-level ERROR
+  rtk uv run python scripts/project/validate_project.py <path-to-shapeshifter.yml> --workflow structural --log-level ERROR
   ```
   If `rtk` fails because of its wrapper, retry the same command without it.
 - The CLI accepts `structural`, `data`, `conformance`, and `all`; `target-model-conformance` is an alias for `conformance`. `data` normalizes the project and may read external files or databases. `conformance` needs a resolved target model. `all` runs structural, data, and conformance.
