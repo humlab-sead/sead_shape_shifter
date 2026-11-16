@@ -159,6 +159,7 @@
                   variant="tonal"
                   color="secondary"
                   prepend-icon="mdi-link-variant"
+                  :disabled="!selectedEntityHasBusinessKeys"
                   @click="openManualLinkDialog()"
                 >
                   Add Manual Link
@@ -171,7 +172,7 @@
                   color="primary"
                   prepend-icon="mdi-export"
                   :loading="loading"
-                  :disabled="loading"
+                  :disabled="loading || !selectedEntityHasBusinessKeys"
                   class="ml-2"
                   @click="handleExportToMapping"
                 >
@@ -238,7 +239,13 @@
 
               <!-- Reconciliation Grid -->
               <reconciliation-grid
-                v-if="selectedEntity && selectedTarget && entitySpec && entityPreviewData.length"
+                v-if="
+                  selectedEntity &&
+                  selectedTarget &&
+                  entitySpec &&
+                  selectedEntityHasBusinessKeys &&
+                  entityPreviewData.length
+                "
                 :entity-spec="entitySpec"
                 :preview-data="entityPreviewData"
                 :mapping-data="entityMappingData"
@@ -266,7 +273,7 @@
 
               <!-- Empty State - No Data -->
               <v-card
-                v-else-if="!previewError && !entityPreviewData.length"
+                v-else-if="selectedEntityHasBusinessKeys && !previewError && !entityPreviewData.length"
                 variant="outlined"
                 class="pa-8 text-center"
               >
@@ -420,13 +427,29 @@ const entitySpec = computed(() => {
   return entityConfigs[selectedTarget.value] || null
 })
 
-const matchEligibility = computed(() =>
-  getReconciliationCompatibility(
+const selectedSpecification = computed(() =>
+  specifications.value.find(
+    (specification) =>
+      specification.entity_name === selectedEntity.value && specification.target_field === selectedTarget.value
+  )
+)
+
+const selectedEntityHasBusinessKeys = computed(() => selectedSpecification.value?.has_business_keys !== false)
+
+const businessKeysWarning = computed(
+  () =>
+    `Entity '${selectedEntity.value}' has no business keys configured. Add one or more 'keys' to the entity in the project configuration before running reconciliation.`
+)
+
+const matchEligibility = computed(() => {
+  const compatibility = getReconciliationCompatibility(
     manifestResult.value,
     entitySpec.value?.remote?.service_type,
     entitySpec.value?.property_mappings ?? {}
   )
-)
+  if (selectedEntityHasBusinessKeys.value) return compatibility
+  return { ...compatibility, canMatch: false, message: businessKeysWarning.value }
+})
 
 watch(matchEligibility, (eligibility) => {
   if (!eligibility.canMatch) {
@@ -531,7 +554,7 @@ async function handleAutoReconcile() {
 }
 
 async function handleExportToMapping() {
-  if (!selectedEntity.value || !selectedTarget.value) return
+  if (!selectedEntity.value || !selectedTarget.value || !selectedEntityHasBusinessKeys.value) return
 
   try {
     const entityName = selectedEntity.value
@@ -774,9 +797,9 @@ watch(
 )
 
 watch(
-  [() => props.projectName, selectedEntity],
-  async ([projectName, entityName]) => {
-    if (!projectName || !entityName) return
+  [() => props.projectName, selectedEntity, selectedEntityHasBusinessKeys],
+  async ([projectName, entityName, hasBusinessKeys]) => {
+    if (!projectName || !entityName || !hasBusinessKeys) return
     try {
       await reconciliationStore.loadMappingData(projectName, entityName)
     } catch (e) {
@@ -806,6 +829,7 @@ function reportPreviewFailure(e: any) {
 async function ensurePreviewLoaded() {
   if (activeTab.value !== 'reconcile') return
   if (!selectedEntity.value || !selectedTarget.value || !entitySpec.value) return
+  if (!selectedEntityHasBusinessKeys.value) return
 
   const key = currentPreviewKey()
   if (key === previewLoadedKey || key === previewInFlightKey) return

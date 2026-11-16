@@ -1295,7 +1295,10 @@ class TestSpecificationManagement:
         specs = reconciliation_service.catalog_manager.list_entity_mappings("test")
         assert specs == []
 
-    def test_list_specifications_multiple(self, reconciliation_service: ReconciliationService, tmp_path, sample_entity_spec_dto):
+    @patch("backend.app.services.reconciliation.mapping_manager.ProjectMapper.to_core")
+    def test_list_specifications_multiple(
+        self, mock_to_core, reconciliation_service: ReconciliationService, tmp_path, sample_entity_spec_dto
+    ):
         """Test listing multiple specifications."""
         config = dto.EntityResolutionCatalog(
             version="3.0",
@@ -1355,11 +1358,25 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)
 
+        mock_project = MagicMock()
+        mock_project.entities = {
+            "site": {"keys": ["site_code"]},
+            "sample": {"keys": ["sample_code"]},
+        }
+        project_service = MagicMock()
+        project_service.load_project.return_value = mock_project
+        reconciliation_service.project_service = project_service
+        mock_core_project = MagicMock()
+        mock_core_project.has_table.return_value = True
+        mock_core_project.get_table.return_value.safe_keys = ["site_code", "sample_code"]
+        mock_to_core.return_value = mock_core_project
+
         specs = reconciliation_service.catalog_manager.list_entity_mappings("test")
 
         assert len(specs) == 3
         # Check site.site_code
         site_code_spec = next(s for s in specs if s.entity_name == "site" and s.target_field == "site_code")
+        assert site_code_spec.has_business_keys is True
         assert site_code_spec.mapping_count == 0
         assert site_code_spec.property_mapping_count == 2
         assert site_code_spec.remote.service_type == "site"
@@ -1374,8 +1391,9 @@ class TestSpecificationManagement:
         sample_spec = next(s for s in specs if s.entity_name == "sample")
         assert sample_spec.mapping_count == 0
         assert sample_spec.property_mapping_count == 1
+        assert sample_spec.has_business_keys is True
 
-    @patch("backend.app.services.reconciliation.service.ProjectMapper")
+    @patch("backend.app.services.reconciliation.mapping_manager.ProjectMapper")
     @patch("backend.app.services.reconciliation.service.ProjectService")
     def test_create_specification_success(
         self, mock_project_service, mock_mapper, reconciliation_service: ReconciliationService, tmp_path, catalog
@@ -1383,16 +1401,20 @@ class TestSpecificationManagement:
         """Test creating new specification."""
         # Mock project service to return a project
         mock_project = MagicMock()
-        mock_project.entities = {"site": MagicMock(), "sample": MagicMock()}
+        mock_project.entities = {
+            "site": {"keys": ["site_code"]},
+            "sample": {"keys": ["sample_code"]},
+        }
         mock_ps_instance = MagicMock()
         mock_ps_instance.load_project.return_value = mock_project
         mock_project_service.return_value = mock_ps_instance
         reconciliation_service.project_service = mock_ps_instance
 
         # Mock entity validation
-        mock_mapper_instance = MagicMock()
-        mock_mapper_instance.to_core_config.return_value = MagicMock(entities={"site": MagicMock(), "sample": MagicMock()})
-        mock_mapper.return_value = mock_mapper_instance
+        mock_core_project = MagicMock()
+        mock_core_project.has_table.return_value = True
+        mock_core_project.get_table.return_value.safe_keys = ["sample_code"]
+        mock_mapper.to_core.return_value = mock_core_project
 
         # Save initial config in nested structure
         project_dir = tmp_path / "test"
@@ -1419,7 +1441,7 @@ class TestSpecificationManagement:
         assert "sample_code" in updated_config.entities["sample"]
         assert updated_config.entities["sample"]["sample_code"] == new_spec
 
-    @patch("backend.app.services.reconciliation.service.ProjectMapper")
+    @patch("backend.app.services.reconciliation.mapping_manager.ProjectMapper")
     @patch("backend.app.services.reconciliation.service.ProjectService")
     def test_create_specification_duplicate(
         self, mock_project_service, mock_mapper, reconciliation_service: ReconciliationService, tmp_path, catalog
@@ -1427,15 +1449,16 @@ class TestSpecificationManagement:
         """Test creating duplicate specification raises error."""
         # Mock project service
         mock_project = MagicMock()
-        mock_project.entities = {"site": MagicMock()}
+        mock_project.entities = {"site": {"keys": ["site_code"]}}
         mock_ps_instance = MagicMock()
         mock_ps_instance.load_project.return_value = mock_project
         mock_project_service.return_value = mock_ps_instance
         reconciliation_service.project_service = mock_ps_instance
 
-        mock_mapper_instance = MagicMock()
-        mock_mapper_instance.to_core_config.return_value = MagicMock(entities={"site": MagicMock()})
-        mock_mapper.return_value = mock_mapper_instance
+        mock_core_project = MagicMock()
+        mock_core_project.has_table.return_value = True
+        mock_core_project.get_table.return_value.safe_keys = ["site_code"]
+        mock_mapper.to_core.return_value = mock_core_project
 
         # Create config in nested structure
         project_dir = tmp_path / "test"
@@ -1458,21 +1481,17 @@ class TestSpecificationManagement:
         with pytest.raises(ResourceConflictError, match="already exists"):
             reconciliation_service.catalog_manager.create_entity_mapping("test", "site", "site_code", new_spec)
 
-    @patch("backend.app.services.reconciliation.service.ProjectMapper")
+    @patch("backend.app.services.reconciliation.mapping_manager.ProjectMapper")
     @patch("backend.app.services.reconciliation.service.ProjectService")
     def test_create_specification_invalid_entity(self, mock_project_service, mock_mapper, reconciliation_service, tmp_path, catalog):
         """Test creating specification for non-existent entity raises error."""
         # Mock project service
         mock_project = MagicMock()
-        mock_project.entities = {"site": MagicMock()}
+        mock_project.entities = {"site": {"keys": ["site_code"]}}
         mock_ps_instance = MagicMock()
         mock_ps_instance.load_project.return_value = mock_project
         mock_project_service.return_value = mock_ps_instance
         reconciliation_service.project_service = mock_ps_instance
-
-        mock_mapper_instance = MagicMock()
-        mock_mapper_instance.to_core_config.return_value = MagicMock(entities={"site": MagicMock()})
-        mock_mapper.return_value = mock_mapper_instance
 
         config_file = tmp_path / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
@@ -1492,7 +1511,8 @@ class TestSpecificationManagement:
         with pytest.raises(ValidationError, match="Entity 'invalid_entity' does not exist"):
             reconciliation_service.catalog_manager.create_entity_mapping("test", "invalid_entity", "some_field", new_spec)
 
-    def test_update_specification_success(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
+    @patch("backend.app.services.reconciliation.mapping_manager.ProjectMapper.to_core")
+    def test_update_specification_success(self, mock_to_core, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test updating specification preserves mapping."""
         # Add mapping to original spec
         catalog.entities["site"]["site_code"].mapping = [
@@ -1515,6 +1535,16 @@ class TestSpecificationManagement:
         config_file = project_dir / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
+
+        mock_project = MagicMock()
+        mock_project.entities = {"site": {"keys": ["site_code"]}}
+        project_service = MagicMock()
+        project_service.load_project.return_value = mock_project
+        reconciliation_service.project_service = project_service
+        mock_core_project = MagicMock()
+        mock_core_project.has_table.return_value = True
+        mock_core_project.get_table.return_value.safe_keys = ["site_code"]
+        mock_to_core.return_value = mock_core_project
 
         # Update thresholds and property mappings
         updated_config: core.EntityResolutionCatalog = reconciliation_service.catalog_manager.update_entity_mapping(

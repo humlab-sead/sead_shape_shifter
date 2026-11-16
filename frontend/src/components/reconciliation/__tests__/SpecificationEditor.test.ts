@@ -34,8 +34,14 @@ const reconciliationStore = reactive({
   updateSpecification: vi.fn(async () => {}),
 })
 
-const projectStore = reactive<{ selectedProject: { entities: Record<string, object> } }>({
-  selectedProject: { entities: { site: {} } },
+const projectStore = reactive<{ selectedProject: { entities: Record<string, { keys?: string[] | string }> } }>({
+  selectedProject: {
+    entities: {
+      site: { keys: ['site_code'] },
+      location: { keys: ['location_code'] },
+      feature_type: { keys: [] },
+    },
+  },
 })
 
 const notificationMocks = vi.hoisted(() => ({
@@ -153,6 +159,7 @@ function createSpecification(
 ) {
   return {
     entity_name: entityName,
+    has_business_keys: true,
     target_field: targetField,
     source: null,
     property_mappings: propertyMappings,
@@ -164,7 +171,7 @@ function createSpecification(
   }
 }
 
-async function mountEditor(specification = createSpecification('site', {})) {
+async function mountEditor(specification = createSpecification('site', {}), isNew = false) {
   return mount(SpecificationEditor, {
     global: {
       plugins: [vuetify],
@@ -181,8 +188,8 @@ async function mountEditor(specification = createSpecification('site', {})) {
     props: {
       modelValue: true,
       projectName: 'test_project',
-      specification,
-      isNew: false,
+      specification: isNew ? null : specification,
+      isNew,
     },
   })
 }
@@ -197,7 +204,13 @@ describe('SpecificationEditor', () => {
     reconciliationStore.getServiceManifest = vi.fn(async () => manifest)
     reconciliationStore.updateSpecification = vi.fn(async () => {})
     reconciliationStore.createSpecification = vi.fn(async () => {})
-    projectStore.selectedProject = { entities: { site: {}, location: {} } }
+    projectStore.selectedProject = {
+      entities: {
+        site: { keys: ['site_code'] },
+        location: { keys: ['location_code'] },
+        feature_type: { keys: [] },
+      },
+    }
     notificationMocks.success.mockReset()
     notificationMocks.error.mockReset()
   })
@@ -229,6 +242,41 @@ describe('SpecificationEditor', () => {
     await flushPromises()
     expect(wrapper.find('[data-label="Source column for old_property"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('No properties are declared for this remote type.')
+  })
+
+  it('warns and blocks creating a specification for an entity without business keys', async () => {
+    const wrapper = await mountEditor(createSpecification('feature_type', {}, 'feature_type'), true)
+    await flushPromises()
+
+    await wrapper.get('[data-label="Entity *"] [data-option-value="feature_type"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="missing-business-keys"]').text()).toContain(
+      "Add one or more 'keys' to the entity in the project configuration"
+    )
+    const createButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Create')
+    expect(createButton?.attributes('disabled')).toBeDefined()
+    expect(reconciliationStore.createSpecification).not.toHaveBeenCalled()
+  })
+
+  it('allows a directive-backed business key declaration while the backend resolves it', async () => {
+    projectStore.selectedProject.entities.feature_type = { keys: '@value: entities.sample.keys' }
+    const wrapper = await mountEditor(createSpecification('feature_type', {}, 'feature_type'), true)
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="missing-business-keys"]').exists()).toBe(false)
+  })
+
+  it('warns when opening a saved specification whose entity has no business keys', async () => {
+    projectStore.selectedProject = { entities: { site: { keys: [] } } }
+    const wrapper = await mountEditor({ ...createSpecification('site', {}), has_business_keys: false })
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="missing-business-keys"]').text()).toContain(
+      "Entity 'site' has no business keys configured."
+    )
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.attributes('disabled')).toBeDefined()
   })
 
   it('shows manifest failures and preserves saved type and mapping values', async () => {
