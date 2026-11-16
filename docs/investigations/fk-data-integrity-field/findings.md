@@ -17,7 +17,7 @@ The generic field assignment predates the recent CLI normalizer-findings change.
 Ran the reported workflow with the repository interpreter:
 
 ```text
-.venv/bin/python scripts/validate_project.py --workflow all --log-level warning tests/test_data/projects/arbodat/shapeshifter.yml
+.venv/bin/python scripts/project/validate_project.py --workflow all --log-level warning tests/test_data/projects/arbodat/shapeshifter.yml
 ```
 
 The command exited with status 0 and reproduced:
@@ -32,10 +32,10 @@ The current Arbodat configuration declares `ecocode` with a foreign key whose `e
 
 | ID | Observation or test | Source | Result | Assessment |
 | --- | --- | --- | --- | --- |
-| E1 | Reproduced the reported CLI output | `.venv/bin/python scripts/validate_project.py --workflow all --log-level warning tests/test_data/projects/arbodat/shapeshifter.yml` | The output row contains the generic field and the configured remote name in the message. | Verified |
+| E1 | Reproduced the reported CLI output | `.venv/bin/python scripts/project/validate_project.py --workflow all --log-level warning tests/test_data/projects/arbodat/shapeshifter.yml` | The output row contains the generic field and the configured remote name in the message. | Verified |
 | E2 | Validator reads the remote entity from `fk_config` | [`data_validators.py`](../../../src/validators/data_validators.py#L401-L404) | `remote_entity` is set from `fk_config["entity"]` and used in the issue message. | Verified |
 | E3 | `FK_DATA_INTEGRITY` assigns a fixed field string | [`data_validators.py`](../../../src/validators/data_validators.py#L503-L509) | The issue sets `field="foreign_keys[].entity"` regardless of the configured target; the message interpolates `remote_entity`. | Verified |
-| E4 | CLI prints the issue's field directly | [`validate_project.py`](../../../scripts/validate_project.py#L204-L214) | No formatting step substitutes the target entity into the `field` column. | Verified |
+| E4 | CLI prints the issue's field directly | [`validate_project.py`](../../../scripts/project/validate_project.py#L204-L214) | No formatting step substitutes the target entity into the `field` column. | Verified |
 | E5 | Arbodat config distinguishes local entity, remote entity, and local FK column | [`shapeshifter.yml`](../../../tests/test_data/projects/arbodat/shapeshifter.yml#L1752-L1760) | `ecocode` references `ecocode_definition`; `ecocode_definition_id` is its local key. | Verified in the current worktree |
 | E6 | Related remote-empty warning uses the same field path; the orphan warning test does not assert a field value | [`test_data_validators.py`](../../../tests/validators/test_data_validators.py#L360-L400) | The generic path is also asserted for `FK_REMOTE_EMPTY`; no test currently specifies the intended field for `FK_DATA_INTEGRITY`. | Verified |
 | E7 | Field assignment history | Commit `6ce8e1ebbd960c14d8c1322c109dcc42449afc9a` (`feat(validators): refactor and bug fix data validators (#224)`) | The literal field assignment traces to this 2026-02-09 commit, not the recent CLI fix. | Verified |
@@ -46,7 +46,7 @@ The current Arbodat configuration declares `ecocode` with a foreign key whose `e
 1. The Arbodat `ecocode` FK configuration sets the remote entity to `ecocode_definition`.
 2. `ForeignKeyIntegrityValidator.validate()` reads that value into `remote_entity`.
 3. If it finds orphaned local values, it builds an `FK_DATA_INTEGRITY` issue with the fixed field path `foreign_keys[].entity` and a message containing the actual remote name.
-4. `scripts/validate_project.py` serializes the issue's `field` member into the CSV `field` column without modification.
+4. `scripts/project/validate_project.py` serializes the issue's `field` member into the CSV `field` column without modification.
 
 The field assignment dates to `6ce8e1eb` in February 2026. The exact point at which a consumer began treating `field` as a place to display the remote target was not established.
 
@@ -86,7 +86,7 @@ The field assignment dates to `6ce8e1eb` in February 2026. The exact point at wh
 
 ## Verification record
 
-- **Reproduction:** `.venv/bin/python scripts/validate_project.py --workflow all --log-level warning tests/test_data/projects/arbodat/shapeshifter.yml` — exit status 0; reproduced the exact field and message.
+- **Reproduction:** `.venv/bin/python scripts/project/validate_project.py --workflow all --log-level warning tests/test_data/projects/arbodat/shapeshifter.yml` — exit status 0; reproduced the exact field and message.
 - **Unit tests:** `.venv/bin/pytest -q tests/validators/test_data_validators.py` — 40 passed.
 - **History:** `git blame -L 500,512 -- src/validators/data_validators.py` — the fixed field assignment traces to `6ce8e1eb` on 2026-02-09.
 - **Source changes:** None. The modified project YAML and other pre-existing worktree changes were left untouched.
@@ -94,7 +94,7 @@ The field assignment dates to `6ce8e1eb` in February 2026. The exact point at wh
 ## References
 
 - [`src/validators/data_validators.py`](../../../src/validators/data_validators.py)
-- [`scripts/validate_project.py`](../../../scripts/validate_project.py)
+- [`scripts/project/validate_project.py`](../../../scripts/project/validate_project.py)
 - [`tests/validators/test_data_validators.py`](../../../tests/validators/test_data_validators.py)
 - [`tests/test_data/projects/arbodat/shapeshifter.yml`](../../../tests/test_data/projects/arbodat/shapeshifter.yml)
 - Commit `6ce8e1ebbd960c14d8c1322c109dcc42449afc9a` (`feat(validators): refactor and bug fix data validators (#224)`)

@@ -256,7 +256,7 @@ class TestProjectMapperFilePathIntegration:
             project_dir.mkdir(parents=True, exist_ok=True)
             project_file = project_dir / "shapeshifter.yml"
             project_file.write_text("metadata:\n  name: test_project\nentities: {}\n", encoding="utf-8")
-            (project_dir / "test_project-mapping.yml").write_text(
+            (project_dir / "shapeshifter.mapping.yml").write_text(
                 "version: '1'\n"
                 "metadata:\n"
                 "  project: test_project\n"
@@ -301,7 +301,7 @@ class TestProjectMapperFilePathIntegration:
             project_dir.mkdir(parents=True, exist_ok=True)
             project_file = project_dir / "shapeshifter.yml"
             project_file.write_text("metadata:\n  name: test_project\nentities: {}\n", encoding="utf-8")
-            (project_dir / "test_project-mapping.yml").write_text(
+            (project_dir / "shapeshifter.mapping.yml").write_text(
                 "version: '1'\n"
                 "metadata:\n"
                 "  project: test_project\n"

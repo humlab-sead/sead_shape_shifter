@@ -21,6 +21,7 @@ from backend.app.services.project_data_provider_service import ProjectDataProvid
 from backend.app.services.project_ingester_service import ProjectIngesterService
 from ingesters.sead_change_request.contracts import TrustedProjectContext
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
+from src.output_expectations import OutputExpectationEvaluation, OutputExpectationResult
 from src.reconciliation.mapping_model import EntityMapping, Link, LinkOwner, LinkSource, LocalOnlyApproval, MappingCatalog, Metadata
 from src.reconciliation.model import (
     DecisionStatus,
@@ -56,6 +57,35 @@ def request(project_name: str = "pilot") -> ProjectIngesterRequest:
             identifier="PILOT_RUN",
         ),
     )
+
+
+def output_expectation_result(
+    *,
+    name: str,
+    status: str = "pass",
+    entity: str = "sample",
+    metric: str = "row_count",
+    group_value: Any | None = None,
+    measured_value: int | None = 2,
+    expected_limit: dict[str, int] | None = None,
+    failure_reason: str | None = None,
+) -> OutputExpectationResult:
+    """Build one Core output expectation result for service-level tests."""
+    return OutputExpectationResult(
+        name=name,
+        entity=entity,
+        metric=metric,
+        group_value=group_value,
+        measured_value=measured_value,
+        expected_limit=expected_limit or {"equals": 2},
+        status="fail" if status == "fail" else "pass",
+        failure_reason=failure_reason,
+    )
+
+
+def evaluation_of(*results: OutputExpectationResult) -> OutputExpectationEvaluation:
+    """Build an evaluation whose pass/fail decision follows its results."""
+    return OutputExpectationEvaluation(results=list(results), passed=all(result.status == "pass" for result in results))
 
 
 def core_project(*, target_model: dict[str, Any] | None = None) -> SimpleNamespace:
@@ -278,6 +308,8 @@ def install_common_mocks(
     specification_errors: list[str] | None = None,
     specification_warnings: list[str] | None = None,
     table_store: dict[str, pd.DataFrame] | None = None,
+    output_expectation_evaluation: OutputExpectationEvaluation | None = None,
+    incomplete_entities: dict[str, str] | None = None,
 ) -> tuple[FakeProjectService, list[tuple[str, Any]]]:
     """Install isolated project, specification, registry, mapping, and normalization fakes."""
     project_service = project_service or FakeProjectService()
@@ -301,11 +333,15 @@ def install_common_mocks(
         lambda: FakeRegistry(registry_ingester),
     )
 
-    async def normalize(project, *, translate, drop_foreign_keys, default_entity, env_file):
+    async def normalize(
+        project, *, translate, drop_foreign_keys, default_entity, env_file, check_output_expectations=False
+    ):  # pylint: disable=unused-argument
         calls.append(("normalize", (project, translate, drop_foreign_keys, default_entity, env_file)))
         return SimpleNamespace(
             table_store=table_store or {"sample": pd.DataFrame({"sample_id": [1, 2]})},
             mapping_catalog=None,
+            output_expectation_evaluation=output_expectation_evaluation,
+            incomplete_entities=dict(incomplete_entities or {}),
         )
 
     monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
@@ -440,11 +476,15 @@ async def test_project_operations_attach_committed_approvals_from_normalization_
         },
     )
 
-    async def normalize(project, *, translate, drop_foreign_keys, default_entity, env_file):
+    async def normalize(
+        project, *, translate, drop_foreign_keys, default_entity, env_file, check_output_expectations=False
+    ):  # pylint: disable=unused-argument
         calls.append(("normalize", (project, translate, drop_foreign_keys, default_entity, env_file)))
         return SimpleNamespace(
             table_store={"site": pd.DataFrame({"site_id": [42, None], "site_name": ["Accepted Site", "Nordic Site"]})},
             mapping_catalog=catalog,
+            output_expectation_evaluation=None,
+            incomplete_entities={},
         )
 
     monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
@@ -544,10 +584,13 @@ async def test_project_operations_reject_unverified_local_only_approval(
         drop_foreign_keys,  # pylint: disable=unused-argument
         default_entity,  # pylint: disable=unused-argument
         env_file,  # pylint: disable=unused-argument
+        check_output_expectations=False,  # pylint: disable=unused-argument
     ):
         return SimpleNamespace(
             table_store={"site": pd.DataFrame({"site_id": [None], "site_name": ["Nordic Site"]})},
             mapping_catalog=mapping_catalog,
+            output_expectation_evaluation=None,
+            incomplete_entities={},
         )
 
     monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
@@ -575,7 +618,12 @@ async def test_project_operations_reject_sidecar_for_different_project(monkeypat
     catalog = MappingCatalog(metadata=Metadata(project="other-project"))
 
     async def normalize(*_args, **_kwargs):
-        return SimpleNamespace(table_store={}, mapping_catalog=catalog)
+        return SimpleNamespace(
+            table_store={},
+            mapping_catalog=catalog,
+            output_expectation_evaluation=None,
+            incomplete_entities={},
+        )
 
     monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
     service = project_ingester_service(project_service, runtime_settings=settings(tmp_path))
@@ -982,9 +1030,16 @@ async def test_saved_direct_fk_map_reaches_validation_and_ingestion_through_real
 
     monkeypatch.setattr(project_ingester_module, "CompositeProjectSpecification", ValidSpecification)
 
-    async def normalize(mapped_project, *, translate, drop_foreign_keys, default_entity, env_file):  # pylint: disable=unused-argument
+    async def normalize(
+        mapped_project, *, translate, drop_foreign_keys, default_entity, env_file, check_output_expectations=False
+    ):  # pylint: disable=unused-argument
         assert mapped_project.get_table("location").foreign_keys == []
-        return SimpleNamespace(table_store=source_tables, mapping_catalog=None)
+        return SimpleNamespace(
+            table_store=source_tables,
+            mapping_catalog=None,
+            output_expectation_evaluation=None,
+            incomplete_entities={},
+        )
 
     monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
 
@@ -1031,6 +1086,267 @@ async def test_saved_direct_fk_map_reaches_validation_and_ingestion_through_real
 
 
 @pytest.mark.asyncio
+async def test_invalid_output_expectation_stops_ingestion_before_normalization(monkeypatch, tmp_path) -> None:
+    """The real composite check rejects invalid expectations before normalization or writes."""
+    project = Project(
+        metadata=ProjectMetadata(name="pilot", entity_count=0),
+        entities={},
+        options={
+            "output_expectations": [{"name": "missing-site", "entity": "missing", "metric": "row_count", "equals": 0}],
+        },
+    )
+    project_service = FakeProjectService(project)
+    service = project_ingester_service(project_service, runtime_settings=settings(tmp_path))
+    FakeTableIngester.instances.clear()
+    monkeypatch.setattr(
+        project_ingester_module,
+        "normalize_project",
+        lambda *args, **kwargs: pytest.fail("Invalid declarations must stop before normalization"),
+    )
+
+    result = await service.ingest_project_tables("sead_change_request", authorized_project(), request())
+
+    assert result.success is False
+    assert result.message == "Project validation failed"
+    assert "options.output_expectations" in (result.error_details or "")
+    assert not FakeTableIngester.instances
+
+
+@pytest.mark.asyncio
+async def test_valid_output_expectation_reaches_project_ingestion(monkeypatch, tmp_path) -> None:
+    """A valid declaration passes the real mapper and composite check before ingestion."""
+    project = Project(
+        metadata=ProjectMetadata(name="pilot", entity_count=1, target_model=valid_target_model()),
+        entities={
+            "site": {
+                "type": "sql",
+                "columns": ["site_key", "site_name"],
+                "keys": ["site_key"],
+                "data_source": "db1",
+                "query": "SELECT 1",
+            }
+        },
+        options={
+            "data_sources": {"db1": {"driver": "postgresql"}},
+            "output_expectations": [{"name": "site-count", "entity": "site", "metric": "row_count", "equals": 1}],
+        },
+    )
+    project_service = FakeProjectService(project)
+    calls: list[dict[str, Any]] = []
+
+    async def normalize(*_args, **kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(
+            table_store={"site": pd.DataFrame({"site_id": [1]})},
+            mapping_catalog=None,
+            output_expectation_evaluation=evaluation_of(
+                output_expectation_result(
+                    name="site-count",
+                    entity="site",
+                    measured_value=1,
+                    expected_limit={"equals": 1},
+                )
+            ),
+            incomplete_entities={},
+        )
+
+    monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
+    monkeypatch.setattr(project_ingester_module, "get_ingester_registry", lambda: FakeRegistry(FakeTableIngester))
+    monkeypatch.setattr(project_ingester_module, "inject_ingester_runtime_dependencies", lambda _key, extra, _settings: extra)
+    monkeypatch.setattr(project_ingester_module, "inject_ingester_database_dependencies", lambda _key, extra, _config: extra)
+    FakeTableIngester.instances.clear()
+    service = project_ingester_service(project_service, runtime_settings=settings(tmp_path))
+
+    validation = await service.validate_project_tables("sead_change_request", authorized_project(), request())
+    result = await service.ingest_project_tables("sead_change_request", authorized_project(), request())
+
+    assert validation.is_valid is True
+    assert result.success is True
+    assert calls[0].get("check_output_expectations", False) is False
+    assert calls[1]["check_output_expectations"] is True
+    assert FakeTableIngester.instances[-1].ingestion_call is not None
+    assert [item.name for item in result.output_expectation_results] == ["site-count"]
+    assert result.output_expectation_results[0].status == "pass"
+    assert result.output_expectation_results[0].measured_value == 1
+
+
+@pytest.mark.asyncio
+async def test_failed_output_expectations_block_project_ingestion_writes(monkeypatch, tmp_path) -> None:
+    """A failed expectation returns every result and never reaches the ingester."""
+    evaluation = evaluation_of(
+        output_expectation_result(
+            name="site-count",
+            entity="site",
+            status="fail",
+            measured_value=3,
+            expected_limit={"equals": 2},
+            failure_reason="Expected 2 rows but measured 3.",
+        ),
+        output_expectation_result(
+            name="site-group",
+            entity="site",
+            metric="grouped_row_count",
+            group_value="SEAD",
+            status="fail",
+            measured_value=4,
+            expected_limit={"max": 1},
+            failure_reason="Expected at most 1 row but measured 4.",
+        ),
+        output_expectation_result(
+            name="site-group",
+            entity="site",
+            metric="grouped_row_count",
+            group_value=True,
+            measured_value=1,
+            expected_limit={"equals": 1},
+        ),
+    )
+    project_service, _ = install_common_mocks(monkeypatch, output_expectation_evaluation=evaluation)
+    FakeTableIngester.instances.clear()
+    service = project_ingester_service(project_service, runtime_settings=settings(tmp_path))
+
+    result = await service.ingest_project_tables("sead_change_request", authorized_project(), request())
+
+    assert result.success is False
+    assert result.records_processed == 0
+    assert result.output_path is None
+    assert result.deploy_artifact is None
+    assert result.message == "Output expectation checks failed; no tables were ingested."
+    assert [item.name for item in result.output_expectation_results] == ["site-count", "site-group", "site-group"]
+    assert [item.group_value for item in result.output_expectation_results] == [None, "SEAD", True]
+    assert [item.status for item in result.output_expectation_results] == ["fail", "fail", "pass"]
+    assert [item.measured_value for item in result.output_expectation_results] == [3, 4, 1]
+    assert "Expected 2 rows but measured 3." in (result.error_details or "")
+    assert "Expected at most 1 row but measured 4." in (result.error_details or "")
+    assert not FakeTableIngester.instances
+
+
+@pytest.mark.asyncio
+async def test_missing_expected_entity_fails_project_ingestion_without_measurement(monkeypatch, tmp_path) -> None:
+    """An absent expected entity fails explicitly and keeps a null measurement."""
+    evaluation = evaluation_of(
+        output_expectation_result(
+            name="site-count",
+            entity="missing_site",
+            status="fail",
+            measured_value=None,
+            failure_reason="Expected entity 'missing_site' is missing from the normalized output.",
+        )
+    )
+    project_service, _ = install_common_mocks(monkeypatch, output_expectation_evaluation=evaluation)
+    FakeTableIngester.instances.clear()
+    service = project_ingester_service(project_service, runtime_settings=settings(tmp_path))
+
+    result = await service.ingest_project_tables("sead_change_request", authorized_project(), request())
+
+    assert result.success is False
+    assert result.output_expectation_results[0].entity == "missing_site"
+    assert result.output_expectation_results[0].measured_value is None
+    assert result.output_expectation_results[0].failure_reason is not None
+    assert "missing_site" in (result.error_details or "")
+    assert not FakeTableIngester.instances
+
+
+@pytest.mark.asyncio
+async def test_incomplete_unconfigured_entity_blocks_project_ingestion_writes(monkeypatch, tmp_path) -> None:
+    """A passing evaluation cannot ingest partial output from another entity."""
+    evaluation = evaluation_of(output_expectation_result(name="sample-count"))
+    project_service, _ = install_common_mocks(
+        monkeypatch,
+        output_expectation_evaluation=evaluation,
+        incomplete_entities={"location": "DataSourceError: connection refused"},
+    )
+    FakeTableIngester.instances.clear()
+    service = project_ingester_service(project_service, runtime_settings=settings(tmp_path))
+
+    result = await service.ingest_project_tables("sead_change_request", authorized_project(), request())
+
+    assert result.success is False
+    assert result.message == "Full-run output is incomplete; no tables were ingested."
+    assert "entity 'location'" in (result.error_details or "")
+    assert "connection refused" in (result.error_details or "")
+    assert [item.name for item in result.output_expectation_results] == ["sample-count"]
+    assert not FakeTableIngester.instances
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("translate", "drop_foreign_keys"), [(False, False), (True, True)])
+async def test_passing_output_expectations_ingest_transformed_tables_and_report_recorded_results(
+    monkeypatch, tmp_path, translate, drop_foreign_keys
+) -> None:
+    """The gate uses the recorded pre-translation result while the ingester receives transformed tables."""
+    evaluation = evaluation_of(
+        output_expectation_result(
+            name="site-key-count",
+            entity="site",
+            metric="distinct_key_count",
+            measured_value=2,
+            expected_limit={"min": 2, "max": 2},
+        )
+    )
+    transformed_tables = {"site_target": pd.DataFrame({"site_id": [1, 2]})}
+    project_service, calls = install_common_mocks(
+        monkeypatch,
+        table_store=transformed_tables,
+        output_expectation_evaluation=evaluation,
+    )
+    FakeTableIngester.instances.clear()
+    service = project_ingester_service(project_service, runtime_settings=settings(tmp_path))
+    ingest_request = request().model_copy(update={"translate": translate, "drop_foreign_keys": drop_foreign_keys})
+
+    result = await service.ingest_project_tables("sead_change_request", authorized_project(), ingest_request)
+
+    ingester = FakeTableIngester.instances[-1]
+    assert result.success is True
+    assert ingester.ingestion_call is not None
+    assert ingester.ingestion_call[0] is transformed_tables
+    assert [item.entity for item in result.output_expectation_results] == ["site"]
+    assert result.output_expectation_results[0].measured_value == 2
+    assert result.output_expectation_results[0].expected_limit == {"min": 2, "max": 2}
+    assert calls[-1][1][1] is translate
+    assert calls[-1][1][2] is drop_foreign_keys
+
+
+@pytest.mark.asyncio
+async def test_project_without_output_expectations_keeps_existing_ingestion(monkeypatch, tmp_path) -> None:
+    """Projects without expectations ingest as before and report an empty result list."""
+    project_service, _ = install_common_mocks(monkeypatch)
+    FakeTableIngester.instances.clear()
+    service = project_ingester_service(project_service, runtime_settings=settings(tmp_path))
+
+    result = await service.ingest_project_tables("sead_change_request", authorized_project(), request())
+
+    assert result.success is True
+    assert result.output_expectation_results == []
+    assert FakeTableIngester.instances[-1].ingestion_call is not None
+
+
+@pytest.mark.asyncio
+async def test_downstream_ingester_failure_still_reports_expectation_results(monkeypatch, tmp_path) -> None:
+    """A failing ingester keeps the passing expectation results in its response."""
+    evaluation = evaluation_of(output_expectation_result(name="sample-count"))
+    project_service, _ = install_common_mocks(monkeypatch, output_expectation_evaluation=evaluation)
+    monkeypatch.setattr(
+        FakeTableIngester,
+        "ingestion_result",
+        IngestionResult(
+            success=False,
+            message="Ingester data validation failed",
+            records_inserted=0,
+            error_details="Invalid normalized rows",
+        ),
+    )
+    FakeTableIngester.instances.clear()
+    service = project_ingester_service(project_service, runtime_settings=settings(tmp_path))
+
+    result = await service.ingest_project_tables("sead_change_request", authorized_project(), request())
+
+    assert result.success is False
+    assert result.error_details == "Invalid normalized rows"
+    assert [item.name for item in result.output_expectation_results] == ["sample-count"]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("value_source", "expected_map"),
     [("system_id", {"location": {"location_type": "system_id"}}), (None, None)],
@@ -1053,7 +1369,12 @@ async def test_saved_default_and_explicit_system_id_keep_the_core_link_and_confi
     monkeypatch.setattr(project_ingester_module, "CompositeProjectSpecification", ValidSpecification)
 
     async def normalize(*_args, **_kwargs):
-        return SimpleNamespace(table_store={"location": pd.DataFrame({"location_type_id": [1]})}, mapping_catalog=None)
+        return SimpleNamespace(
+            table_store={"location": pd.DataFrame({"location_type_id": [1]})},
+            mapping_catalog=None,
+            output_expectation_evaluation=None,
+            incomplete_entities={},
+        )
 
     monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
     monkeypatch.setattr(

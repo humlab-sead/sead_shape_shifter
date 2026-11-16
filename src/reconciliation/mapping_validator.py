@@ -1,4 +1,4 @@
-"""Sidecar validation functions for ``<project>-mapping.yml`` alignment.
+"""Sidecar validation functions for ``shapeshifter.mapping.yml`` alignment.
 
 These validators check that an ``EntityMapping`` from the mapping sidecar is
 consistent with the corresponding ``TableConfig`` from the project

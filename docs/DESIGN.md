@@ -216,13 +216,13 @@ Frontend: Project saved
 
 **Output**: execution results are written to `OUTPUT_DIR`. These are ephemeral; no retention policy is applied automatically.
 
-**Mapping sidecar**: entity ID mappings (business-key → target-ID links) are stored in a separate `<project>-mapping.yml` sidecar file alongside `shapeshifter.yml`. This keeps large mapping datasets out of the main project YAML and supports provenance tracking per link. The sidecar is loaded on project open, cached in memory, and invalidated on save.
+**Mapping sidecar**: entity ID mappings (business-key → target-ID links) are stored in a separate `shapeshifter.mapping.yml` sidecar file alongside `shapeshifter.yml`. This keeps large mapping datasets out of the main project YAML and supports provenance tracking per link. The sidecar is loaded on project open, cached in memory, and invalidated on save.
 
 ### Mapping Sidecar Design
 
 The mapping sidecar consolidates all ID mapping persistence into a single file with explicit provenance and commit semantics. It replaces the legacy `options.mappings` section in `shapeshifter.yml` (which is ignored for new projects).
 
-**File structure** (`<project>-mapping.yml`):
+**File structure** (`shapeshifter.mapping.yml`):
 
 ```yaml
 version: "2.0"
@@ -266,7 +266,7 @@ entities:
 
 ### Reconciliation Decision Catalog
 
-The separate `<project>-reconciliation.yml` catalog uses version `3.0`. Matching considers all normalized target rows, identifies each by the ordered business key (`keys` or the sidecar's `local_key`), and stores proposed candidates without automatically accepting them. Equal search labels remain distinct; missing or duplicate keys and unjoinable search-source rows produce errors rather than guessed links. Accepted, rejected, and local-only operator decisions survive matching reruns. Loading an old-format catalog ignores its decisions with a warning and leaves the file unchanged; malformed and unknown future versions fail explicitly. The mapping sidecar retains its independent version `2.0` and is not modified by matching or decision edits.
+The separate `shapeshifter.reconciliation.yml` catalog uses version `3.0`. Matching considers all normalized target rows, identifies each by the ordered business key (`keys` or the sidecar's `local_key`), and stores proposed candidates without automatically accepting them. Equal search labels remain distinct; missing or duplicate keys and unjoinable search-source rows produce errors rather than guessed links. Accepted, rejected, and local-only operator decisions survive matching reruns. Loading an old-format catalog ignores its decisions with a warning and leaves the file unchanged; malformed and unknown future versions fail explicitly. The mapping sidecar retains its independent version `2.0` and is not modified by matching or decision edits.
 
 **Related proposal**: `docs/proposals/done/RECONCILIATION_PERSISTENCE_CONSOLIDATION.md`
 

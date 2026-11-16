@@ -320,7 +320,7 @@ async function performDelete() {
     specToDelete.value = null
     success(
       `Specification deleted. ${removedEntries.removedOwnedLinks} owned mapping link(s) and ` +
-        `${removedEntries.removedOwnedApprovals} local-only approval(s) removed.`
+        `${removedEntries.removedOwnedApprovals} New-row approval${removedEntries.removedOwnedApprovals === 1 ? '' : 's'} removed.`
     )
   } catch (err: any) {
     console.error('Failed to delete specification:', err)

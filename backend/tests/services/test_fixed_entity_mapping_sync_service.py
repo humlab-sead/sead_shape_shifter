@@ -70,7 +70,7 @@ def test_sync_service_noop_preserves_sidecar_bytes_and_metadata(tmp_path) -> Non
         created_by="original",
     )
     manager.save(catalog, project_dir)
-    before_bytes = (project_dir / "test-mapping.yml").read_bytes()
+    before_bytes = (project_dir / "shapeshifter.mapping.yml").read_bytes()
     before_updated_at = catalog.metadata.updated_at
     snapshot = manager.load_snapshot(project_dir)
     changes = FixedRowChangeSet(entity_name="sample", eligible=True)
@@ -85,5 +85,5 @@ def test_sync_service_noop_preserves_sidecar_bytes_and_metadata(tmp_path) -> Non
 
     assert result.changed is False
     assert result.sidecar_version == snapshot.content_version
-    assert (project_dir / "test-mapping.yml").read_bytes() == before_bytes
+    assert (project_dir / "shapeshifter.mapping.yml").read_bytes() == before_bytes
     assert snapshot.catalog.metadata.updated_at == before_updated_at

@@ -1,4 +1,4 @@
-"""Pydantic v2 models for the mapping sidecar schema (`<project>-mapping.yml`).
+"""Pydantic v2 models for the mapping sidecar schema (`shapeshifter.mapping.yml`).
 
 Defines the full schema for persisting reconciled and manually-assigned
 local-key-to-target-ID links alongside entity-level metadata in a project

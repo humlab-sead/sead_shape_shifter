@@ -181,6 +181,7 @@ class TestMaterializeEntity:
         # API form carries a relative filename plus location; the resolved Core config carries an
         # environment-absolute path. The frozen source_state must come from the API form.
         mock_api_project.entities["location"] = {
+            "name": "location",
             "type": "csv",
             "public_id": "location_id",
             "keys": ["location_name"],
@@ -214,6 +215,33 @@ class TestMaterializeEntity:
 
         assert source_state["options"] == {"filename": "locations.csv", "location": "local"}
         assert "/app/projects" not in str(source_state)
+        # 'name' is added by ProjectMapper.to_api_config but is not a YAML entity field.
+        assert "name" not in source_state
+
+    def test_create_materialized_entity_drops_api_only_name(self, materialization_service, mock_table_config, sample_dataframe):
+        """The snapshot keeps API-form values but never the API-only 'name' key."""
+        api_entity_cfg = {
+            "name": "location",
+            "type": "csv",
+            "public_id": "location_id",
+            "keys": ["location_name"],
+            "options": {"filename": "locations.csv", "location": "local"},
+        }
+
+        new_config = materialization_service._create_materialized_entity(
+            mock_table_config,
+            sample_dataframe,
+            values_inline=[[1, "Norway"]],
+            source_entity_cfg=api_entity_cfg,
+        )
+
+        source_state = new_config["materialized"]["source_state"]
+        assert "name" not in source_state
+        assert source_state["options"] == {"filename": "locations.csv", "location": "local"}
+
+        # The snapshot is detached from the captured API config.
+        api_entity_cfg["options"]["filename"] = "rewritten.csv"
+        assert source_state["options"]["filename"] == "locations.csv"
 
     @pytest.mark.asyncio
     async def test_materialize_auto_inline_small_dataset(

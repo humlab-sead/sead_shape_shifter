@@ -102,10 +102,27 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     sample_horizon = target_model.entities["sample_horizon"]
     submission_task = target_model.entities["submission_task"]
     dataset_contact = target_model.entities["dataset_contact"]
+    site = target_model.entities["site"]
+    site_site_type = target_model.entities["site_site_type"]
+    site_type_relationship = next(fk for fk in site.foreign_keys if fk.entity == "site_type")
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
     assert target_model.model.format_version == "1"
-    assert len(target_model.entities) == 113
+    assert len(target_model.entities) == 136
+    assert site_type_relationship.via == "site_site_type"
+    assert site_type_relationship.required is False
+    assert "site_type_id" not in site.columns
+    assert site_site_type.target_table == "tbl_site_site_types"
+    assert set(site_site_type.columns) == {
+        "site_id",
+        "site_type_id",
+        "is_primary_type",
+        "confidence_code",
+        "notes",
+    }
+    assert site_site_type.unique_sets == [["site_id", "site_type_id"]]
+    assert {fk.entity for fk in site_site_type.foreign_keys} == {"site", "site_type"}
+    assert all(fk.required_when is not None and fk.required_when.has_new_rows == "site_site_type" for fk in site_site_type.foreign_keys)
     assert submission.identity_tracking == "tracked"
     assert submission.reconciliation == "allocate"
     assert submission.public_id_generation is None

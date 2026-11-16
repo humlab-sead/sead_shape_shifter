@@ -1,5 +1,7 @@
 """Models for executing full workflow."""
 
+from typing import Any, Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -23,6 +25,25 @@ class ExecuteRequest(BaseModel):
     default_entity: str | None = Field(default=None, description="Default entity to use if not specified")
 
 
+class OutputExpectationResult(BaseModel):
+    """Result of one configured output expectation check."""
+
+    name: str = Field(..., description="Configured expectation name")
+    entity: str = Field(..., description="Entity measured by the expectation")
+    metric: str = Field(..., description="Configured count metric")
+    group_value: Any | None = Field(
+        default=None,
+        description="Configured group value; null for scalar metrics and for an explicitly configured null group",
+    )
+    measured_value: int | None = Field(
+        default=None,
+        description="Measured count, or null when the expected entity was absent or incomplete",
+    )
+    expected_limit: dict[str, int] = Field(..., description="Configured equals, min, or max comparison values")
+    status: Literal["pass", "fail"] = Field(..., description="Comparison result")
+    failure_reason: str | None = Field(default=None, description="Why the check failed, when applicable")
+
+
 class ExecuteResult(BaseModel):
     """Result of workflow execution."""
 
@@ -40,4 +61,8 @@ class ExecuteResult(BaseModel):
     download_path: str | None = Field(
         None,
         description="Relative API path that can be used to download the generated file (file targets only)",
+    )
+    output_expectation_results: list[OutputExpectationResult] = Field(
+        default_factory=list,
+        description="Result of every configured output expectation check; empty when none are configured",
     )
