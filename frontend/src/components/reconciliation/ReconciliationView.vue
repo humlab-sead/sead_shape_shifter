@@ -122,10 +122,22 @@
           <v-window-item value="reconcile">
             <div class="py-4">
               <div class="d-flex justify-space-between align-center mb-4">
-                <h3 class="text-h6">
-                  <v-icon start>mdi-auto-fix</v-icon>
-                  Reconcile & Review
-                </h3>
+                <div class="d-flex align-center">
+                  <h3 class="text-h6">
+                    <v-icon start>mdi-auto-fix</v-icon>
+                    Reconcile & Review
+                  </h3>
+                  <v-btn
+                    icon="mdi-help-circle-outline"
+                    variant="text"
+                    size="small"
+                    data-testid="reconciliation-help-button"
+                    aria-label="Open Reconcile & Review help"
+                    @click="reconciliationHelpDialog = true"
+                  >
+                    <v-tooltip activator="parent" location="top">Reconcile &amp; Review help</v-tooltip>
+                  </v-btn>
+                </div>
 
                 <!-- Auto-Reconcile Button -->
                 <v-btn
@@ -261,6 +273,8 @@
       </v-card-text>
     </v-card>
 
+    <ReconciliationHelpDialog v-model="reconciliationHelpDialog" />
+
     <v-dialog v-model="manualLinkDialog" max-width="600">
       <v-card>
         <v-card-title>Add Manual Link</v-card-title>
@@ -319,6 +333,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useReconciliationStore } from '@/stores/reconciliation'
 import { storeToRefs } from 'pinia'
 import ReconciliationGrid from './ReconciliationGrid.vue'
+import ReconciliationHelpDialog from './ReconciliationHelpDialog.vue'
 import SpecificationsList from './SpecificationsList.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
 import type {
@@ -365,6 +380,7 @@ const manifestResult = ref<ReconciliationManifestResult | null>(null)
 const availableEntityTypes = ref<number>(0)
 const autoReconcileResult = ref<AutoReconcileResult | null>(null)
 const autoReconcileError = ref<string | null>(null)
+const reconciliationHelpDialog = ref(false)
 const manualLinkDialog = ref(false)
 const manualLocalKeyValue = ref('')
 const manualTargetId = ref('')

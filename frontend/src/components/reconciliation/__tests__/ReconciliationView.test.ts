@@ -184,6 +184,20 @@ describe('ReconciliationView', () => {
     expect(wrapper.get('[data-testid="yaml-editor"]').attributes('data-mode')).toBe('reconciliation')
   })
 
+  it('opens the reconciliation help dialog from the review tab', async () => {
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+    await wrapper.get('[data-testid="reconciliation-help-button"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="reconciliation-help-dialog"]').text()).toContain('Quick workflow')
+    expect(wrapper.get('[data-testid="reconciliation-help-dialog"]').text()).toContain(
+      'An accepted decision does not change the effective ID until it is exported.'
+    )
+  })
+
   it('exports accepted links and local-only approvals with separate counts', async () => {
     const wrapper = await mountView()
 
