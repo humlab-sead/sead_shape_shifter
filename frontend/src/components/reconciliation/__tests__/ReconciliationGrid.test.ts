@@ -313,15 +313,20 @@ describe('ReconciliationGrid', () => {
     const { wrapper } = mountGrid(vi.fn(), [makeRow('A')], mappingData)
 
     expect(wrapper.get('[data-testid="current-id"][data-key="A"]').text()).toBe('')
+    expect(wrapper.get('[data-testid="current-id-source"][data-key="A"]').text()).toBe('')
 
     const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const rowData = (gridProps.rowData as Array<Record<string, unknown>>)[0]
     const columnDefs = gridProps.columnDefs as ColDef[]
     const currentIdColumn = columnDefs.find((column) => column.field === 'current_id')
     const renderer = currentIdColumn?.cellRenderer
     if (typeof renderer !== 'function') throw new Error('Current ID column renderer is unavailable')
 
-    const cell = renderer({ value: undefined, data: {} } as Parameters<typeof renderer>[0]) as HTMLElement
+    const cell = renderer({ value: rowData?.current_id, data: rowData } as Parameters<
+      typeof renderer
+    >[0]) as HTMLElement
     expect(cell.querySelector('.current-id-value')?.textContent).toBe('')
+    expect(cell.querySelector('.current-id-source-badge')).toBeNull()
   })
 
   it('displays the local-only decision as New', () => {

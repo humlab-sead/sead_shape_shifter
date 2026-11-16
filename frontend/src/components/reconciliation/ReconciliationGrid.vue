@@ -361,17 +361,23 @@ function getCurrentIdSource(link: MappingLink | undefined, mappingAvailable: boo
   }
 }
 
+function hasDisplayableId(value: unknown): boolean {
+  return value != null && String(value).trim() !== ''
+}
+
 const gridRows = computed(() =>
   props.previewData.map((row) => {
     const sidecarLink = row.local_key_value ? props.mappingData?.links[row.local_key_value] : undefined
     const committedLink = sidecarLink?.committed_at ? sidecarLink : undefined
     const savedRowId = props.mappingData ? row[props.mappingData.public_id] : null
+    const currentId = props.mappingData ? (committedLink?.target_id ?? savedRowId) : null
     const currentIdSource = getCurrentIdSource(committedLink, Boolean(props.mappingData))
+    const hasAnyId = hasDisplayableId(row.target_id) || hasDisplayableId(currentId)
     return {
       ...row,
-      current_id: props.mappingData ? (committedLink?.target_id ?? savedRowId) : null,
-      current_id_source_label: currentIdSource.label,
-      current_id_source_description: currentIdSource.description,
+      current_id: currentId,
+      current_id_source_label: hasAnyId ? currentIdSource.label : null,
+      current_id_source_description: hasAnyId ? currentIdSource.description : null,
       status_display: formatStatus(row),
       confidence_percent: row.confidence == null ? null : row.confidence * 100,
       errors_display: row.errors?.join('; ') ?? '',
