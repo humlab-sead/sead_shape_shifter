@@ -220,6 +220,16 @@ describe('ReconciliationGrid', () => {
     expect(wrapper.get('[data-testid="row-confidence"]').text()).toBe('')
   })
 
+  it('places Status as the first pinned column', () => {
+    const { wrapper } = mountGrid()
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as ColDef[]
+
+    expect(columnDefs[0]?.field).toBe('status_display')
+    expect(columnDefs[0]?.headerName).toBe('Status')
+    expect(columnDefs[0]?.pinned).toBe('left')
+  })
+
   it('renders icon row actions with accessible names and tooltips', () => {
     const { wrapper } = mountGrid()
     const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>

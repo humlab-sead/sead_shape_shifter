@@ -391,6 +391,29 @@ const columnDefs = computed<ColDef[]>(() => {
 
   const columns: ColDef[] = [
     {
+      field: 'status_display',
+      headerName: 'Status',
+      width: 140,
+      pinned: 'left',
+      cellRenderer: (params: ICellRendererParams) => {
+        const label = typeof params.value === 'string' ? params.value : ''
+        const presentation = getReconciliationStatusPresentation(label)
+        if (!presentation) return label
+
+        const status = document.createElement('span')
+        status.className = 'reconciliation-status-icon'
+        status.setAttribute('role', 'img')
+        status.setAttribute('aria-label', label)
+        status.title = label
+
+        const icon = document.createElement('span')
+        icon.className = `mdi ${presentation.icon} text-${presentation.color}`
+        icon.setAttribute('aria-hidden', 'true')
+        status.append(icon)
+        return status
+      },
+    },
+    {
       field: props.targetField,
       headerName: `${props.targetField.replace(/_/g, ' ')} (Search label)`,
       pinned: 'left',
@@ -410,28 +433,6 @@ const columnDefs = computed<ColDef[]>(() => {
       headerName: 'Score',
       width: 150,
       valueFormatter: (params) => (params.value == null ? '' : `${Math.round(params.value)}%`),
-    },
-    {
-      field: 'status_display',
-      headerName: 'Decision status',
-      width: 140,
-      cellRenderer: (params: ICellRendererParams) => {
-        const label = typeof params.value === 'string' ? params.value : ''
-        const presentation = getReconciliationStatusPresentation(label)
-        if (!presentation) return label
-
-        const status = document.createElement('span')
-        status.className = 'reconciliation-status-icon'
-        status.setAttribute('role', 'img')
-        status.setAttribute('aria-label', label)
-        status.title = label
-
-        const icon = document.createElement('span')
-        icon.className = `mdi ${presentation.icon} text-${presentation.color}`
-        icon.setAttribute('aria-hidden', 'true')
-        status.append(icon)
-        return status
-      },
     },
     {
       field: 'current_id',
