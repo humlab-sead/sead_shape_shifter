@@ -316,13 +316,60 @@ describe('ReconciliationGrid', () => {
     expect(wrapper.get('[data-testid="row-status"]').text()).toBe('New')
   })
 
+  it('renders state filters as colored icons with accessible names and tooltips', () => {
+    const { wrapper } = mountGrid()
+    const filters = [
+      { id: 'proposed', label: 'Proposed', icon: 'mdi-lightbulb-outline', color: 'blue', count: 1 },
+      { id: 'accepted', label: 'Accepted', icon: 'mdi-check-circle-outline', color: 'green', count: 0 },
+      { id: 'rejected', label: 'Rejected', icon: 'mdi-close-circle-outline', color: 'grey', count: 0 },
+      { id: 'local-only', label: 'New', icon: 'mdi-home-outline', color: 'purple', count: 0 },
+      { id: 'unresolved', label: 'Unresolved', icon: 'mdi-help-circle-outline', color: 'amber', count: 0 },
+      { id: 'errors', label: 'Errors', icon: 'mdi-alert-circle-outline', color: 'red', count: 0 },
+    ]
+
+    for (const filter of filters) {
+      const chip = wrapper.get(`[data-testid="status-filter-${filter.id}"]`)
+      expect(chip.attributes('title')).toBe(filter.label)
+      expect(chip.attributes('aria-label')).toBe(`${filter.label} (${filter.count})`)
+      expect(chip.attributes('color')).toBe(filter.color)
+      expect(chip.get(`[icon="${filter.icon}"]`).attributes('aria-hidden')).toBe('true')
+    }
+  })
+
+  it('renders decision statuses as icon-only cells with accessible labels and tooltips', () => {
+    const { wrapper } = mountGrid()
+    const grid = wrapper.findComponent({ name: 'AgGridVue' })
+    const columnDefs = grid.props('columnDefs') as ColDef[]
+    const statusColumn = columnDefs.find((column) => column.field === 'status_display')
+    const renderer = statusColumn?.cellRenderer
+    if (typeof renderer !== 'function') throw new Error('Decision status renderer is unavailable')
+
+    const statuses = [
+      { label: 'Proposed', icon: 'mdi-lightbulb-outline', color: 'blue' },
+      { label: 'Accepted', icon: 'mdi-check-circle-outline', color: 'green' },
+      { label: 'Rejected', icon: 'mdi-close-circle-outline', color: 'grey' },
+      { label: 'New', icon: 'mdi-home-outline', color: 'purple' },
+      { label: 'Unresolved', icon: 'mdi-help-circle-outline', color: 'amber' },
+      { label: 'Needs attention', icon: 'mdi-alert-circle-outline', color: 'red' },
+    ]
+
+    for (const status of statuses) {
+      const cell = renderer({ value: status.label } as Parameters<typeof renderer>[0]) as HTMLElement
+      expect(cell.getAttribute('role')).toBe('img')
+      expect(cell.getAttribute('aria-label')).toBe(status.label)
+      expect(cell.title).toBe(status.label)
+      expect(cell.textContent).toBe('')
+      expect(cell.querySelector(`.mdi.${status.icon}.text-${status.color}`)).not.toBeNull()
+    }
+  })
+
   it('displays unresolved rows and row-specific errors separately', () => {
     const keylessRow = { site_name: 'Missing key', status: null, errors: ['Missing business key'], candidates: [] }
     const rows = [rowWithoutCandidates('A'), keylessRow, { ...makeRow('B'), errors: ['Invalid target value'] }]
     const { wrapper } = mountGrid(vi.fn(), rows)
 
-    expect(wrapper.text()).toContain('Unresolved (2)')
-    expect(wrapper.text()).toContain('Errors (2)')
+    expect(wrapper.get('[data-testid="status-filter-unresolved"]').attributes('aria-label')).toBe('Unresolved (2)')
+    expect(wrapper.get('[data-testid="status-filter-errors"]').attributes('aria-label')).toBe('Errors (2)')
     expect(wrapper.findAll('[data-testid="row-status"]').map((status) => status.text())).toContain('Unresolved')
     expect(wrapper.findAll('[data-testid="row-status"]').map((status) => status.text())).toContain('Unreviewable')
     expect(wrapper.findAll('[data-testid="row-status"]').map((status) => status.text())).toContain('Needs attention')
@@ -410,11 +457,12 @@ describe('PreviewMatchedDataDialog', () => {
     expect(rows[1]?.text()).toContain('82%')
     expect(rows[2]?.text()).toContain('100%')
     expect(rows[3]?.text()).toContain('—')
-    expect(rows[4]?.text()).toContain('Unresolved')
-    expect(rows[5]?.text()).toContain('Unreviewable')
-    expect(rows[6]?.text()).toContain('Needs attention')
+    expect(rows[4]?.find('[aria-label="Unresolved"]').exists()).toBe(true)
+    expect(rows[5]?.find('[aria-label="Unreviewable"]').exists()).toBe(true)
+    expect(rows[6]?.find('[aria-label="Needs attention"]').exists()).toBe(true)
     expect(rows[6]?.text()).toContain('Invalid target value')
-    expect(wrapper.text()).toContain('2 unresolved · 1 errors')
+    expect(wrapper.find('[aria-label="Unresolved: 2"]').exists()).toBe(true)
+    expect(wrapper.find('[aria-label="Errors: 1"]').exists()).toBe(true)
   })
 
   it('uses compact rows while keeping row virtualization enabled', () => {
@@ -431,6 +479,9 @@ describe('PreviewMatchedDataDialog', () => {
       { local_key_value: 'A', site_name: 'Same', status: 'accepted' as const, candidates: [] },
       { local_key_value: 'B', site_name: 'Same', status: 'rejected' as const, candidates: [] },
       { local_key_value: 'C', site_name: 'Same', status: 'proposed' as const, errors: ['Bad value'], candidates: [] },
+      { local_key_value: 'D', site_name: 'New row', status: 'local-only' as const, candidates: [] },
+      { local_key_value: 'E', site_name: 'Unresolved row', status: 'proposed' as const, candidates: [] },
+      makeRow('F'),
     ]
     const wrapper = mount(ReconciliationGrid, {
       props: {
@@ -456,7 +507,26 @@ describe('PreviewMatchedDataDialog', () => {
     const classes = rows.map((row) => row.find('[data-testid="row-class"]').text())
     expect(classes).toContain('row-accepted')
     expect(classes).toContain('row-rejected')
+    expect(classes).toContain('row-local-only')
+    expect(classes).toContain('row-proposed')
+    expect(classes).toContain('row-unresolved')
     // An error takes precedence over the decision status.
     expect(classes).toContain('row-needs-attention')
+  })
+
+  it('shows an accessible state icon and matching row color in the preview dialog', () => {
+    const wrapper = mount(PreviewMatchedDataDialog, {
+      props: {
+        modelValue: true,
+        previewData: [{ ...makeRow('A'), status: 'rejected' }],
+        entitySpec: null,
+      },
+      global: { plugins: [vuetify], stubs },
+    })
+
+    const status = wrapper.get('[aria-label="Rejected"]')
+    expect(status.attributes('title')).toBe('Rejected')
+    expect(status.get('[icon="mdi-close-circle-outline"]').attributes('aria-hidden')).toBe('true')
+    expect(wrapper.get('tbody tr').classes()).toContain('bg-grey-lighten-5')
   })
 })

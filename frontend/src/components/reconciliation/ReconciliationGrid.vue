@@ -3,12 +3,102 @@
     <v-toolbar density="comfortable" color="transparent" flat class="mb-2">
       <v-chip-group v-model="statusFilter" mandatory>
         <v-chip value="all" variant="outlined">All ({{ previewData.length }})</v-chip>
-        <v-chip value="proposed" color="warning" variant="outlined">Proposed ({{ stats.proposed }})</v-chip>
-        <v-chip value="accepted" color="success" variant="outlined">Accepted ({{ stats.accepted }})</v-chip>
-        <v-chip value="rejected" color="error" variant="outlined">Rejected ({{ stats.rejected }})</v-chip>
-        <v-chip value="local-only" color="grey" variant="outlined">New ({{ stats.localOnly }})</v-chip>
-        <v-chip value="unresolved" color="warning" variant="outlined">Unresolved ({{ stats.unresolved }})</v-chip>
-        <v-chip value="errors" color="error" variant="outlined">Errors ({{ stats.errors }})</v-chip>
+        <v-chip
+          data-testid="status-filter-proposed"
+          value="proposed"
+          :color="RECONCILIATION_STATUS_PRESENTATION.proposed.color"
+          variant="outlined"
+          :aria-label="`Proposed (${stats.proposed})`"
+          title="Proposed"
+        >
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.proposed.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.proposed.color"
+            size="small"
+            aria-hidden="true"
+          />
+          {{ stats.proposed }}
+        </v-chip>
+        <v-chip
+          data-testid="status-filter-accepted"
+          value="accepted"
+          :color="RECONCILIATION_STATUS_PRESENTATION.accepted.color"
+          variant="outlined"
+          :aria-label="`Accepted (${stats.accepted})`"
+          title="Accepted"
+        >
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.accepted.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.accepted.color"
+            size="small"
+            aria-hidden="true"
+          />
+          {{ stats.accepted }}
+        </v-chip>
+        <v-chip
+          data-testid="status-filter-rejected"
+          value="rejected"
+          :color="RECONCILIATION_STATUS_PRESENTATION.rejected.color"
+          variant="outlined"
+          :aria-label="`Rejected (${stats.rejected})`"
+          title="Rejected"
+        >
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.rejected.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.rejected.color"
+            size="small"
+            aria-hidden="true"
+          />
+          {{ stats.rejected }}
+        </v-chip>
+        <v-chip
+          data-testid="status-filter-local-only"
+          value="local-only"
+          :color="RECONCILIATION_STATUS_PRESENTATION.local.color"
+          variant="outlined"
+          :aria-label="`New (${stats.localOnly})`"
+          title="New"
+        >
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.local.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.local.color"
+            size="small"
+            aria-hidden="true"
+          />
+          {{ stats.localOnly }}
+        </v-chip>
+        <v-chip
+          data-testid="status-filter-unresolved"
+          value="unresolved"
+          :color="RECONCILIATION_STATUS_PRESENTATION.unresolved.color"
+          variant="outlined"
+          :aria-label="`Unresolved (${stats.unresolved})`"
+          title="Unresolved"
+        >
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.unresolved.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.unresolved.color"
+            size="small"
+            aria-hidden="true"
+          />
+          {{ stats.unresolved }}
+        </v-chip>
+        <v-chip
+          data-testid="status-filter-errors"
+          value="errors"
+          :color="RECONCILIATION_STATUS_PRESENTATION.errors.color"
+          variant="outlined"
+          :aria-label="`Errors (${stats.errors})`"
+          title="Errors"
+        >
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.errors.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.errors.color"
+            size="small"
+            aria-hidden="true"
+          />
+          {{ stats.errors }}
+        </v-chip>
       </v-chip-group>
 
       <v-spacer />
@@ -182,7 +272,11 @@ import type {
 } from '@/types'
 import AlternativeSearchDialog from './AlternativeSearchDialog.vue'
 import PreviewMatchedDataDialog from './PreviewMatchedDataDialog.vue'
-import { RECONCILIATION_ACTION_ICONS } from './reconciliationHelp'
+import {
+  getReconciliationStatusPresentation,
+  RECONCILIATION_ACTION_ICONS,
+  RECONCILIATION_STATUS_PRESENTATION,
+} from './reconciliationHelp'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-material.css'
@@ -311,7 +405,28 @@ const columnDefs = computed<ColDef[]>(() => {
       width: 150,
       valueFormatter: (params) => (params.value == null ? 'Unknown' : `${Math.round(params.value)}%`),
     },
-    { field: 'status_display', headerName: 'Decision status', width: 140 },
+    {
+      field: 'status_display',
+      headerName: 'Decision status',
+      width: 140,
+      cellRenderer: (params: ICellRendererParams) => {
+        const label = typeof params.value === 'string' ? params.value : ''
+        const presentation = getReconciliationStatusPresentation(label)
+        if (!presentation) return label
+
+        const status = document.createElement('span')
+        status.className = 'reconciliation-status-icon'
+        status.setAttribute('role', 'img')
+        status.setAttribute('aria-label', label)
+        status.title = label
+
+        const icon = document.createElement('span')
+        icon.className = `mdi ${presentation.icon} text-${presentation.color}`
+        icon.setAttribute('aria-hidden', 'true')
+        status.append(icon)
+        return status
+      },
+    },
     {
       field: 'current_id',
       headerName: 'Current ID',
@@ -386,6 +501,7 @@ const rowClassRules: Record<string, (params: RowClassParams) => boolean> = {
   'row-rejected': (params) => params.data?.row_style_class === 'row-rejected',
   'row-local-only': (params) => params.data?.row_style_class === 'row-local-only',
   'row-proposed': (params) => params.data?.row_style_class === 'row-proposed',
+  'row-unresolved': (params) => params.data?.row_style_class === 'row-unresolved',
 }
 
 /** Status filter only. Text search is delegated to ag-Grid quick filtering. */
@@ -470,11 +586,13 @@ function formatStatus(row: ReconciliationPreviewRow | undefined): string {
 
 /** Row background class. Computed once per row instead of a style object per render. */
 function rowStyleClass(row: ReconciliationPreviewRow): string {
-  if (row.errors?.length) return 'row-needs-attention'
-  if (row.status === 'accepted') return 'row-accepted'
-  if (row.status === 'rejected') return 'row-rejected'
-  if (row.status === 'local-only') return 'row-local-only'
-  if (row.status === 'proposed') return 'row-proposed'
+  const label = formatStatus(row)
+  if (label === 'Needs attention') return 'row-needs-attention'
+  if (label === 'Unresolved' || label === 'Unreviewable') return 'row-unresolved'
+  if (label === 'Accepted' || label === 'Accepted · re-accept candidate') return 'row-accepted'
+  if (label === 'Rejected') return 'row-rejected'
+  if (label === 'New') return 'row-local-only'
+  if (label === 'Proposed') return 'row-proposed'
   return ''
 }
 
@@ -656,8 +774,15 @@ async function confirmLocalOnly() {
   white-space: nowrap;
 }
 
+:deep(.reconciliation-status-icon) {
+  align-items: center;
+  display: inline-flex;
+  font-size: 18px;
+  height: 100%;
+}
+
 :deep(.reconciliation-ag-grid .ag-row.row-needs-attention) {
-  background-color: #fff3e0;
+  background-color: #ffebee;
 }
 
 :deep(.reconciliation-ag-grid .ag-row.row-accepted) {
@@ -665,14 +790,18 @@ async function confirmLocalOnly() {
 }
 
 :deep(.reconciliation-ag-grid .ag-row.row-rejected) {
-  background-color: #ffebee;
-}
-
-:deep(.reconciliation-ag-grid .ag-row.row-local-only) {
   background-color: #f5f5f5;
 }
 
+:deep(.reconciliation-ag-grid .ag-row.row-local-only) {
+  background-color: #f3e5f5;
+}
+
 :deep(.reconciliation-ag-grid .ag-row.row-proposed) {
+  background-color: #e3f2fd;
+}
+
+:deep(.reconciliation-ag-grid .ag-row.row-unresolved) {
   background-color: #fff8e1;
 }
 
