@@ -844,6 +844,42 @@ During normalization, mappings are applied in this order (first match wins):
 
 Old reconciliation catalogs are ignored with a warning; recreate their specifications and run candidate search again. Invalid or unsupported new catalogs fail rather than silently discarding their contents. The mapping sidecar is a separate file and is unaffected.
 
+### Understand the review grid
+
+The grid shows the normalized row, its decision, and the ID that will be used after normalization. Additional mapped property columns vary by specification.
+
+| Column | Meaning |
+|---|---|
+| Search label | The configured field value sent to candidate search. It is not the row identity. |
+| Business key | The encoded key built from the entity keys. Decisions are saved against this key. |
+| Other mapped columns | Additional normalized values used by the reconciliation specification. |
+| Saved row ID | The public ID already on the normalized row, before a committed mapping link is applied. |
+| Decision ID | The target ID selected in the reconciliation decision. It is not effective until exported. |
+| Decision confidence | The candidate score as a percentage, or Unknown when no score is available. Scores do not accept candidates. |
+| Decision status | Proposed, Accepted, Rejected, or Local-only. Unresolved, Needs attention, and Unreviewable identify rows that need review or cannot be reviewed. |
+| Effective ID | The committed mapping ID when present; otherwise the saved row ID. |
+| Effective ID source | Shows whether the ID came from the saved row or a mapping link, and whether a reconciliation link was verified. |
+| Row errors | Problems reported for this row. Resolve them before relying on its decision. |
+| Actions | Buttons for reviewing or changing the row's decision. Review appears when candidates are available. |
+
+### Use the review controls
+
+- **Find Candidates** searches the normalized rows and creates or refreshes proposals. It does not accept candidates.
+- **Add Manual Link** saves a trusted link for an encoded business key and target ID. It does not check the ID against SEAD.
+- **Export to Mapping** checks and exports accepted candidates. It exports local-only approvals separately; manual and unowned links are protected.
+- **Preview** opens the row preview, where you can filter rows and export the visible rows as CSV.
+- **Status filters and row search** narrow the grid to selected decision states, errors, or matching text.
+
+The row buttons apply to one business key:
+
+| Button | What it does |
+|---|---|
+| Review (n) | Opens the n suggested candidates. Select one and choose **Accept selected candidate** to save it as accepted. |
+| Search | Searches for an alternative candidate. Select a result and choose **Accept Match**. |
+| Reject | Saves a rejection for the row. |
+| Local-only | Records that the row should not link to an existing target; an optional reason can be saved. |
+| Manual link | Opens the manual-link form with the row's business key filled in. The saved ID is trusted and is not checked against SEAD. |
+
 ## Materialized Entity Edits
 
 When editing a materialized entity and assigning `public_id` values:
