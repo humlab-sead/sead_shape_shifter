@@ -208,7 +208,7 @@
               </v-alert>
 
               <v-alert v-if="mappingError" data-testid="mapping-error" type="error" variant="tonal" class="mb-4">
-                Mapping sidecar could not be loaded: {{ mappingError }}. Effective IDs are unavailable until it loads.
+                Mapping sidecar could not be loaded: {{ mappingError }}. Current IDs are unavailable until it loads.
               </v-alert>
 
               <v-alert v-if="autoReconcileError" data-testid="matching-error" type="error" variant="tonal" class="mb-4">

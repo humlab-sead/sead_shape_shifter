@@ -846,19 +846,17 @@ Old reconciliation catalogs are ignored with a warning; recreate their specifica
 
 ### Understand the review grid
 
-The grid shows the normalized row, its decision, and the ID that will be used after normalization. Additional mapped property columns vary by specification.
+The grid shows the normalized row, its decision, and the current ID used by normalization. Additional mapped property columns vary by specification.
 
 | Column | Meaning |
 |---|---|
 | Search label | The configured field value sent to candidate search. It is not the row identity. |
 | Business key | The encoded key built from the entity keys. Decisions are saved against this key. |
 | Other mapped columns | Additional normalized values used by the reconciliation specification. |
-| Saved row ID | The public ID already on the normalized row, before a committed mapping link is applied. |
 | Decision ID | The target ID selected in the reconciliation decision. It is not effective until exported. |
 | Decision confidence | The candidate score as a percentage, or Unknown when no score is available. Scores do not accept candidates. |
 | Decision status | Proposed, Accepted, Rejected, or Local-only. Unresolved, Needs attention, and Unreviewable identify rows that need review or cannot be reviewed. |
-| Effective ID | The committed mapping ID when present; otherwise the saved row ID. |
-| Effective ID source | Shows whether the ID came from the saved row or a mapping link, and whether a reconciliation link was verified. |
+| Current ID | The ID currently used by normalization. Its badge shows whether it comes from the normalized row or a committed mapping, and whether a reconciliation mapping was verified. |
 | Row errors | Problems reported for this row. Resolve them before relying on its decision. |
 | Actions | Buttons for reviewing or changing the row's decision. Review appears when candidates are available. |
 
