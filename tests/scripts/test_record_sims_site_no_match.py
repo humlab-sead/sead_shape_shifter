@@ -7,7 +7,7 @@ from urllib.parse import unquote_plus
 
 import pytest
 
-from scripts.record_sims_site_no_match import record_no_match
+from scripts.project.record_sims_site_no_match import record_no_match
 
 
 def make_args(tmp_path: Path, *, apply: bool = False) -> argparse.Namespace:

@@ -9,6 +9,7 @@ from loguru import logger
 
 from backend.app.authorization.models import Action, AuthorizedResource, ResourceType
 from backend.app.core.state_manager import ApplicationStateManager
+from backend.app.mappers.output_expectation_mapper import OutputExpectationMapper
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.execute import DispatcherMetadata, ExecuteRequest, ExecuteResult
@@ -19,6 +20,7 @@ from src.dispatch import Dispatchers
 from src.model import ShapeShiftProject
 from src.path_resolution import resolve_contained_path
 from src.specifications import CompositeProjectSpecification
+from src.specifications.output_expectations import OutputExpectationsSpecification
 from src.workflow import workflow
 
 
@@ -108,6 +110,23 @@ class ExecuteService:
                         error_details=error_details,
                         download_path=None,
                     )
+            else:
+                expectation_specification = OutputExpectationsSpecification(core_project.cfg)
+                if not expectation_specification.is_satisfied_by():
+                    error_details = "\n".join(str(error) for error in expectation_specification.errors)
+                    for error in expectation_specification.errors:
+                        logger.error("Output expectation configuration error: {}", error)
+                    return ExecuteResult(
+                        success=False,
+                        message="Output expectation declarations are invalid.",
+                        target=request.target if target_type == "database" else "",
+                        dispatcher_key=request.dispatcher_key,
+                        target_type=target_type,
+                        entity_count=0,
+                        validation_passed=None,
+                        error_details=error_details,
+                        download_path=None,
+                    )
 
             target: str = self.resolve_output_target(project_name, request.target, target_type)
             target_with_timestamp: str = self._add_timestamp_to_file_target(target, target_type)
@@ -120,7 +139,7 @@ class ExecuteService:
                 f"'{request.dispatcher_key}' -> '{target_with_timestamp}'"
             )
 
-            await workflow(
+            expectation_evaluation = await workflow(
                 project=core_project,
                 target=target_with_timestamp,
                 translate=request.translate,
@@ -130,7 +149,24 @@ class ExecuteService:
                 env_file=None,  # Already resolved in project
             )
 
+            output_expectation_results = OutputExpectationMapper.to_api_results(expectation_evaluation)
             entity_count: int = len(core_project.entities)
+
+            if expectation_evaluation is not None and not expectation_evaluation.passed:
+                failed_reasons = [result.failure_reason for result in output_expectation_results if result.failure_reason]
+                logger.error("Output expectation checks failed: {} of {} checks", len(failed_reasons), len(output_expectation_results))
+                return ExecuteResult(
+                    success=False,
+                    message="Output expectation checks failed; no output was written.",
+                    target=request.target if target_type == "database" else "",
+                    dispatcher_key=request.dispatcher_key,
+                    target_type=target_type,
+                    entity_count=0,
+                    validation_passed=is_satisfied,
+                    error_details="\n".join(failed_reasons) if failed_reasons else None,
+                    download_path=None,
+                    output_expectation_results=output_expectation_results,
+                )
 
             logger.info(f"Workflow executed successfully: {entity_count} entities processed")
 
@@ -144,6 +180,7 @@ class ExecuteService:
                 validation_passed=is_satisfied,
                 error_details=None,
                 download_path=download_path,
+                output_expectation_results=output_expectation_results,
             )
 
         except Exception as e:  # pylint: disable=broad-except

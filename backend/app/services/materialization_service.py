@@ -1,5 +1,6 @@
 """Service for entity materialization operations."""
 
+import copy
 from datetime import datetime, timezone
 from typing import Any, Literal
 
@@ -511,18 +512,24 @@ class MaterializationService:
         preferred for ``source_state`` because it stores file references as relative ``filename`` +
         ``location`` and ``foreign_keys`` as a list, which round-trips back to YAML unchanged. The
         resolved Core config (``table.entity_cfg``) is only a fallback: it holds environment-absolute
-        paths and dict-form ``foreign_keys`` that would be frozen into the project file.
+        paths and dict-form ``foreign_keys`` that would be frozen into the project file. The API-only
+        ``name`` key is dropped because the project YAML does not carry it.
         """
         df = self._normalize_materialized_dataframe(table, self._sanitize_materialized_dataframe(df))
 
         snapshot_source: dict[str, Any] = source_entity_cfg if source_entity_cfg is not None else table.entity_cfg
         saved_state: dict[str, Any] = {}
         for k, v in snapshot_source.items():
-            if k not in ["materialized", "values"]:
-                # Skip empty/null values
-                if v is None or v == "" or (isinstance(v, str) and not v.strip()):
-                    continue
-                saved_state[k] = v
+            # 'materialized' and 'values' describe the current stored state rather than the
+            # pre-materialization config. 'name' is an API-only field that the mapper adds to
+            # every entity dict and that YAML does not carry, so it must not be frozen either.
+            if k in ["materialized", "values", "name"]:
+                continue
+            # Skip empty/null values
+            if v is None or v == "" or (isinstance(v, str) and not v.strip()):
+                continue
+            # Copy so the snapshot cannot alias the live project config it came from.
+            saved_state[k] = copy.deepcopy(v)
 
         if not saved_state:
             logger.warning(f"Entity '{table.entity_name}' has no config to save - unmaterialization may not be possible")

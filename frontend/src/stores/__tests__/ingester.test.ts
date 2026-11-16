@@ -26,7 +26,12 @@ const projectRequest: ProjectIngesterRequest = {
 }
 
 const validResult: ValidateResponse = { is_valid: true, errors: [], warnings: [], infos: [] }
-const ingestedResult: IngestResponse = { success: true, records_processed: 2, message: 'Bundle created' }
+const ingestedResult: IngestResponse = {
+  success: true,
+  records_processed: 2,
+  message: 'Bundle created',
+  output_expectation_results: [],
+}
 let nextRunId = 0
 
 function requestWithRunId(runId: string, request = projectRequest): ProjectIngesterRequest {
@@ -88,13 +93,52 @@ describe('useIngesterStore project actions', () => {
     ]
     store.selectIngester('sead_change_request')
     store.error = 'Old error'
-    store.ingestionResult = { success: false, records_processed: 0, message: 'Old result' }
+    store.ingestionResult = {
+      success: false,
+      records_processed: 0,
+      message: 'Old result',
+      output_expectation_results: [],
+    }
     vi.mocked(ingesterApi.ingestProject).mockResolvedValue(ingestedResult)
 
     await store.ingestProject(projectRequest)
 
     expect(ingesterApi.ingestProject).toHaveBeenCalledWith(requestWithRunId('attempt-1'))
     expect(store.ingestionResult).toEqual(ingestedResult)
+    expect(store.error).toBeNull()
+    expect(store.loading).toBe(false)
+  })
+
+  it('keeps output expectation results on failed project ingestion', async () => {
+    const store = useIngesterStore()
+    store.ingesters = [
+      { key: 'sead_change_request', name: 'SEAD Change Request', description: '', version: '', supported_formats: [] },
+    ]
+    store.selectIngester('sead_change_request')
+    const failedResult: IngestResponse = {
+      success: false,
+      records_processed: 0,
+      message: 'Output expectation checks failed; no tables were ingested.',
+      error_details: 'Expected 2 rows but measured 3.',
+      output_expectation_results: [
+        {
+          name: 'site-count',
+          entity: 'site',
+          metric: 'row_count',
+          group_value: null,
+          measured_value: 3,
+          expected_limit: { equals: 2 },
+          status: 'fail',
+          failure_reason: 'Expected 2 rows but measured 3.',
+        },
+      ],
+    }
+    vi.mocked(ingesterApi.ingestProject).mockResolvedValue(failedResult)
+
+    await store.ingestProject(projectRequest)
+
+    expect(store.ingestionResult).toEqual(failedResult)
+    expect(store.ingestionResult?.output_expectation_results[0]?.status).toBe('fail')
     expect(store.error).toBeNull()
     expect(store.loading).toBe(false)
   })
@@ -123,7 +167,12 @@ describe('useIngesterStore project actions', () => {
     store.selectIngester('sead_change_request')
     vi.mocked(ingesterApi.validateProject).mockResolvedValue(validResult)
     vi.mocked(ingesterApi.ingestProject)
-      .mockResolvedValueOnce({ success: false, records_processed: 0, message: 'Binding Set confirmation incomplete' })
+      .mockResolvedValueOnce({
+        success: false,
+        records_processed: 0,
+        message: 'Binding Set confirmation incomplete',
+        output_expectation_results: [],
+      })
       .mockRejectedValueOnce(new Error('Temporary connection failure'))
       .mockResolvedValueOnce(ingestedResult)
     vi.spyOn(console, 'error').mockImplementation(() => {})

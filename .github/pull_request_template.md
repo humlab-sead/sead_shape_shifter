@@ -3,7 +3,10 @@
 <!-- What changed and why? Focus on the main behavior or result.
      Promotion pull requests (`dev` into `staging`, `staging` into `main`) use
      .github/promotion_pr_template.md instead. They must not repeat the release-note text of the
-     pull requests they carry. -->
+     pull requests they carry.
+     End this section with one `Closes #<issue>` line per resolved issue. This pull request targets
+     `dev`, so the issue closes when the change reaches `main` through promotion, and the promotion
+     description copies the reference. Prose such as "this fixes #123" does not count. -->
 
 ## User-facing release note
 

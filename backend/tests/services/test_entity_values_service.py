@@ -40,7 +40,7 @@ def _write_mapping_sidecar(
             }
         },
     }
-    (base_dir / f"{base_dir.name}-mapping.yml").write_text(yaml.safe_dump(sidecar))
+    (base_dir / "shapeshifter.mapping.yml").write_text(yaml.safe_dump(sidecar))
     return str(config_path)
 
 
@@ -667,7 +667,7 @@ class TestEntityValuesService:
 
         assert result.row_count == 1
         assert file_path.exists()
-        sidecar = yaml.safe_load((tmp_path / f"{tmp_path.name}-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert sidecar["entities"]["location"]["links"]["Uppsala"]["target_id"] == 100
 
     def test_update_values_creates_missing_materialized_mapping_entry(self, service, mock_project_service, tmp_path):
@@ -684,7 +684,7 @@ class TestEntityValuesService:
 
         result = service.update_values("test_project", "location", self._FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
 
-        sidecar = yaml.safe_load((tmp_path / f"{tmp_path.name}-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert result.row_count == 1
         assert sidecar["entities"]["location"]["local_key"] == "name"
         assert sidecar["entities"]["location"]["links"]["Uppsala"]["target_id"] == 100
@@ -707,7 +707,7 @@ class TestEntityValuesService:
         assert result.row_count == 1
         saved_rows = pd.read_parquet(tmp_path / "materialized" / "test.parquet")
         assert saved_rows.to_dict(orient="records") == [{"system_id": 1, "location_id": 100, "name": "Uppsala", "country": "Sweden"}]
-        assert not (tmp_path / f"{tmp_path.name}-mapping.yml").exists()
+        assert not (tmp_path / "shapeshifter.mapping.yml").exists()
 
     @pytest.mark.parametrize("materialized", [False, True])
     def test_update_values_rejects_fixed_rows_without_project_path(self, service, mock_project_service, tmp_path, materialized):
@@ -740,7 +740,7 @@ class TestEntityValuesService:
         result = service.update_values("test_project", "location", self._FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
 
         assert result.row_count == 1
-        assert not (tmp_path / f"{tmp_path.name}-mapping.yml").exists()
+        assert not (tmp_path / "shapeshifter.mapping.yml").exists()
 
     def test_update_values_rejects_duplicate_key_without_writing(self, service, mock_project_service, tmp_path):
         """Two rows with the same encoded key are rejected before any file is written."""
@@ -839,7 +839,7 @@ class TestEntityValuesPartialSave:
         assert result.mapping_sync.entity == "location"
         assert result.mapping_sync.expected_row_version == result.etag
         assert result.mapping_sync.operations[0].target_id == 100
-        sidecar = yaml.safe_load((tmp_path / f"{tmp_path.name}-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert sidecar["entities"]["location"]["links"] == {}
 
     def test_successful_external_save_has_no_pending(self, mock_project_service, tmp_path):
@@ -849,7 +849,7 @@ class TestEntityValuesPartialSave:
         result = service.update_values("test_project", "location", self.FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
 
         assert result.mapping_sync is None
-        sidecar = yaml.safe_load((tmp_path / f"{tmp_path.name}-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert sidecar["entities"]["location"]["links"]["Uppsala"]["target_id"] == 100
 
     def test_invalid_rows_still_fail_before_writing(self, mock_project_service, tmp_path):

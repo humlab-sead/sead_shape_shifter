@@ -214,6 +214,7 @@ describe('IngesterForm', () => {
       records_processed: 0,
       message: 'Binding Set confirmation incomplete',
       run_id: 'run-abc-123',
+      output_expectation_results: [],
       pending_confirmation_report: {
         submission_name: 'bugs_delivery_1',
         project_name: 'pilot_bugs',
@@ -280,6 +281,7 @@ describe('IngesterForm', () => {
       output_path: 'output/pilot-bugs-001',
       scope_name: 'provider://mal/archeobotany/arbodat-pilot',
       run_id: 'run-abc-123',
+      output_expectation_results: [],
       deploy_artifact: {
         metadata: {
           deploy_strategy: 'copy_csv',

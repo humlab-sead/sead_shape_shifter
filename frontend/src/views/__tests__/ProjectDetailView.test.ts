@@ -68,7 +68,7 @@ const mockTaskStatusState = vi.hoisted(() => ({
 
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { name: 'arbodat' }, query: {} }),
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
 
 vi.mock('@/composables', async () => {
@@ -417,6 +417,29 @@ describe('ProjectDetailView', () => {
     const card = wrapper.findComponent({ name: 'EntityListCard' })
     expect(card.props('entityToEdit')).toBe('sample')
     expect(card.props('entityEditFocus')).toEqual({ field: 'columns', column: 'dataset_id' })
+  })
+
+  it('mounts tabs that load data only after they are first opened', async () => {
+    const wrapper = mountProjectDetailView()
+    await flushPromises()
+
+    const gatedTabs = [
+      ['reconciliation', 'reconciliation-view'],
+      ['data-sources', 'project-data-sources'],
+      ['metadata', 'metadata-editor'],
+      ['files', 'project-file-upload'],
+      ['dispatch', 'ingester-form'],
+    ] as const
+
+    for (const [, testId] of gatedTabs) {
+      expect(wrapper.find(`[data-testid="${testId}"]`).exists()).toBe(false)
+    }
+
+    for (const [tab, testId] of gatedTabs) {
+      ;(wrapper.vm as any).activeTab = tab
+      await nextTick()
+      expect(wrapper.find(`[data-testid="${testId}"]`).exists()).toBe(true)
+    }
   })
 
   it('renders load-time normalization warnings from the selected project', async () => {

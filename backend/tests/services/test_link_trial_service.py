@@ -96,7 +96,7 @@ def make_baseline(
 
 def service_with_limit(limit: int, tmp_path) -> LinkTrialService:
     settings = Settings(
-        _env_file=None,
+        _env_file=None,  # pyright: ignore[reportCallIssue]
         APPLICATION_ROOT=tmp_path,
         LINK_TRIAL_MAX_OUTPUT_ROWS=limit,
     )  # pyright: ignore[reportCallIssue]
@@ -218,6 +218,9 @@ def test_trial_changes_only_the_ordered_key_pairs_and_preserves_input_state(tmp_
         remote_keys=["saved_value"],
         constraints={"allow_row_decrease": True},
     )
+    assert baseline.local_rows is not None
+    assert baseline.remote_rows is not None
+
     saved_fk = baseline._foreign_key
     assert saved_fk is not None
     saved_fk_data = copy.deepcopy(saved_fk.fk_cfg)
@@ -465,7 +468,7 @@ def minimal_baseline(
 def service_with_memory_limit(limit_mb: int, tmp_path) -> LinkTrialService:
     """Build a trial service with the configured memory limit in MiB."""
     settings = Settings(
-        _env_file=None,
+        _env_file=None,  # pyright: ignore[reportCallIssue]
         APPLICATION_ROOT=tmp_path,
         LINK_EXPERIMENT_MAX_MEMORY_MB=limit_mb,
     )  # pyright: ignore[reportCallIssue]
@@ -475,7 +478,7 @@ def service_with_memory_limit(limit_mb: int, tmp_path) -> LinkTrialService:
 def service_with_group_cap(cap: int, tmp_path) -> LinkTrialService:
     """Build a trial service with a small affected-row browse cap."""
     settings = Settings(
-        _env_file=None,
+        _env_file=None,  # pyright: ignore[reportCallIssue]
         APPLICATION_ROOT=tmp_path,
         LINK_TROUBLESHOOT_BROWSE_ROW_CAP=cap,
     )  # pyright: ignore[reportCallIssue]

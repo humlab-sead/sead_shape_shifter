@@ -46,6 +46,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { reconciliationHelp } from './reconciliation/reconciliationHelp'
 
 interface HelpContent {
   title: string
@@ -132,6 +133,11 @@ const helpContentMap: Record<string, HelpContent> = {
       'Click errors to see details and fixes',
       'Validate data to check actual values',
     ],
+  },
+  'project-detail-reconciliation': {
+    title: reconciliationHelp.title,
+    description: reconciliationHelp.description,
+    tips: reconciliationHelp.quickTips,
   },
   'project-detail-data-sources': {
     title: 'Data Sources',

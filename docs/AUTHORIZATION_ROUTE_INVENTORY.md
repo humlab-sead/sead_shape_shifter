@@ -239,11 +239,12 @@ Every row above except the health check requires an authenticated principal thro
 | `GET`  | `/api/v1/logs/{log_type}`             | `authenticated`                                                                                 |       |
 | `GET`  | `/api/v1/logs/{log_type}/download`    | `authenticated`                                                                                 |       |
 | `GET`  | `/api/v1/whats-new`                   | `authenticated`                                                                                 |       |
+| `GET`  | `/api/v1/whats-new/pending`           | `authenticated`                                                                                 |       |
 | `GET`  | `/api/v1/whats-new/{version}/content` | `authenticated`                                                                                 |       |
 
 Application and error logs are global: no project-scoped log file exists, so any authenticated principal may read or download them. The `application:read_logs` action remains defined but is not required by any route.
 
-`GET /api/v1/whats-new` and `GET /api/v1/whats-new/{version}/content` return release-note metadata and markdown published in `docs/whats-new/`, so they require an authenticated principal and no project role.
+`GET /api/v1/whats-new` returns release-note metadata, `GET /api/v1/whats-new/pending` returns the pending release-note markdown, and `GET /api/v1/whats-new/{version}/content` returns a versioned note. All three read content published in `docs/whats-new/` and require an authenticated principal, with no project role.
 
 `GET /api/v1/ingesters` returns registered ingester metadata (key, name, description, version, and supported formats) and `GET /api/v1/filters/types` returns filter configuration schemas, so both require an authenticated principal and no project role.
 

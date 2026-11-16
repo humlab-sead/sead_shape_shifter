@@ -383,6 +383,11 @@
           "default": false,
           "title": "Allow Null Keys",
           "type": "boolean"
+        },
+        "null_keys_equal": {
+          "default": false,
+          "title": "Null Keys Equal",
+          "type": "boolean"
         }
       },
       "title": "ForeignKeyConstraints",

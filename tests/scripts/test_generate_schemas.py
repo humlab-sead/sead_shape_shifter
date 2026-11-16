@@ -1,7 +1,7 @@
 import pytest
 
 from backend.app.models.reconciliation import EntityResolutionCatalog, EntityResolutionSet, ReconciliationSource
-from scripts.generate_schemas import generate_schemas
+from scripts.project.generate_schemas import generate_schemas
 
 RECONCILIATION_SCHEMA = generate_schemas()["reconciliationSchema.json"]
 ENTITY_SCHEMA = generate_schemas()["entitySchema.json"]
