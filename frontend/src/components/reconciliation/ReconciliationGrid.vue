@@ -17,7 +17,7 @@
             size="small"
             aria-hidden="true"
           />
-          {{ stats.proposed }}
+          Proposed ({{ stats.proposed }})
         </v-chip>
         <v-chip
           data-testid="status-filter-accepted"
@@ -33,7 +33,7 @@
             size="small"
             aria-hidden="true"
           />
-          {{ stats.accepted }}
+          Accepted ({{ stats.accepted }})
         </v-chip>
         <v-chip
           data-testid="status-filter-rejected"
@@ -49,7 +49,7 @@
             size="small"
             aria-hidden="true"
           />
-          {{ stats.rejected }}
+          Rejected ({{ stats.rejected }})
         </v-chip>
         <v-chip
           data-testid="status-filter-local-only"
@@ -65,7 +65,7 @@
             size="small"
             aria-hidden="true"
           />
-          {{ stats.localOnly }}
+          New ({{ stats.localOnly }})
         </v-chip>
         <v-chip
           data-testid="status-filter-unresolved"
@@ -81,7 +81,7 @@
             size="small"
             aria-hidden="true"
           />
-          {{ stats.unresolved }}
+          Unresolved ({{ stats.unresolved }})
         </v-chip>
         <v-chip
           data-testid="status-filter-errors"
@@ -97,7 +97,7 @@
             size="small"
             aria-hidden="true"
           />
-          {{ stats.errors }}
+          Errors ({{ stats.errors }})
         </v-chip>
       </v-chip-group>
 
@@ -154,7 +154,7 @@
         :columnDefs="columnDefs"
         :rowData="gridData"
         :defaultColDef="defaultColDef"
-        :rowHeight="36"
+        :rowHeight="32"
         :rowClassRules="rowClassRules"
         :quickFilterText="appliedSearchQuery"
         :suppressRowClickSelection="true"
@@ -361,17 +361,23 @@ function getCurrentIdSource(link: MappingLink | undefined, mappingAvailable: boo
   }
 }
 
+function hasDisplayableId(value: unknown): boolean {
+  return value != null && String(value).trim() !== ''
+}
+
 const gridRows = computed(() =>
   props.previewData.map((row) => {
     const sidecarLink = row.local_key_value ? props.mappingData?.links[row.local_key_value] : undefined
     const committedLink = sidecarLink?.committed_at ? sidecarLink : undefined
     const savedRowId = props.mappingData ? row[props.mappingData.public_id] : null
+    const currentId = props.mappingData ? (committedLink?.target_id ?? savedRowId) : null
     const currentIdSource = getCurrentIdSource(committedLink, Boolean(props.mappingData))
+    const hasAnyId = hasDisplayableId(row.target_id) || hasDisplayableId(currentId)
     return {
       ...row,
-      current_id: props.mappingData ? (committedLink?.target_id ?? savedRowId) : null,
-      current_id_source_label: currentIdSource.label,
-      current_id_source_description: currentIdSource.description,
+      current_id: currentId,
+      current_id_source_label: hasAnyId ? currentIdSource.label : null,
+      current_id_source_description: hasAnyId ? currentIdSource.description : null,
       status_display: formatStatus(row),
       confidence_percent: row.confidence == null ? null : row.confidence * 100,
       errors_display: row.errors?.join('; ') ?? '',
@@ -385,30 +391,10 @@ const columnDefs = computed<ColDef[]>(() => {
 
   const columns: ColDef[] = [
     {
-      field: props.targetField,
-      headerName: `${props.targetField.replace(/_/g, ' ')} (Search label)`,
-      pinned: 'left',
-      width: 200,
-    },
-    { field: 'local_key_value', headerName: 'Business key', pinned: 'left', width: 170 },
-  ]
-
-  for (const column of new Set(Object.values(props.entitySpec.property_mappings))) {
-    if (column !== props.targetField) columns.push({ field: column, headerName: column.replace(/_/g, ' '), width: 150 })
-  }
-
-  columns.push(
-    { field: 'target_id', headerName: 'Decision ID', width: 120 },
-    {
-      field: 'confidence_percent',
-      headerName: 'Decision confidence',
-      width: 150,
-      valueFormatter: (params) => (params.value == null ? 'Unknown' : `${Math.round(params.value)}%`),
-    },
-    {
       field: 'status_display',
-      headerName: 'Decision status',
+      headerName: 'Status',
       width: 140,
+      pinned: 'left',
       cellRenderer: (params: ICellRendererParams) => {
         const label = typeof params.value === 'string' ? params.value : ''
         const presentation = getReconciliationStatusPresentation(label)
@@ -426,6 +412,27 @@ const columnDefs = computed<ColDef[]>(() => {
         status.append(icon)
         return status
       },
+    },
+    {
+      field: props.targetField,
+      headerName: `${props.targetField.replace(/_/g, ' ')} (Search label)`,
+      pinned: 'left',
+      width: 200,
+    },
+    { field: 'local_key_value', headerName: 'Business key', pinned: 'left', width: 170 },
+  ]
+
+  for (const column of new Set(Object.values(props.entitySpec.property_mappings))) {
+    if (column !== props.targetField) columns.push({ field: column, headerName: column.replace(/_/g, ' '), width: 150 })
+  }
+
+  columns.push(
+    { field: 'target_id', headerName: 'Decision ID', width: 120 },
+    {
+      field: 'confidence_percent',
+      headerName: 'Score',
+      width: 150,
+      valueFormatter: (params) => (params.value == null ? '' : `${Math.round(params.value)}%`),
     },
     {
       field: 'current_id',
@@ -817,6 +824,7 @@ async function confirmLocalOnly() {
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
+  height: 28px;
   margin: 2px;
   padding: 5px 8px;
   vertical-align: middle;
@@ -854,6 +862,7 @@ async function confirmLocalOnly() {
 }
 
 :deep(.reconciliation-ag-grid .ag-cell[col-id='candidates']) {
+  background-color: var(--ag-header-background-color);
   overflow: visible;
 }
 
