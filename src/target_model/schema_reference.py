@@ -49,7 +49,7 @@ def generate_target_model_schema_reference() -> str:
         "# Target Model Schema Reference",
         "",
         "This file is generated from `src/target_model/models.py`. Do not edit it by hand.",
-        "Run `python scripts/generate_target_model_schema_reference.py` to regenerate it.",
+        "Run `python scripts/target_model/generate_target_model_schema_reference.py` to regenerate it.",
         "",
         "## What This Covers",
         "",

@@ -1,4 +1,4 @@
-"""Tests for scripts/generate_user_release_notes.py."""
+"""Tests for scripts/workflow/generate_user_release_notes.py."""
 
 import importlib.util
 import json
@@ -8,7 +8,7 @@ from types import ModuleType
 
 import pytest
 
-MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "generate_user_release_notes.py"
+MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "workflow" / "generate_user_release_notes.py"
 
 
 def test_legacy_versioned_notes_never_include_pending_release():
