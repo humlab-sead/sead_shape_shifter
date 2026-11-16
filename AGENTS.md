@@ -77,7 +77,7 @@ Core FK links use local `system_id` values. A change-request package can use an 
 - Scoped instructions (VS Code Copilot): `.github/instructions/` — auto-injected by `applyTo` patterns.
 - Planning instructions: use `.github/instructions/phase-plan.instructions.md` when the user asks for phased implementation sequencing, and use `.github/instructions/task-plan.instructions.md` when the user asks for work breakdown, checklists, or definition-of-done planning for one phase.
 - Prompt templates: `.github/prompts/` — invoke via `/` in Copilot Chat.
-- UCanAccess setup: `scripts/install-uncanccess.sh` (requires Java JRE).
+- UCanAccess setup: `scripts/dev/install-uncanccess.sh` (requires Java JRE).
 
 ## graphify
 
