@@ -510,13 +510,18 @@ unsupported or needs manual review, so a release check can fail on it.
 ### `compare_target_models.py`
 
 Runs the target-model conformance validator against the Arbodat test project for
-two model files and prints the difference in reported errors. It takes no
-arguments: the model paths and the project path are constants at the top of
-`main()`, because the script exists to compare a baseline model against an
-extended one.
+two model files and prints the difference in reported errors. Supply separate
+paths for the original and extended models; the script prints each model's
+name, version, and path. The Arbodat project path is fixed.
 
-Because there is no argument parser, `--help` runs the comparison rather than
-printing usage. Edit the constants in `main()` when comparing a different pair.
+```bash
+uv run python scripts/target_model/compare_target_models.py \
+  --original-model path/to/original_model.yml \
+  --extended-model path/to/extended_model.yml
+```
+
+The two options are required and must refer to different files. Use `--help` to
+see the command-line options.
 
 ## Release Notes Drafting
 

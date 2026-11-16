@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Compare conformance validation results between original and extended target models."""
 
+import argparse
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import yaml
@@ -75,11 +77,41 @@ def print_validation_summary(name: str, results: dict):
                 print(f"    ... and {len(entity_errors) - 3} more")
 
 
-def main():
+def build_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser for comparing two target models."""
+    parser = argparse.ArgumentParser(description="Compare target-model conformance results for the Arbodat test project.")
+    parser.add_argument(
+        "--original-model",
+        required=True,
+        type=Path,
+        help="Target-model YAML file to use as the original model.",
+    )
+    parser.add_argument(
+        "--extended-model",
+        required=True,
+        type=Path,
+        help="Target-model YAML file to use as the extended model.",
+    )
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
     """Compare conformance validation between original and extended target models."""
-    # Paths
-    original_model_path = REPO_ROOT / "resources" / "target_models" / "sead_standard_model.yml"
-    extended_model_path = REPO_ROOT / "resources" / "target_models" / "sead_standard_model.yml"
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    original_model_path: Path = args.original_model
+    extended_model_path: Path = args.extended_model
+
+    for option, path in (
+        ("--original-model", original_model_path),
+        ("--extended-model", extended_model_path),
+    ):
+        if not path.is_file():
+            parser.error(f"{option} is not a file: {path}")
+
+    if original_model_path.resolve() == extended_model_path.resolve():
+        parser.error("--original-model and --extended-model must refer to different files.")
+
     arbodat_project_path = REPO_ROOT / "tests" / "test_data" / "projects" / "arbodat" / "shapeshifter.yml"
 
     # Load models
@@ -87,10 +119,10 @@ def main():
     original_model = load_target_model(original_model_path)
     extended_model = load_target_model(extended_model_path)
 
-    print(f"Original model: {original_model.model.name} v{original_model.model.version}")
+    print(f"Original model: {original_model.model.name} v{original_model.model.version} ({original_model_path})")
     print(f"  Entities: {len(original_model.entities)}")
 
-    print(f"Extended model: {extended_model.model.name} v{extended_model.model.version}")
+    print(f"Extended model: {extended_model.model.name} v{extended_model.model.version} ({extended_model_path})")
     print(f"  Entities: {len(extended_model.entities)}")
 
     # Load project
@@ -107,8 +139,8 @@ def main():
     extended_results = validate_project(project, extended_model)
 
     # Print summaries
-    print_validation_summary("ORIGINAL MODEL (v2.0.0)", original_results)
-    print_validation_summary("EXTENDED MODEL (v2.1.0)", extended_results)
+    print_validation_summary(f"ORIGINAL MODEL ({original_model.model.name} v{original_model.model.version})", original_results)
+    print_validation_summary(f"EXTENDED MODEL ({extended_model.model.name} v{extended_model.model.version})", extended_results)
 
     # Compare
     print(f"\n{'=' * 80}")
