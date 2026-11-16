@@ -6,7 +6,7 @@
         <v-chip value="proposed" color="warning" variant="outlined">Proposed ({{ stats.proposed }})</v-chip>
         <v-chip value="accepted" color="success" variant="outlined">Accepted ({{ stats.accepted }})</v-chip>
         <v-chip value="rejected" color="error" variant="outlined">Rejected ({{ stats.rejected }})</v-chip>
-        <v-chip value="local-only" color="grey" variant="outlined">Local-only ({{ stats.localOnly }})</v-chip>
+        <v-chip value="local-only" color="grey" variant="outlined">New ({{ stats.localOnly }})</v-chip>
         <v-chip value="unresolved" color="warning" variant="outlined">Unresolved ({{ stats.unresolved }})</v-chip>
         <v-chip value="errors" color="error" variant="outlined">Errors ({{ stats.errors }})</v-chip>
       </v-chip-group>
@@ -64,6 +64,7 @@
         :columnDefs="columnDefs"
         :rowData="gridData"
         :defaultColDef="defaultColDef"
+        :rowHeight="36"
         :rowClassRules="rowClassRules"
         :quickFilterText="appliedSearchQuery"
         :suppressRowClickSelection="true"
@@ -135,26 +136,29 @@
 
     <v-dialog v-model="localOnlyDialog" max-width="600">
       <v-card>
-        <v-card-title>Mark row as local-only</v-card-title>
+        <v-card-title>Mark row as New</v-card-title>
         <v-card-subtitle v-if="selectedRow">
           {{ getRowDisplayText(selectedRow) }} · Key: {{ selectedRow.local_key_value }}
         </v-card-subtitle>
         <v-card-text>
-          <p class="mb-4">This records that the row should not be linked to a target entity.</p>
+          <p class="mb-4">
+            This row has no mapping to an existing target. Mark it New so the ingester treats it as a new record; ID
+            allocation depends on the selected ingester mode.
+          </p>
           <v-textarea v-model="localOnlyNotes" label="Reason (optional)" rows="3" variant="outlined" />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="localOnlyDialog = false">Cancel</v-btn>
           <v-btn
-            data-testid="confirm-local-only"
+            data-testid="confirm-new"
             variant="tonal"
             color="warning"
             :loading="selectedRow ? isBusy(selectedRow.local_key_value) : false"
             :disabled="!selectedRow?.local_key_value"
             @click="confirmLocalOnly"
           >
-            Mark local-only
+            Mark as New
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -171,6 +175,7 @@ import type { ColDef, GridApi, GridReadyEvent, ICellRendererParams, IRowNode, Ro
 import type {
   DecisionUpdateRequest,
   EntityResolutionSet,
+  MappingLink,
   MappingEntityResponse,
   ReconciliationCandidate,
   ReconciliationPreviewRow,
@@ -190,6 +195,11 @@ interface Props {
   entityName: string
   targetField: string
   submitDecision: (request: DecisionUpdateRequest) => Promise<void>
+}
+
+interface CurrentIdSource {
+  label: string
+  description: string
 }
 
 const props = withDefaults(defineProps<Props>(), { loading: false })
@@ -220,27 +230,54 @@ const defaultColDef: ColDef = {
   editable: false,
 }
 
+function getCurrentIdSource(link: MappingLink | undefined, mappingAvailable: boolean): CurrentIdSource {
+  if (!mappingAvailable) {
+    return {
+      label: 'Unavailable',
+      description: 'The mapping sidecar could not be loaded, so the current ID cannot be confirmed.',
+    }
+  }
+  if (!link?.committed_at) {
+    return {
+      label: 'Normalized row',
+      description: 'No committed mapping link overrides the normalized row ID.',
+    }
+  }
+  if (link.source === 'manual') {
+    return {
+      label: 'Manual · not checked',
+      description: 'This trusted manual link was not checked against SEAD.',
+    }
+  }
+  if (link.source === 'reconciliation') {
+    return link.verified_at
+      ? {
+          label: 'Reconciliation · verified',
+          description: `Verified against SEAD at ${link.verified_at}.`,
+        }
+      : {
+          label: 'Reconciliation · unverified',
+          description: 'This reconciliation link has not been verified against SEAD.',
+        }
+  }
+  return {
+    label: 'Import · not checked',
+    description: 'This imported mapping was not checked against SEAD.',
+  }
+}
+
 const gridRows = computed(() =>
   props.previewData.map((row) => {
     const sidecarLink = row.local_key_value ? props.mappingData?.links[row.local_key_value] : undefined
     const committedLink = sidecarLink?.committed_at ? sidecarLink : undefined
     const savedRowId = props.mappingData ? row[props.mappingData.public_id] : null
+    const currentIdSource = getCurrentIdSource(committedLink, Boolean(props.mappingData))
     return {
       ...row,
-      saved_row_id: savedRowId,
+      current_id: props.mappingData ? (committedLink?.target_id ?? savedRowId) : null,
+      current_id_source_label: currentIdSource.label,
+      current_id_source_description: currentIdSource.description,
       status_display: formatStatus(row),
-      effective_id: props.mappingData ? (committedLink?.target_id ?? savedRowId) : null,
-      effective_id_status: committedLink
-        ? committedLink.source === 'manual'
-          ? 'Trusted manual · not checked'
-          : committedLink.source === 'reconciliation'
-            ? committedLink.verified_at
-              ? `reconciliation · verified ${committedLink.verified_at}`
-              : 'reconciliation · unverified'
-            : `${committedLink.source} · not checked`
-        : props.mappingData
-          ? 'Saved row ID'
-          : 'Sidecar unavailable',
       confidence_percent: row.confidence == null ? null : row.confidence * 100,
       errors_display: row.errors?.join('; ') ?? '',
       row_style_class: rowStyleClass(row),
@@ -266,7 +303,6 @@ const columnDefs = computed<ColDef[]>(() => {
   }
 
   columns.push(
-    { field: 'saved_row_id', headerName: 'Saved row ID', width: 120 },
     { field: 'target_id', headerName: 'Decision ID', width: 120 },
     {
       field: 'confidence_percent',
@@ -275,8 +311,34 @@ const columnDefs = computed<ColDef[]>(() => {
       valueFormatter: (params) => (params.value == null ? 'Unknown' : `${Math.round(params.value)}%`),
     },
     { field: 'status_display', headerName: 'Decision status', width: 140 },
-    { field: 'effective_id', headerName: 'Effective ID', width: 120 },
-    { field: 'effective_id_status', headerName: 'Effective ID source', width: 190 },
+    {
+      field: 'current_id',
+      headerName: 'Current ID',
+      width: 270,
+      cellRenderer: (params: ICellRendererParams) => {
+        const cell = document.createElement('div')
+        cell.className = 'current-id-cell'
+
+        const id = document.createElement('span')
+        id.className = 'current-id-value'
+        id.textContent = params.value == null ? '—' : String(params.value)
+        cell.append(id)
+
+        const source = params.data?.current_id_source_label
+        if (typeof source === 'string') {
+          const badge = document.createElement('span')
+          badge.className = 'current-id-source-badge'
+          badge.textContent = source
+          const description = params.data?.current_id_source_description
+          if (typeof description === 'string') {
+            badge.title = description
+            badge.setAttribute('aria-label', `${source}: ${description}`)
+          }
+          cell.append(badge)
+        }
+        return cell
+      },
+    },
     { field: 'errors_display', headerName: 'Row errors', width: 240 },
     {
       field: 'candidates',
@@ -292,11 +354,6 @@ const columnDefs = computed<ColDef[]>(() => {
         const encodedKey = key ? encodeURIComponent(key) : ''
         const disabled = !key || props.loading || isBusy(key)
         const buttons = []
-        if (row.candidates?.length) {
-          buttons.push(
-            `<button class="candidate-btn" data-local-key="${encodedKey}" data-action="review" ${disabled ? 'disabled' : ''}>Review (${row.candidates.length})</button>`
-          )
-        }
         buttons.push(
           `<button class="search-btn" data-local-key="${encodedKey}" data-action="search" ${disabled ? 'disabled' : ''}>Search</button>`
         )
@@ -304,11 +361,16 @@ const columnDefs = computed<ColDef[]>(() => {
           `<button class="reject-btn" data-local-key="${encodedKey}" data-action="reject" ${disabled ? 'disabled' : ''}>Reject</button>`
         )
         buttons.push(
-          `<button class="local-only-btn" data-local-key="${encodedKey}" data-action="local-only" ${disabled ? 'disabled' : ''}>Local-only</button>`
+          `<button class="local-only-btn" data-local-key="${encodedKey}" data-action="local-only" ${disabled ? 'disabled' : ''}>New</button>`
         )
         buttons.push(
           `<button class="manual-link-btn" data-local-key="${encodedKey}" data-action="manual-link" ${!key ? 'disabled' : ''}>Manual link</button>`
         )
+        if (row.candidates?.length) {
+          buttons.push(
+            `<button class="candidate-btn" data-local-key="${encodedKey}" data-action="review" ${disabled ? 'disabled' : ''}>Review (${row.candidates.length})</button>`
+          )
+        }
         return buttons.join(' ')
       },
     }
@@ -397,7 +459,7 @@ function formatStatus(row: ReconciliationPreviewRow | undefined): string {
   if (!row?.local_key_value) return 'Unreviewable'
   if (row.errors?.length) return 'Needs attention'
   if (row.status == null || (row.status === 'proposed' && !row.candidates?.length)) return 'Unresolved'
-  if (row.status === 'local-only') return 'Local-only'
+  if (row.status === 'local-only') return 'New'
   if (row.status === 'accepted' && !row.candidate_id) return 'Accepted · re-accept candidate'
   if (row.status === 'accepted' || row.status === 'rejected' || row.status === 'proposed') {
     return row.status.charAt(0).toUpperCase() + row.status.slice(1)
@@ -569,6 +631,28 @@ async function confirmLocalOnly() {
      rows are rendered. An auto height would render every row at once. */
   height: 68vh;
   min-height: 400px;
+}
+
+:deep(.current-id-cell) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  min-width: 0;
+}
+
+:deep(.current-id-value) {
+  font-variant-numeric: tabular-nums;
+}
+
+:deep(.current-id-source-badge) {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.4;
+  opacity: 0.8;
+  padding: 1px 6px;
+  white-space: nowrap;
 }
 
 :deep(.reconciliation-ag-grid .ag-row.row-needs-attention) {
