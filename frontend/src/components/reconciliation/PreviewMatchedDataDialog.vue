@@ -124,7 +124,7 @@
         </v-chip>
         <v-chip size="small" variant="text">
           <v-icon start size="small">mdi-cancel</v-icon>
-          {{ stats.localOnly }} local-only
+          {{ stats.localOnly }} new
         </v-chip>
         <v-chip size="small" variant="text"> {{ stats.unresolved }} unresolved · {{ stats.errors }} errors </v-chip>
         <v-spacer />
@@ -234,7 +234,7 @@ function getStatusLabel(row: ReconciliationPreviewRow): string {
   if (!row.local_key_value) return 'Unreviewable'
   if (row.errors?.length) return 'Needs attention'
   if (row.status == null || (row.status === 'proposed' && !row.candidates?.length)) return 'Unresolved'
-  if (row.status === 'local-only') return 'Local-only'
+  if (row.status === 'local-only') return 'New'
   if (row.status) return row.status.charAt(0).toUpperCase() + row.status.slice(1)
   return 'Unreviewable'
 }

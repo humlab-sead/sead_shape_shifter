@@ -198,9 +198,9 @@
                 closable
                 @click:close="showExportGuidance = false"
               >
-                Export checks accepted candidates against SEAD and records local-only approvals separately. Missing or
-                invalid candidates are not exported; links exported while the service is unavailable remain unverified
-                until you export again. Manual and unowned links are protected.
+                Export checks accepted candidates against SEAD and records New decisions separately. Missing or invalid
+                candidates are not exported; links exported while the service is unavailable remain unverified until you
+                export again. Manual and unowned links are protected.
               </v-alert>
 
               <v-alert v-if="previewError" data-testid="preview-error" type="error" variant="tonal" class="mb-4">
@@ -537,10 +537,12 @@ async function handleExportToMapping() {
     const entityName = selectedEntity.value
     const targetField = selectedTarget.value
     const result = await reconciliationStore.exportToMapping(props.projectName, entityName, targetField)
+    const newApprovalCount = result.exported_local_only_approvals
+    const removedNewApprovalCount = result.removed_local_only_approvals
     const summary =
       `${result.exported} link(s) exported; ${result.removed} stale link(s) removed; ` +
-      `${result.exported_local_only_approvals} local-only approval(s) exported; ` +
-      `${result.removed_local_only_approvals} stale local-only approval(s) removed; ` +
+      `${newApprovalCount} New-row approval${newApprovalCount === 1 ? '' : 's'} recorded; ` +
+      `${removedNewApprovalCount} stale New-row approval${removedNewApprovalCount === 1 ? '' : 's'} removed; ` +
       `${result.skipped_manual} protected link(s) skipped.`
 
     try {

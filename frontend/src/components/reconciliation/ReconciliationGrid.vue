@@ -6,7 +6,7 @@
         <v-chip value="proposed" color="warning" variant="outlined">Proposed ({{ stats.proposed }})</v-chip>
         <v-chip value="accepted" color="success" variant="outlined">Accepted ({{ stats.accepted }})</v-chip>
         <v-chip value="rejected" color="error" variant="outlined">Rejected ({{ stats.rejected }})</v-chip>
-        <v-chip value="local-only" color="grey" variant="outlined">Local-only ({{ stats.localOnly }})</v-chip>
+        <v-chip value="local-only" color="grey" variant="outlined">New ({{ stats.localOnly }})</v-chip>
         <v-chip value="unresolved" color="warning" variant="outlined">Unresolved ({{ stats.unresolved }})</v-chip>
         <v-chip value="errors" color="error" variant="outlined">Errors ({{ stats.errors }})</v-chip>
       </v-chip-group>
@@ -64,6 +64,7 @@
         :columnDefs="columnDefs"
         :rowData="gridData"
         :defaultColDef="defaultColDef"
+        :rowHeight="36"
         :rowClassRules="rowClassRules"
         :quickFilterText="appliedSearchQuery"
         :suppressRowClickSelection="true"
@@ -135,26 +136,29 @@
 
     <v-dialog v-model="localOnlyDialog" max-width="600">
       <v-card>
-        <v-card-title>Mark row as local-only</v-card-title>
+        <v-card-title>Mark row as New</v-card-title>
         <v-card-subtitle v-if="selectedRow">
           {{ getRowDisplayText(selectedRow) }} · Key: {{ selectedRow.local_key_value }}
         </v-card-subtitle>
         <v-card-text>
-          <p class="mb-4">This records that the row should not be linked to a target entity.</p>
+          <p class="mb-4">
+            This row has no mapping to an existing target. Mark it New so the ingester treats it as a new record; ID
+            allocation depends on the selected ingester mode.
+          </p>
           <v-textarea v-model="localOnlyNotes" label="Reason (optional)" rows="3" variant="outlined" />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="localOnlyDialog = false">Cancel</v-btn>
           <v-btn
-            data-testid="confirm-local-only"
+            data-testid="confirm-new"
             variant="tonal"
             color="warning"
             :loading="selectedRow ? isBusy(selectedRow.local_key_value) : false"
             :disabled="!selectedRow?.local_key_value"
             @click="confirmLocalOnly"
           >
-            Mark local-only
+            Mark as New
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -350,11 +354,6 @@ const columnDefs = computed<ColDef[]>(() => {
         const encodedKey = key ? encodeURIComponent(key) : ''
         const disabled = !key || props.loading || isBusy(key)
         const buttons = []
-        if (row.candidates?.length) {
-          buttons.push(
-            `<button class="candidate-btn" data-local-key="${encodedKey}" data-action="review" ${disabled ? 'disabled' : ''}>Review (${row.candidates.length})</button>`
-          )
-        }
         buttons.push(
           `<button class="search-btn" data-local-key="${encodedKey}" data-action="search" ${disabled ? 'disabled' : ''}>Search</button>`
         )
@@ -362,11 +361,16 @@ const columnDefs = computed<ColDef[]>(() => {
           `<button class="reject-btn" data-local-key="${encodedKey}" data-action="reject" ${disabled ? 'disabled' : ''}>Reject</button>`
         )
         buttons.push(
-          `<button class="local-only-btn" data-local-key="${encodedKey}" data-action="local-only" ${disabled ? 'disabled' : ''}>Local-only</button>`
+          `<button class="local-only-btn" data-local-key="${encodedKey}" data-action="local-only" ${disabled ? 'disabled' : ''}>New</button>`
         )
         buttons.push(
           `<button class="manual-link-btn" data-local-key="${encodedKey}" data-action="manual-link" ${!key ? 'disabled' : ''}>Manual link</button>`
         )
+        if (row.candidates?.length) {
+          buttons.push(
+            `<button class="candidate-btn" data-local-key="${encodedKey}" data-action="review" ${disabled ? 'disabled' : ''}>Review (${row.candidates.length})</button>`
+          )
+        }
         return buttons.join(' ')
       },
     }
@@ -455,7 +459,7 @@ function formatStatus(row: ReconciliationPreviewRow | undefined): string {
   if (!row?.local_key_value) return 'Unreviewable'
   if (row.errors?.length) return 'Needs attention'
   if (row.status == null || (row.status === 'proposed' && !row.candidates?.length)) return 'Unresolved'
-  if (row.status === 'local-only') return 'Local-only'
+  if (row.status === 'local-only') return 'New'
   if (row.status === 'accepted' && !row.candidate_id) return 'Accepted · re-accept candidate'
   if (row.status === 'accepted' || row.status === 'rejected' || row.status === 'proposed') {
     return row.status.charAt(0).toUpperCase() + row.status.slice(1)

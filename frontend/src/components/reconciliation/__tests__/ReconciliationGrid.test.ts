@@ -2,16 +2,19 @@ import { defineComponent, h } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { createVuetify } from 'vuetify'
+import type { ColDef } from 'ag-grid-community'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import type { MappingEntityResponse, ReconciliationCandidate, ReconciliationPreviewRow } from '@/types'
 
 vi.mock('ag-grid-vue3', () => ({
   AgGridVue: {
-    props: ['rowData', 'columnDefs'],
+    name: 'AgGridVue',
+    props: ['rowData', 'columnDefs', 'rowHeight'],
     template: `
       <div data-testid="grid-stub">
         <div data-testid="grid-columns">{{ columnDefs.map(column => column.headerName).join('|') }}</div>
+        <div data-testid="grid-row-height">{{ rowHeight }}</div>
         <div v-for="row in rowData.slice().reverse()" :key="row.local_key_value" data-testid="grid-row">
           <span data-testid="row-class">{{ row.row_style_class }}</span>
           <span data-testid="row-status">{{ row.status_display }}</span>
@@ -22,7 +25,7 @@ vi.mock('ag-grid-vue3', () => ({
           <button :data-local-key="row.local_key_value" data-action="reject">Reject</button>
           <button :data-local-key="row.local_key_value" data-action="review">Review</button>
           <button :data-local-key="row.local_key_value" data-action="search">Search</button>
-          <button :data-local-key="row.local_key_value" data-action="local-only">Local-only</button>
+          <button :data-local-key="row.local_key_value" data-action="local-only">New</button>
         </div>
       </div>
     `,
@@ -127,7 +130,7 @@ function rowWithoutCandidates(localKeyValue: string) {
 }
 
 describe('ReconciliationGrid', () => {
-  it('submits reject and local-only actions with the row key and no target ID', async () => {
+  it('submits reject and new actions with the row key and no target ID', async () => {
     const { wrapper, submitDecision } = mountGrid()
 
     await wrapper.get('button[data-action="reject"]').trigger('click')
@@ -135,7 +138,9 @@ describe('ReconciliationGrid', () => {
     expect(submitDecision).toHaveBeenLastCalledWith({ local_key_value: 'A', status: 'rejected' })
 
     await wrapper.get('button[data-action="local-only"]').trigger('click')
-    await wrapper.get('[data-testid="confirm-local-only"]').trigger('click')
+    expect(wrapper.text()).toContain('Mark row as New')
+    expect(wrapper.text()).toContain('Mark as New')
+    await wrapper.get('[data-testid="confirm-new"]').trigger('click')
     await flushPromises()
     expect(submitDecision).toHaveBeenLastCalledWith({ local_key_value: 'A', status: 'local-only' })
   })
@@ -185,6 +190,18 @@ describe('ReconciliationGrid', () => {
       target_id: 105,
       candidate_id: alternative.id,
     })
+  })
+
+  it('places Review after the other row actions', () => {
+    const { wrapper } = mountGrid()
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as ColDef[]
+    const actionsColumn = columnDefs.find((column) => column.field === 'candidates')
+    const renderer = actionsColumn?.cellRenderer
+    if (typeof renderer !== 'function') throw new Error('Actions column renderer is unavailable')
+
+    const html = String(renderer({ data: makeRow('A') } as Parameters<typeof renderer>[0]))
+    expect(html.indexOf('Review (3)')).toBeGreaterThan(html.indexOf('Manual link'))
   })
 
   it('shows one current ID with its mapping source and verification status', () => {
@@ -240,6 +257,12 @@ describe('ReconciliationGrid', () => {
     expect(wrapper.get('[data-testid="current-id-source"][data-key="C"]').text()).toBe('Manual · not checked')
     expect(wrapper.get('[data-testid="current-id"][data-key="D"]').text()).toBe('14')
     expect(wrapper.get('[data-testid="current-id-source"][data-key="D"]').text()).toBe('Normalized row')
+  })
+
+  it('displays the local-only decision as New', () => {
+    const { wrapper } = mountGrid(vi.fn(), [{ ...makeRow('A'), status: 'local-only' }])
+
+    expect(wrapper.get('[data-testid="row-status"]').text()).toBe('New')
   })
 
   it('displays unresolved rows and row-specific errors separately', () => {
@@ -343,12 +366,13 @@ describe('PreviewMatchedDataDialog', () => {
     expect(wrapper.text()).toContain('2 unresolved · 1 errors')
   })
 
-  it('keeps row virtualization enabled and styles rows by class', () => {
+  it('uses compact rows while keeping row virtualization enabled', () => {
     const { wrapper } = mountGrid()
 
     const grid = wrapper.get('[data-testid="grid-stub"]')
     // autoHeight would disable virtualization and render every row at once.
     expect(grid.attributes('domlayout')).toBe('normal')
+    expect(wrapper.get('[data-testid="grid-row-height"]').text()).toBe('36')
   })
 
   it('assigns a row class name instead of a per-render style object', () => {
