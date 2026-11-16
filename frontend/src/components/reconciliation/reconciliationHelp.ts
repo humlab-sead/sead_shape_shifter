@@ -53,10 +53,6 @@ export const reconciliationHelp: ReconciliationHelpContent = {
       description: 'Additional normalized values used by the reconciliation specification; these vary by entity.',
     },
     {
-      label: 'Saved row ID',
-      description: 'The public ID already on the normalized row, before a committed mapping link is applied.',
-    },
-    {
       label: 'Decision ID',
       description: 'The target ID selected in the reconciliation decision. It is not effective until exported.',
     },
@@ -71,13 +67,9 @@ export const reconciliationHelp: ReconciliationHelpContent = {
         'Proposed, Accepted, Rejected, or Local-only. Unresolved, Needs attention, and Unreviewable indicate missing candidates or decisions, row errors, or a missing business key.',
     },
     {
-      label: 'Effective ID',
-      description: 'The committed mapping ID when present; otherwise the saved row ID.',
-    },
-    {
-      label: 'Effective ID source',
+      label: 'Current ID',
       description:
-        'Shows whether the effective ID came from the saved row or a mapping link, and whether reconciliation verified it.',
+        'The ID currently used by normalization. Its badge shows whether it comes from the normalized row or a committed mapping, and whether a reconciliation mapping was verified.',
     },
     {
       label: 'Row errors',

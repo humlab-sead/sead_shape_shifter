@@ -171,6 +171,7 @@ import type { ColDef, GridApi, GridReadyEvent, ICellRendererParams, IRowNode, Ro
 import type {
   DecisionUpdateRequest,
   EntityResolutionSet,
+  MappingLink,
   MappingEntityResponse,
   ReconciliationCandidate,
   ReconciliationPreviewRow,
@@ -190,6 +191,11 @@ interface Props {
   entityName: string
   targetField: string
   submitDecision: (request: DecisionUpdateRequest) => Promise<void>
+}
+
+interface CurrentIdSource {
+  label: string
+  description: string
 }
 
 const props = withDefaults(defineProps<Props>(), { loading: false })
@@ -220,27 +226,54 @@ const defaultColDef: ColDef = {
   editable: false,
 }
 
+function getCurrentIdSource(link: MappingLink | undefined, mappingAvailable: boolean): CurrentIdSource {
+  if (!mappingAvailable) {
+    return {
+      label: 'Unavailable',
+      description: 'The mapping sidecar could not be loaded, so the current ID cannot be confirmed.',
+    }
+  }
+  if (!link?.committed_at) {
+    return {
+      label: 'Normalized row',
+      description: 'No committed mapping link overrides the normalized row ID.',
+    }
+  }
+  if (link.source === 'manual') {
+    return {
+      label: 'Manual · not checked',
+      description: 'This trusted manual link was not checked against SEAD.',
+    }
+  }
+  if (link.source === 'reconciliation') {
+    return link.verified_at
+      ? {
+          label: 'Reconciliation · verified',
+          description: `Verified against SEAD at ${link.verified_at}.`,
+        }
+      : {
+          label: 'Reconciliation · unverified',
+          description: 'This reconciliation link has not been verified against SEAD.',
+        }
+  }
+  return {
+    label: 'Import · not checked',
+    description: 'This imported mapping was not checked against SEAD.',
+  }
+}
+
 const gridRows = computed(() =>
   props.previewData.map((row) => {
     const sidecarLink = row.local_key_value ? props.mappingData?.links[row.local_key_value] : undefined
     const committedLink = sidecarLink?.committed_at ? sidecarLink : undefined
     const savedRowId = props.mappingData ? row[props.mappingData.public_id] : null
+    const currentIdSource = getCurrentIdSource(committedLink, Boolean(props.mappingData))
     return {
       ...row,
-      saved_row_id: savedRowId,
+      current_id: props.mappingData ? (committedLink?.target_id ?? savedRowId) : null,
+      current_id_source_label: currentIdSource.label,
+      current_id_source_description: currentIdSource.description,
       status_display: formatStatus(row),
-      effective_id: props.mappingData ? (committedLink?.target_id ?? savedRowId) : null,
-      effective_id_status: committedLink
-        ? committedLink.source === 'manual'
-          ? 'Trusted manual · not checked'
-          : committedLink.source === 'reconciliation'
-            ? committedLink.verified_at
-              ? `reconciliation · verified ${committedLink.verified_at}`
-              : 'reconciliation · unverified'
-            : `${committedLink.source} · not checked`
-        : props.mappingData
-          ? 'Saved row ID'
-          : 'Sidecar unavailable',
       confidence_percent: row.confidence == null ? null : row.confidence * 100,
       errors_display: row.errors?.join('; ') ?? '',
       row_style_class: rowStyleClass(row),
@@ -266,7 +299,6 @@ const columnDefs = computed<ColDef[]>(() => {
   }
 
   columns.push(
-    { field: 'saved_row_id', headerName: 'Saved row ID', width: 120 },
     { field: 'target_id', headerName: 'Decision ID', width: 120 },
     {
       field: 'confidence_percent',
@@ -275,8 +307,34 @@ const columnDefs = computed<ColDef[]>(() => {
       valueFormatter: (params) => (params.value == null ? 'Unknown' : `${Math.round(params.value)}%`),
     },
     { field: 'status_display', headerName: 'Decision status', width: 140 },
-    { field: 'effective_id', headerName: 'Effective ID', width: 120 },
-    { field: 'effective_id_status', headerName: 'Effective ID source', width: 190 },
+    {
+      field: 'current_id',
+      headerName: 'Current ID',
+      width: 270,
+      cellRenderer: (params: ICellRendererParams) => {
+        const cell = document.createElement('div')
+        cell.className = 'current-id-cell'
+
+        const id = document.createElement('span')
+        id.className = 'current-id-value'
+        id.textContent = params.value == null ? '—' : String(params.value)
+        cell.append(id)
+
+        const source = params.data?.current_id_source_label
+        if (typeof source === 'string') {
+          const badge = document.createElement('span')
+          badge.className = 'current-id-source-badge'
+          badge.textContent = source
+          const description = params.data?.current_id_source_description
+          if (typeof description === 'string') {
+            badge.title = description
+            badge.setAttribute('aria-label', `${source}: ${description}`)
+          }
+          cell.append(badge)
+        }
+        return cell
+      },
+    },
     { field: 'errors_display', headerName: 'Row errors', width: 240 },
     {
       field: 'candidates',
@@ -569,6 +627,28 @@ async function confirmLocalOnly() {
      rows are rendered. An auto height would render every row at once. */
   height: 68vh;
   min-height: 400px;
+}
+
+:deep(.current-id-cell) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  min-width: 0;
+}
+
+:deep(.current-id-value) {
+  font-variant-numeric: tabular-nums;
+}
+
+:deep(.current-id-source-badge) {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.4;
+  opacity: 0.8;
+  padding: 1px 6px;
+  white-space: nowrap;
 }
 
 :deep(.reconciliation-ag-grid .ag-row.row-needs-attention) {
