@@ -20,7 +20,7 @@ vi.mock('ag-grid-vue3', () => ({
           <span data-testid="row-status">{{ row.status_display }}</span>
           <span data-testid="row-confidence">{{ row.confidence_percent == null ? 'Unknown' : Math.round(row.confidence_percent) + '%' }}</span>
           <span data-testid="row-errors">{{ row.errors_display || '—' }}</span>
-          <span data-testid="current-id" :data-key="row.local_key_value">{{ row.current_id ?? '—' }}</span>
+          <span data-testid="current-id" :data-key="row.local_key_value">{{ row.current_id ?? '' }}</span>
           <span data-testid="current-id-source" :data-key="row.local_key_value">{{ row.current_id_source_label }}</span>
           <button :data-local-key="row.local_key_value" data-action="reject">Reject</button>
           <button :data-local-key="row.local_key_value" data-action="review">Review</button>
@@ -257,6 +257,28 @@ describe('ReconciliationGrid', () => {
     expect(wrapper.get('[data-testid="current-id-source"][data-key="C"]').text()).toBe('Manual · not checked')
     expect(wrapper.get('[data-testid="current-id"][data-key="D"]').text()).toBe('14')
     expect(wrapper.get('[data-testid="current-id-source"][data-key="D"]').text()).toBe('Normalized row')
+  })
+
+  it('leaves Current ID blank when no mapped ID exists', () => {
+    const mappingData: MappingEntityResponse = {
+      entity_name: 'site',
+      local_key: 'site_code',
+      public_id: 'site_id',
+      entity_type: 'primary',
+      links: {},
+    }
+    const { wrapper } = mountGrid(vi.fn(), [makeRow('A')], mappingData)
+
+    expect(wrapper.get('[data-testid="current-id"][data-key="A"]').text()).toBe('')
+
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as ColDef[]
+    const currentIdColumn = columnDefs.find((column) => column.field === 'current_id')
+    const renderer = currentIdColumn?.cellRenderer
+    if (typeof renderer !== 'function') throw new Error('Current ID column renderer is unavailable')
+
+    const cell = renderer({ value: undefined, data: {} } as Parameters<typeof renderer>[0]) as HTMLElement
+    expect(cell.querySelector('.current-id-value')?.textContent).toBe('')
   })
 
   it('displays the local-only decision as New', () => {

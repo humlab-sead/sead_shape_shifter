@@ -321,7 +321,7 @@ const columnDefs = computed<ColDef[]>(() => {
 
         const id = document.createElement('span')
         id.className = 'current-id-value'
-        id.textContent = params.value == null ? '—' : String(params.value)
+        id.textContent = params.value == null ? '' : String(params.value)
         cell.append(id)
 
         const source = params.data?.current_id_source_label
