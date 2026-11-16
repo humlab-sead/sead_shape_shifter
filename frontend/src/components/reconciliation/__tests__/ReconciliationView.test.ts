@@ -184,7 +184,49 @@ describe('ReconciliationView', () => {
     expect(wrapper.get('[data-testid="yaml-editor"]').attributes('data-mode')).toBe('reconciliation')
   })
 
-  it('exports accepted links and local-only approvals with separate counts', async () => {
+  it('opens the reconciliation help dialog from the review tab', async () => {
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+    await wrapper.get('[data-testid="reconciliation-help-button"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="reconciliation-help-dialog"]').text()).toContain('Quick workflow')
+    expect(wrapper.get('[data-testid="reconciliation-help-dialog"]').text()).toContain(
+      'An accepted decision does not change the effective ID until it is exported.'
+    )
+  })
+
+  it('allows dismissing the export guidance and candidate search summary', async () => {
+    reconciliationStore.autoReconcile = vi.fn().mockResolvedValue({
+      proposed: 3,
+      unmatched: 1,
+      total: 4,
+      candidates: {},
+      errors: [],
+    })
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+
+    const exportGuidance = wrapper.get('[data-testid="reconciliation-export-info"]')
+    await exportGuidance.get('button').trigger('click')
+    expect(wrapper.find('[data-testid="reconciliation-export-info"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="find-candidates-button"]').trigger('click')
+    await flushPromises()
+    const searchSummary = wrapper.get('[data-testid="matching-result"]')
+    await searchSummary.get('button').trigger('click')
+    expect(wrapper.find('[data-testid="matching-result"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="find-candidates-button"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="matching-result"]').exists()).toBe(true)
+  })
+
+  it('exports accepted links and new-row approvals with separate counts', async () => {
     const wrapper = await mountView()
 
     await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
@@ -199,8 +241,8 @@ describe('ReconciliationView', () => {
     expect(reconciliationStore.exportToMapping).toHaveBeenCalledWith('test_project', 'site', 'site_code')
     expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site')
     expect(wrapper.text()).toContain(
-      '2 link(s) exported; 1 stale link(s) removed; 1 local-only approval(s) exported; ' +
-        '2 stale local-only approval(s) removed; 1 protected link(s) skipped.'
+      '2 link(s) exported; 1 stale link(s) removed; 1 New-row approval recorded; ' +
+        '2 stale New-row approvals removed; 1 protected link(s) skipped.'
     )
   })
 
