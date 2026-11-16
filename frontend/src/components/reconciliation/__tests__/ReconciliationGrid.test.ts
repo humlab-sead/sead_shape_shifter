@@ -22,10 +22,11 @@ vi.mock('ag-grid-vue3', () => ({
           <span data-testid="row-errors">{{ row.errors_display || '—' }}</span>
           <span data-testid="current-id" :data-key="row.local_key_value">{{ row.current_id ?? '' }}</span>
           <span data-testid="current-id-source" :data-key="row.local_key_value">{{ row.current_id_source_label }}</span>
-          <button :data-local-key="row.local_key_value" data-action="reject">Reject</button>
+          <button :data-local-key="row.local_key_value" data-action="reject" aria-label="Reject this row"><span class="mdi mdi-close-circle-outline" aria-hidden="true"></span></button>
           <button :data-local-key="row.local_key_value" data-action="review">Review</button>
-          <button :data-local-key="row.local_key_value" data-action="search">Search</button>
-          <button :data-local-key="row.local_key_value" data-action="local-only">New</button>
+          <button :data-local-key="row.local_key_value" data-action="search" aria-label="Search for another candidate"><span class="mdi mdi-magnify" aria-hidden="true"></span></button>
+          <button :data-local-key="row.local_key_value" data-action="local-only" aria-label="Mark this row as New"><span class="mdi mdi-plus-circle-outline" aria-hidden="true"></span></button>
+          <button :data-local-key="row.local_key_value" data-action="manual-link" aria-label="Add a manual link for this row"><span class="mdi mdi-link-variant" aria-hidden="true"></span></button>
         </div>
       </div>
     `,
@@ -35,6 +36,7 @@ vi.mock('ag-grid-vue3', () => ({
 import ReconciliationGrid from '../ReconciliationGrid.vue'
 import AlternativeSearchDialog from '../AlternativeSearchDialog.vue'
 import PreviewMatchedDataDialog from '../PreviewMatchedDataDialog.vue'
+import { RECONCILIATION_ACTION_ICONS } from '../reconciliationHelp'
 
 const passthrough = (tag: string) =>
   defineComponent({
@@ -201,7 +203,34 @@ describe('ReconciliationGrid', () => {
     if (typeof renderer !== 'function') throw new Error('Actions column renderer is unavailable')
 
     const html = String(renderer({ data: makeRow('A') } as Parameters<typeof renderer>[0]))
-    expect(html.indexOf('Review (3)')).toBeGreaterThan(html.indexOf('Manual link'))
+    expect(html.indexOf('data-action="review"')).toBeGreaterThan(html.indexOf('data-action="manual-link"'))
+  })
+
+  it('renders icon row actions with accessible names and tooltips', () => {
+    const { wrapper } = mountGrid()
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as ColDef[]
+    const actionsColumn = columnDefs.find((column) => column.field === 'candidates')
+    const renderer = actionsColumn?.cellRenderer
+    if (typeof renderer !== 'function') throw new Error('Actions column renderer is unavailable')
+
+    const container = document.createElement('div')
+    container.innerHTML = String(renderer({ data: makeRow('A') } as Parameters<typeof renderer>[0]))
+    const actions = [
+      { action: 'search', label: 'Search for another candidate', icon: RECONCILIATION_ACTION_ICONS.search },
+      { action: 'reject', label: 'Reject this row', icon: RECONCILIATION_ACTION_ICONS.reject },
+      { action: 'local-only', label: 'Mark this row as New', icon: RECONCILIATION_ACTION_ICONS.new },
+      { action: 'manual-link', label: 'Add a manual link for this row', icon: RECONCILIATION_ACTION_ICONS.manualLink },
+    ]
+
+    for (const action of actions) {
+      const button = container.querySelector<HTMLButtonElement>(`button[data-action="${action.action}"]`)
+      expect(button?.type).toBe('button')
+      expect(button?.getAttribute('aria-label')).toBe(action.label)
+      expect(button?.getAttribute('data-tooltip')).toBe(action.label)
+      expect(button?.textContent?.trim()).toBe('')
+      expect(button?.querySelector(`.mdi.${action.icon}`)).not.toBeNull()
+    }
   })
 
   it('shows one current ID with its mapping source and verification status', () => {

@@ -182,6 +182,7 @@ import type {
 } from '@/types'
 import AlternativeSearchDialog from './AlternativeSearchDialog.vue'
 import PreviewMatchedDataDialog from './PreviewMatchedDataDialog.vue'
+import { RECONCILIATION_ACTION_ICONS } from './reconciliationHelp'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-material.css'
@@ -355,16 +356,16 @@ const columnDefs = computed<ColDef[]>(() => {
         const disabled = !key || props.loading || isBusy(key)
         const buttons = []
         buttons.push(
-          `<button class="search-btn" data-local-key="${encodedKey}" data-action="search" ${disabled ? 'disabled' : ''}>Search</button>`
+          `<button type="button" class="search-btn action-icon-btn" data-local-key="${encodedKey}" data-action="search" aria-label="Search for another candidate" data-tooltip="Search for another candidate" ${disabled ? 'disabled' : ''}><span class="mdi ${RECONCILIATION_ACTION_ICONS.search} row-action-icon" aria-hidden="true"></span></button>`
         )
         buttons.push(
-          `<button class="reject-btn" data-local-key="${encodedKey}" data-action="reject" ${disabled ? 'disabled' : ''}>Reject</button>`
+          `<button type="button" class="reject-btn action-icon-btn" data-local-key="${encodedKey}" data-action="reject" aria-label="Reject this row" data-tooltip="Reject this row" ${disabled ? 'disabled' : ''}><span class="mdi ${RECONCILIATION_ACTION_ICONS.reject} row-action-icon" aria-hidden="true"></span></button>`
         )
         buttons.push(
-          `<button class="local-only-btn" data-local-key="${encodedKey}" data-action="local-only" ${disabled ? 'disabled' : ''}>New</button>`
+          `<button type="button" class="local-only-btn action-icon-btn" data-local-key="${encodedKey}" data-action="local-only" aria-label="Mark this row as New" data-tooltip="Mark this row as New" ${disabled ? 'disabled' : ''}><span class="mdi ${RECONCILIATION_ACTION_ICONS.new} row-action-icon" aria-hidden="true"></span></button>`
         )
         buttons.push(
-          `<button class="manual-link-btn" data-local-key="${encodedKey}" data-action="manual-link" ${!key ? 'disabled' : ''}>Manual link</button>`
+          `<button type="button" class="manual-link-btn action-icon-btn" data-local-key="${encodedKey}" data-action="manual-link" aria-label="Add a manual link for this row" data-tooltip="Add a manual link for this row" ${!key ? 'disabled' : ''}><span class="mdi ${RECONCILIATION_ACTION_ICONS.manualLink} row-action-icon" aria-hidden="true"></span></button>`
         )
         if (row.candidates?.length) {
           buttons.push(
@@ -680,12 +681,51 @@ async function confirmLocalOnly() {
 :deep(.reject-btn),
 :deep(.local-only-btn),
 :deep(.manual-link-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
   margin: 2px;
   padding: 5px 8px;
+  vertical-align: middle;
+}
+
+:deep(.action-icon-btn) {
+  min-width: 30px;
+  min-height: 28px;
+  padding: 5px;
+  position: relative;
+}
+
+:deep(.row-action-icon) {
+  font-size: 16px;
+  line-height: 1;
+}
+
+:deep(.action-icon-btn:hover::after),
+:deep(.action-icon-btn:focus-visible::after) {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  z-index: 1000;
+  transform: translateX(-50%);
+  border-radius: 4px;
+  background: #333333;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.2;
+  padding: 4px 8px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+:deep(.reconciliation-ag-grid .ag-cell[col-id='candidates']) {
+  overflow: visible;
 }
 
 :deep(.candidate-btn) {

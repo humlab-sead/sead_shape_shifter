@@ -1,7 +1,15 @@
 export interface ReconciliationHelpItem {
   label: string
   description: string
+  icon?: string
 }
+
+export const RECONCILIATION_ACTION_ICONS = {
+  search: 'mdi-magnify',
+  reject: 'mdi-close-circle-outline',
+  new: 'mdi-plus-circle-outline',
+  manualLink: 'mdi-link-variant',
+} as const
 
 interface ReconciliationHelpContent {
   title: string
@@ -113,19 +121,23 @@ export const reconciliationHelp: ReconciliationHelpContent = {
     },
     {
       label: 'Search',
+      icon: RECONCILIATION_ACTION_ICONS.search,
       description: 'Search for an alternative using at least two characters. Select a result and choose Accept Match.',
     },
     {
       label: 'Reject',
+      icon: RECONCILIATION_ACTION_ICONS.reject,
       description: 'Save a rejection for this row.',
     },
     {
       label: 'New',
+      icon: RECONCILIATION_ACTION_ICONS.new,
       description:
         'Record that this row has no mapping to an existing target. The ingester treats it as a new record; an optional reason can be saved.',
     },
     {
       label: 'Manual link',
+      icon: RECONCILIATION_ACTION_ICONS.manualLink,
       description:
         'Open the manual-link form with this row’s key filled in. The saved ID is trusted and is not checked against SEAD.',
     },
