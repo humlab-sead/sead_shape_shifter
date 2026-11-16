@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-VERIFIER = Path(__file__).resolve().parents[1] / "scripts" / "verify_promotion_provenance.sh"
+VERIFIER = Path(__file__).resolve().parents[1] / "scripts" / "ci" / "verify_promotion_provenance.sh"
 PROTECTED_PATHS = "scripts/:src/:backend/:frontend/:ingesters/:tests/:.github/workflows/"
 
 

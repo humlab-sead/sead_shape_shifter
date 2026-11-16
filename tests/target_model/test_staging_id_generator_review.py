@@ -1,4 +1,4 @@
-"""Tests for scripts/review_staging_id_generators.py.
+"""Tests for scripts/target_model/review_staging_id_generators.py.
 
 The tests exercise the pure derivation and classification functions with
 controlled catalog facts. No database connection is opened.
@@ -15,7 +15,7 @@ import pytest
 
 from src.target_model.models import TargetModel
 
-MODULE_PATH = Path(__file__).resolve().parents[2] / "scripts" / "review_staging_id_generators.py"
+MODULE_PATH = Path(__file__).resolve().parents[2] / "scripts" / "target_model" / "review_staging_id_generators.py"
 
 
 def load_audit_module() -> ModuleType:
