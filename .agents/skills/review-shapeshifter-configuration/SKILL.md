@@ -19,7 +19,7 @@ Read the [configuration instructions](../../../.github/instructions/shapeshifter
    - Confirm a target-model reference resolves before reporting conformance as passed. Prefer a shared model when projects use the same target schema.
    - Inspect materialized snapshots and the mapping sidecar when the question concerns saved rows or assigned public IDs.
 5. Validate only the workflows needed and available:
-   - Start with `rtk uv run python scripts/validate_project.py <path> --workflow structural --log-level ERROR` for Core structural checks. This CLI does not check provider-registry bindings or the fixed `data_provider` row.
+   - Start with `rtk uv run python scripts/project/validate_project.py <path> --workflow structural --log-level ERROR` for Core structural checks. This CLI does not check provider-registry bindings or the fixed `data_provider` row.
    - Backend YAML Validation also checks provider metadata and the fixed provider row.
    - Use `--workflow data` when source files and connections are available. It normalizes the project and may read external sources.
    - Use `--workflow conformance` when a target model is configured and resolved. `target-model-conformance` is an accepted alias. Confirm the model loaded; the editor can skip conformance when a referenced file is missing.
