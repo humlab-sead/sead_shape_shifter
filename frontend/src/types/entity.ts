@@ -77,7 +77,7 @@ export interface Entity {
   query?: string | null
   options?: EntityFileOptions | null
   surrogate_id?: string | null
-  keys?: string[]
+  keys?: string[] | string
   columns?: string[]
   column_types?: Record<string, string> | null
   extra_columns?: Record<string, any>

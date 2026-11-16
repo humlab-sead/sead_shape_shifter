@@ -1,6 +1,39 @@
 export interface ReconciliationHelpItem {
   label: string
   description: string
+  icon?: string
+}
+
+export const RECONCILIATION_ACTION_ICONS = {
+  search: 'mdi-magnify',
+  reject: 'mdi-close-circle-outline',
+  new: 'mdi-plus-circle-outline',
+  manualLink: 'mdi-link-variant',
+} as const
+
+export const RECONCILIATION_STATUS_PRESENTATION = {
+  proposed: { icon: 'mdi-lightbulb-outline', color: 'blue', backgroundClass: 'bg-blue-lighten-5' },
+  accepted: { icon: 'mdi-check-circle-outline', color: 'green', backgroundClass: 'bg-green-lighten-5' },
+  rejected: { icon: 'mdi-close-circle-outline', color: 'grey', backgroundClass: 'bg-grey-lighten-5' },
+  local: { icon: 'mdi-home-outline', color: 'purple', backgroundClass: 'bg-purple-lighten-5' },
+  unresolved: { icon: 'mdi-help-circle-outline', color: 'amber', backgroundClass: 'bg-amber-lighten-5' },
+  errors: { icon: 'mdi-alert-circle-outline', color: 'red', backgroundClass: 'bg-red-lighten-5' },
+} as const
+
+const RECONCILIATION_STATUS_KEYS: Partial<Record<string, keyof typeof RECONCILIATION_STATUS_PRESENTATION>> = {
+  Proposed: 'proposed',
+  Accepted: 'accepted',
+  'Accepted · re-accept candidate': 'accepted',
+  Rejected: 'rejected',
+  New: 'local',
+  Unresolved: 'unresolved',
+  Unreviewable: 'unresolved',
+  'Needs attention': 'errors',
+}
+
+export function getReconciliationStatusPresentation(label: string) {
+  const key = RECONCILIATION_STATUS_KEYS[label]
+  return key ? RECONCILIATION_STATUS_PRESENTATION[key] : undefined
 }
 
 interface ReconciliationHelpContent {
@@ -113,19 +146,23 @@ export const reconciliationHelp: ReconciliationHelpContent = {
     },
     {
       label: 'Search',
+      icon: RECONCILIATION_ACTION_ICONS.search,
       description: 'Search for an alternative using at least two characters. Select a result and choose Accept Match.',
     },
     {
       label: 'Reject',
+      icon: RECONCILIATION_ACTION_ICONS.reject,
       description: 'Save a rejection for this row.',
     },
     {
       label: 'New',
+      icon: RECONCILIATION_ACTION_ICONS.new,
       description:
         'Record that this row has no mapping to an existing target. The ingester treats it as a new record; an optional reason can be saved.',
     },
     {
       label: 'Manual link',
+      icon: RECONCILIATION_ACTION_ICONS.manualLink,
       description:
         'Open the manual-link form with this row’s key filled in. The saved ID is trusted and is not checked against SEAD.',
     },

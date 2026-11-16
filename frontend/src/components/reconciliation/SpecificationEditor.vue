@@ -123,6 +123,16 @@
                 prepend-inner-icon="mdi-lock"
               />
 
+              <v-alert
+                v-if="formData.entity_name && !selectedEntityHasBusinessKeys"
+                data-testid="missing-business-keys"
+                type="warning"
+                variant="tonal"
+                class="mb-4"
+              >
+                {{ businessKeysWarning }}
+              </v-alert>
+
               <!-- Source rows used for matching -->
               <v-row>
                 <v-col cols="6">
@@ -368,7 +378,13 @@
       <v-card-actions class="pa-4">
         <v-spacer />
         <v-btn @click="cancel">Cancel</v-btn>
-        <v-btn color="primary" variant="elevated" :disabled="!valid || !isDirty" :loading="saving" @click="save">
+        <v-btn
+          color="primary"
+          variant="elevated"
+          :disabled="!valid || !isDirty || !selectedEntityHasBusinessKeys"
+          :loading="saving"
+          @click="save"
+        >
           {{ isNew ? 'Create' : 'Save' }}
         </v-btn>
       </v-card-actions>
@@ -476,6 +492,26 @@ const availableProperties = computed<string[]>(() => {
       : []
   return [...new Set([...servedProperties, ...Object.keys(formData.value.spec.property_mappings)])]
 })
+
+const selectedEntityHasBusinessKeys = computed(() => {
+  const entityName = formData.value.entity_name
+  if (!entityName) return true
+
+  const keys: unknown = projectStore.selectedProject?.entities[entityName]?.keys
+  if (typeof keys === 'string') return keys.trim().length > 0
+  if (Array.isArray(keys)) return keys.some((key: unknown) => typeof key === 'string' && key.trim().length > 0)
+
+  if (!props.isNew && props.specification?.entity_name === entityName) {
+    return props.specification.has_business_keys
+  }
+
+  return false
+})
+
+const businessKeysWarning = computed(
+  () =>
+    `Entity '${formData.value.entity_name}' has no business keys configured. Add one or more 'keys' to the entity in the project configuration before saving this specification or running reconciliation.`
+)
 
 // Validation rules
 const required = (v: any) => !!v || 'Required'
@@ -647,6 +683,7 @@ function cancel() {
 }
 
 async function save() {
+  if (!selectedEntityHasBusinessKeys.value) return
   if (!form.value?.validate()) return
 
   saving.value = true
