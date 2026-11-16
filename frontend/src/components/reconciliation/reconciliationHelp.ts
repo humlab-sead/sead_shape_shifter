@@ -20,7 +20,7 @@ export const reconciliationHelp: ReconciliationHelpContent = {
     'Find Candidates proposes matches; it does not accept a candidate for you.',
     'The search label finds candidates. The encoded business key identifies the row and its decision.',
     'Accepted decisions become effective after Export to Mapping. Manual links are saved directly and are not checked against SEAD.',
-    'Local-only means no existing target should be linked; it is different from rejecting a candidate.',
+    'New means the row has no mapping to an existing target. The ingester handles it as a new record; ID allocation depends on its mode.',
   ],
   workflow: [
     {
@@ -31,12 +31,12 @@ export const reconciliationHelp: ReconciliationHelpContent = {
     {
       label: '2. Review and decide',
       description:
-        'Accept the correct candidate, search for another one, reject the suggestion, mark the row local-only, or add a manual link.',
+        'Accept the correct candidate, search for another one, reject the suggestion, mark the row New, or add a manual link.',
     },
     {
       label: '3. Export to Mapping',
       description:
-        'Export accepted candidates and local-only approvals. Accepted candidates are checked against SEAD during export.',
+        'Export accepted candidates and New decisions. Accepted candidates are checked against SEAD during export.',
     },
   ],
   columns: [
@@ -64,7 +64,7 @@ export const reconciliationHelp: ReconciliationHelpContent = {
     {
       label: 'Decision status',
       description:
-        'Proposed, Accepted, Rejected, or Local-only. Unresolved, Needs attention, and Unreviewable indicate missing candidates or decisions, row errors, or a missing business key.',
+        'Proposed, Accepted, Rejected, or New. New means the row has no mapping to an existing target. Unresolved, Needs attention, and Unreviewable indicate missing candidates or decisions, row errors, or a missing business key.',
     },
     {
       label: 'Current ID',
@@ -94,7 +94,7 @@ export const reconciliationHelp: ReconciliationHelpContent = {
     {
       label: 'Export to Mapping',
       description:
-        'Check and export accepted candidates; export local-only approvals separately. Manual and unowned links are protected.',
+        'Check and export accepted candidates; export New decisions separately. Manual and unowned links are protected.',
     },
     {
       label: 'Preview',
@@ -120,8 +120,9 @@ export const reconciliationHelp: ReconciliationHelpContent = {
       description: 'Save a rejection for this row.',
     },
     {
-      label: 'Local-only',
-      description: 'Record that this row should not link to an existing target; an optional reason can be saved.',
+      label: 'New',
+      description:
+        'Record that this row has no mapping to an existing target. The ingester treats it as a new record; an optional reason can be saved.',
     },
     {
       label: 'Manual link',

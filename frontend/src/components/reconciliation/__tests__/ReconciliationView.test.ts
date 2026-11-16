@@ -226,7 +226,7 @@ describe('ReconciliationView', () => {
     expect(wrapper.find('[data-testid="matching-result"]').exists()).toBe(true)
   })
 
-  it('exports accepted links and local-only approvals with separate counts', async () => {
+  it('exports accepted links and new-row approvals with separate counts', async () => {
     const wrapper = await mountView()
 
     await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
@@ -241,8 +241,8 @@ describe('ReconciliationView', () => {
     expect(reconciliationStore.exportToMapping).toHaveBeenCalledWith('test_project', 'site', 'site_code')
     expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site')
     expect(wrapper.text()).toContain(
-      '2 link(s) exported; 1 stale link(s) removed; 1 local-only approval(s) exported; ' +
-        '2 stale local-only approval(s) removed; 1 protected link(s) skipped.'
+      '2 link(s) exported; 1 stale link(s) removed; 1 New-row approval recorded; ' +
+        '2 stale New-row approvals removed; 1 protected link(s) skipped.'
     )
   })
 

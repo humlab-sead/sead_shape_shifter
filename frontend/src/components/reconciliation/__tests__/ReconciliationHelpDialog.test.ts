@@ -42,7 +42,8 @@ describe('ReconciliationHelpDialog', () => {
     expect(text).not.toContain('Effective ID')
     expect(text).toContain('Decision confidence')
     expect(text).toContain('Review (n)')
-    expect(text).toContain('Local-only')
+    expect(text).toContain('New')
+    expect(text).not.toContain('Local-only')
     expect(text).toContain('Manual link')
     expect(text).toContain('Export to Mapping')
     expect(wrapper.get('[data-testid="reconciliation-help-guide"]').attributes('href')).toBe(
