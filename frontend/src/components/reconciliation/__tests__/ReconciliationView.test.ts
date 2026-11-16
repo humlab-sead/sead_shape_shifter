@@ -198,6 +198,34 @@ describe('ReconciliationView', () => {
     )
   })
 
+  it('allows dismissing the export guidance and candidate search summary', async () => {
+    reconciliationStore.autoReconcile = vi.fn().mockResolvedValue({
+      proposed: 3,
+      unmatched: 1,
+      total: 4,
+      candidates: {},
+      errors: [],
+    })
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+
+    const exportGuidance = wrapper.get('[data-testid="reconciliation-export-info"]')
+    await exportGuidance.get('button').trigger('click')
+    expect(wrapper.find('[data-testid="reconciliation-export-info"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="find-candidates-button"]').trigger('click')
+    await flushPromises()
+    const searchSummary = wrapper.get('[data-testid="matching-result"]')
+    await searchSummary.get('button').trigger('click')
+    expect(wrapper.find('[data-testid="matching-result"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="find-candidates-button"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="matching-result"]').exists()).toBe(true)
+  })
+
   it('exports accepted links and local-only approvals with separate counts', async () => {
     const wrapper = await mountView()
 

@@ -189,7 +189,15 @@
                 Candidate search is blocked: {{ matchEligibility.message }}
               </v-alert>
 
-              <v-alert type="info" variant="tonal" class="mb-4">
+              <v-alert
+                v-if="showExportGuidance"
+                data-testid="reconciliation-export-info"
+                type="info"
+                variant="tonal"
+                class="mb-4"
+                closable
+                @click:close="showExportGuidance = false"
+              >
                 Export checks accepted candidates against SEAD and records local-only approvals separately. Missing or
                 invalid candidates are not exported; links exported while the service is unavailable remain unverified
                 until you export again. Manual and unowned links are protected.
@@ -208,11 +216,13 @@
               </v-alert>
 
               <v-alert
-                v-if="autoReconcileResult"
+                v-if="autoReconcileResult && showCandidateSearchSummary"
                 data-testid="matching-result"
                 type="success"
                 variant="tonal"
                 class="mb-4"
+                closable
+                @click:close="showCandidateSearchSummary = false"
               >
                 Candidate search considered {{ autoReconcileResult.total }} rows, updated
                 {{ autoReconcileResult.proposed }} proposed decisions, and found no candidates for
@@ -380,6 +390,8 @@ const manifestResult = ref<ReconciliationManifestResult | null>(null)
 const availableEntityTypes = ref<number>(0)
 const autoReconcileResult = ref<AutoReconcileResult | null>(null)
 const autoReconcileError = ref<string | null>(null)
+const showExportGuidance = ref(true)
+const showCandidateSearchSummary = ref(false)
 const reconciliationHelpDialog = ref(false)
 const manualLinkDialog = ref(false)
 const manualLocalKeyValue = ref('')
@@ -478,6 +490,7 @@ async function handleAutoReconcile() {
 
   autoReconcileError.value = null
   autoReconcileResult.value = null
+  showCandidateSearchSummary.value = false
   if (!matchEligibility.value.canMatch) {
     autoReconcileError.value = matchEligibility.value.message ?? 'Reconciliation compatibility could not be verified.'
     return
@@ -492,6 +505,7 @@ async function handleAutoReconcile() {
       thresholdDecimal,
       entitySpec.value?.review_threshold
     )
+    showCandidateSearchSummary.value = true
 
     const previewKey = currentPreviewKey()
     try {
