@@ -106,6 +106,7 @@ class EntityResolutionListItem(BaseModel):
     """Flattened specification for list view."""
 
     entity_name: str = Field(..., description="Entity name")
+    has_business_keys: bool = Field(..., description="Whether the entity has at least one configured business key")
     target_field: str = Field(..., description="Target field name")
     source: str | ReconciliationSource | None = Field(default=None, description="Data source specification")
     property_mappings: dict[str, str] = Field(default_factory=dict, description="Property mappings")

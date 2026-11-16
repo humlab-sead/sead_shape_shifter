@@ -30,6 +30,7 @@ const apiMocks = vi.hoisted(() => ({
 
 const specification = {
   entity_name: 'site',
+  has_business_keys: true,
   target_field: 'site_code',
   source: null,
   property_mappings: {},
