@@ -1,7 +1,7 @@
 # Graph Report - sead_shape_shifter  (2026-11-17)
 
 ## Corpus Check
-- 825 files · ~912,684 words
+- 825 files · ~912,696 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 27 file(s) not represented in the graph (top: (none) 12, .csv 5, .scss 2)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `592b9db1`
+- Built from commit: `2688ffa8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
