@@ -6,7 +6,9 @@ Promotes `<source branch>` into `<target branch>`.
 Closes #<issue>
 
 <!-- Keep this short. Do not repeat the release-note text of the pull requests listed below.
-     Their notes are read from the pull requests themselves.
+     Their notes are read from the pull requests themselves. Use this pull request's head branch
+     as the source and its base branch as the target; do not copy branch names from another
+     promotion.
      Replace the single `Closes` line with one `Closes #<issue>` line per issue this promotion
      resolves, copied from the closing references of the included pull requests, or from the
      `Closes` lines in their `Summary` when GitHub recorded no closing reference. Remove the line
