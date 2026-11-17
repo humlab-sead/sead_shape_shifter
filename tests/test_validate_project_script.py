@@ -1,4 +1,4 @@
-"""Tests for scripts/validate_project.py."""
+"""Tests for scripts/project/validate_project.py."""
 
 import importlib.util
 import sys
@@ -17,7 +17,7 @@ from src.model import ShapeShiftProject
 from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
 from src.table_store import TableStore
 
-MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "validate_project.py"
+MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "project" / "validate_project.py"
 
 
 def load_validate_project_module() -> ModuleType:

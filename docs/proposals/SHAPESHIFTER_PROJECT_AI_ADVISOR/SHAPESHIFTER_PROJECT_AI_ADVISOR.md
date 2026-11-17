@@ -97,7 +97,7 @@ The [`review-shapeshifter-configuration` skill](../../../.agents/skills/review-s
 2. Trace each entity through the pipeline stages.
 3. Check the `data_provider_code`/`provider_schema` pair against the deployment's curated provider registry.
 4. Inspect materialized `source_state` and mapping-sidecar links.
-5. Run `scripts/validate_project.py` with the structural, data, and conformance workflows.
+5. Run `scripts/project/validate_project.py` with the structural, data, and conformance workflows.
 6. Report findings with the commands used and the limits of each check.
 
 The skill can use the full codebase and both sibling repositories, a Python runtime, git history, and validation scripts. It can also ask a maintainer to resolve ambiguity. The current application does not provide all of these resources. The Advisor should bring as much of this capability into Shape Shifter as safety and privacy allow, and provide a clear handoff for the rest.
@@ -107,7 +107,7 @@ The skill can use the full codebase and both sibling repositories, a Python runt
 The following behavior was checked against `staging` commit `95c56d8ccb779225ee3104c3035c192780519642`. Confirm availability in each supported deployment during grounding foundation.
 
 1. Editor-side validation messages without domain-level explanation.
-2. Validation workflows (structural, data, conformance) reachable through `scripts/validate_project.py` and the backend validation service.
+2. Validation workflows (structural, data, conformance) reachable through `scripts/project/validate_project.py` and the backend validation service.
 3. Provider-binding services (`backend/app/services/project_provider_binding_service.py`) that the editor enforces but never explains.
 4. Materialized entities that keep their original configuration in `materialized.source_state`, and a mapping sidecar that can supply public-ID links not visible in raw YAML. Core structural validation does not use those links.
 5. Preview and data validation execute the pipeline. `ValidationResult` records `sample`, `complete`, or `single_pass` mode, execution status, and per-entity status, but has no configuration digest or validation run identifier.
@@ -417,7 +417,7 @@ Decide on generated-code isolation later, in a separate spike. The framework spi
 
 The embedded Advisor and a local skill session have different access. The server does not expose general repository or shell access, and a local session does not automatically have access to deployment registry or session data. Authorized MCP tools can provide specific reads, but the two environments still have different permissions. Use this handoff process:
 
-1. **Reproduction details.** Each artifact records its command or tool call, context manifest, and whether the original inputs are still available for exact replay. It can refer to a `scripts/validate_project.py` workflow or an MCP tool call.
+1. **Reproduction details.** Each artifact records its command or tool call, context manifest, and whether the original inputs are still available for exact replay. It can refer to a `scripts/project/validate_project.py` workflow or an MCP tool call.
 2. **Investigation packet.** Export the question, context summary, citations, artifacts, and conclusions so a maintainer can continue the review in the development environment.
 3. **Review findings.** Use findings from development-environment sessions to propose knowledge-pack updates and evaluation scenarios, following the review process described above.
 

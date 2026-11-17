@@ -1,0 +1,43 @@
+title: chore: promote dev into staging
+description:
+<!-- promotion-pr -->
+## Summary
+
+Promotes `dev` into `staging`.
+
+This pull request introduces no change of its own. It carries the pull requests listed below and adds no separate release note.
+
+Closes #732
+Closes #661
+Closes #662
+Closes #651
+Closes #663
+Closes #742
+
+## Included PRs
+
+- [#729](https://github.com/humlab-sead/sead_shape_shifter/pull/729) Move completed FK proposals to done and fix column header layout
+- [#730](https://github.com/humlab-sead/sead_shape_shifter/pull/730) Add output dataset expectations for full runs
+- [#731](https://github.com/humlab-sead/sead_shape_shifter/pull/731) Add 23 target-model entities and consolidate coverage docs
+- [#733](https://github.com/humlab-sead/sead_shape_shifter/pull/733) feat(workflow): close resolved issues when a promotion reaches main
+- [#734](https://github.com/humlab-sead/sead_shape_shifter/pull/734) fix(workflow): read closing keywords from carried pull request bodies
+- [#735](https://github.com/humlab-sead/sead_shape_shifter/pull/735) feat(reconciliation): rename sidecars to fixed names
+- [#736](https://github.com/humlab-sead/sead_shape_shifter/pull/736) fix(materialization): drop api-only name from materialized source state
+- [#737](https://github.com/humlab-sead/sead_shape_shifter/pull/737) fix(frontend): mount project tabs that load data on first activation
+- [#738](https://github.com/humlab-sead/sead_shape_shifter/pull/738) refactor(transforms): replace extra column evaluator with strategies
+- [#739](https://github.com/humlab-sead/sead_shape_shifter/pull/739) test(integration): align integration fixtures and expectations
+- [#740](https://github.com/humlab-sead/sead_shape_shifter/pull/740) chore(git): block protected-path commits on protected branches
+- [#741](https://github.com/humlab-sead/sead_shape_shifter/pull/741) Refactor script layout and centralize environment setup
+- [#743](https://github.com/humlab-sead/sead_shape_shifter/pull/743) Clarify Reconcile & Review guidance and actions
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results are recorded on the included pull requests.

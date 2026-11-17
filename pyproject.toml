@@ -63,7 +63,7 @@ all = [
 # CLI entry points for easy command-line access
 sead-ingest = "backend.app.scripts.ingest:cli"
 sead-authorization = "backend.app.scripts.authorization:cli"
-sort-project = "scripts.sort_project_yaml:main"
+sort-project = "scripts.project.sort_project_yaml:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -92,6 +92,11 @@ exclude = [
 [tool.ruff.lint.flake8-tidy-imports]
 # Prevent relative imports beyond current package
 ban-relative-imports = "parents"
+
+[tool.ruff.lint.per-file-ignores]
+# Scripts add the repository root to sys.path before importing src/ or backend,
+# so their project imports cannot sit at the top of the file.
+"scripts/**/*.py" = ["E402"]
 
 [tool.ruff.lint.pep8-naming]
 classmethod-decorators = ["classmethod"]
@@ -174,7 +179,7 @@ warn_return_any = false
 [tool.pytest.ini_options]
 # Run tests in parallel with pytest-xdist; use "-p no:xdist" or "-n 0" to run serially.
 addopts = "-qq -rfEx --strict-markers --durations=10 -n auto"
-testpaths = ["tests", "backend/tests"]
+testpaths = ["tests", "backend/tests", "scripts/tests"]
 python_classes = "Test*"
 python_functions = "test_*"
 asyncio_mode = "auto"

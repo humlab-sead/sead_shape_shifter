@@ -197,7 +197,7 @@ class IntegrityTroubleshooterContextStore:
                 logger.info(f"Removed {removed} expired integrity troubleshooter context(s)")
 
 
-_store: IntegrityTroubleshooterContextStore | None = None
+_store: IntegrityTroubleshooterContextStore | None = None  # pylint: disable=invalid-name
 
 
 def get_integrity_troubleshooter_context_store() -> IntegrityTroubleshooterContextStore:

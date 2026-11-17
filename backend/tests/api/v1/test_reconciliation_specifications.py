@@ -52,6 +52,11 @@ async def sample_project(tmp_path, monkeypatch, authorized_client):
             "keys": ["sample_code"],
             "columns": ["sample_type"],
         },
+        "feature_type": {
+            "type": "sql",
+            "data_source": "test_db",
+            "columns": ["feature_type_name"],
+        },
     }
 
     response = await authorized_client.post(
@@ -110,7 +115,7 @@ def sample_recon_config(tmp_path):
         },
     )
 
-    config_file = project_dir / "test_project-reconciliation.yml"
+    config_file = project_dir / "shapeshifter.reconciliation.yml"
     with open(config_file, "w", encoding="utf-8") as f:
         yaml.dump(config.model_dump(exclude_none=True), f)
 
@@ -136,7 +141,7 @@ def _write_mapping_sidecar(tmp_path, links: dict[str, dict], local_only_approval
             }
         },
     }
-    (project_dir / "test_project-mapping.yml").write_text(yaml.safe_dump(sidecar, sort_keys=False), encoding="utf-8")
+    (project_dir / "shapeshifter.mapping.yml").write_text(yaml.safe_dump(sidecar, sort_keys=False), encoding="utf-8")
 
 
 def _owned_link(owner: str, field: str, target_id: int = 101) -> dict:
@@ -176,6 +181,7 @@ class TestListSpecifications:
         # Check site.site_code spec
         site_code = next(s for s in specs if s["target_field"] == "site_code")
         assert site_code["entity_name"] == "site"
+        assert site_code["has_business_keys"] is True
         assert site_code["mapping_count"] == 0
         assert site_code["property_mapping_count"] == 2
         assert site_code["remote"]["service_type"] == "site"
@@ -185,13 +191,36 @@ class TestListSpecifications:
         assert site_name["mapping_count"] == 2
         assert site_name["source"] == "another_entity"
 
+    async def test_list_specifications_marks_entities_without_business_keys(
+        self, tmp_path, monkeypatch, reset_services, sample_project, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        config = dto.EntityResolutionCatalog(
+            version="3.0",
+            service_url="http://localhost:8000",
+            entities={
+                "feature_type": {
+                    "feature_type_name": dto.EntityResolutionSet(
+                        remote=ReconciliationRemote(service_type="feature_type"),
+                    )
+                }
+            },
+        )
+        config_file = tmp_path / "test_project" / "shapeshifter.reconciliation.yml"
+        config_file.write_text(yaml.safe_dump(config.model_dump(exclude_none=True)), encoding="utf-8")
+
+        response = await authorized_client.get("/api/v1/projects/test_project/reconciliation/mapping-registry")
+
+        assert response.status_code == 200, response.text
+        assert response.json()[0]["has_business_keys"] is False
+
     async def test_list_specifications_empty(self, tmp_path, monkeypatch, reset_services, sample_project, authorized_client):
         """Test listing when no specifications exist."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create empty recon config in nested project structure
         config = dto.EntityResolutionCatalog(version="3.0", service_url="http://localhost:8000", entities={})
-        config_file = tmp_path / "test_project" / "test_project-reconciliation.yml"
+        config_file = tmp_path / "test_project" / "shapeshifter.reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)
 
@@ -306,6 +335,49 @@ class TestCreateSpecification:
         detail = response.json()["detail"]
         assert "does not exist" in detail["message"]
 
+    async def test_create_specification_rejects_entity_without_business_keys(
+        self, tmp_path, monkeypatch, reset_services, sample_project, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        payload = {
+            "entity_name": "feature_type",
+            "target_field": "feature_type_name",
+            "spec": {"remote": {"service_type": "feature_type"}},
+        }
+
+        response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/mapping-registry", json=payload)
+
+        assert response.status_code == 400, response.text
+        assert "has no business keys configured" in response.json()["detail"]["message"]
+        assert "'keys'" in response.json()["detail"]["message"]
+
+    async def test_whole_catalog_save_rejects_entities_without_business_keys(
+        self, tmp_path, monkeypatch, reset_services, sample_project, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        payload = {
+            "version": "3.0",
+            "service_url": "http://localhost:8000",
+            "entities": {
+                "feature_type": {
+                    "feature_type_name": {
+                        "remote": {"service_type": "feature_type"},
+                    }
+                }
+            },
+        }
+        raw_yaml = yaml.safe_dump(payload)
+
+        for path, body, headers in (
+            ("/reconciliation", payload, None),
+            ("/reconciliation/raw", raw_yaml, {"Content-Type": "text/plain"}),
+        ):
+            request_options = {"json": body} if headers is None else {"content": body, "headers": headers}
+            response = await authorized_client.put(f"/api/v1/projects/test_project{path}", **request_options)
+
+            assert response.status_code == 400, response.text
+            assert "has no business keys configured" in response.json()["detail"]["message"]
+
 
 class TestUpdateSpecification:
     """Tests for PUT /api/v1/reconcile/specifications/{entity_name}/{target_field} endpoint."""
@@ -374,6 +446,66 @@ class TestUpdateSpecification:
         )
 
         assert response.status_code == 404
+
+    async def test_update_specification_rejects_entity_without_business_keys(
+        self, tmp_path, monkeypatch, reset_services, sample_project, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        config = dto.EntityResolutionCatalog(
+            version="3.0",
+            service_url="http://localhost:8000",
+            entities={
+                "feature_type": {
+                    "feature_type_name": dto.EntityResolutionSet(
+                        remote=ReconciliationRemote(service_type="feature_type"),
+                    )
+                }
+            },
+        )
+        config_file = tmp_path / "test_project" / "shapeshifter.reconciliation.yml"
+        config_file.write_text(yaml.safe_dump(config.model_dump(exclude_none=True)), encoding="utf-8")
+        payload = {
+            "source": None,
+            "property_mappings": {},
+            "remote": {"service_type": "feature_type"},
+            "auto_accept_threshold": 0.95,
+            "review_threshold": 0.70,
+        }
+
+        response = await authorized_client.put(
+            "/api/v1/projects/test_project/reconciliation/mapping-registry/feature_type/feature_type_name",
+            json=payload,
+        )
+
+        assert response.status_code == 400, response.text
+        assert "has no business keys configured" in response.json()["detail"]["message"]
+
+
+class TestReconciliationBusinessKeyGuard:
+    async def test_candidate_matching_routes_reject_entities_without_business_keys(
+        self, tmp_path, monkeypatch, reset_services, sample_project, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        config = dto.EntityResolutionCatalog(
+            version="3.0",
+            service_url="http://localhost:8000",
+            entities={
+                "feature_type": {
+                    "feature_type_name": dto.EntityResolutionSet(
+                        remote=ReconciliationRemote(service_type="feature_type"),
+                    )
+                }
+            },
+        )
+        config_file = tmp_path / "test_project" / "shapeshifter.reconciliation.yml"
+        config_file.write_text(yaml.safe_dump(config.model_dump(exclude_none=True)), encoding="utf-8")
+        base_path = "/api/v1/projects/test_project/reconciliation/feature_type/feature_type_name"
+
+        for endpoint in ("auto-reconcile", "auto-reconcile-sync"):
+            response = await authorized_client.post(f"{base_path}/{endpoint}")
+
+            assert response.status_code == 400, response.text
+            assert "has no business keys configured" in response.json()["detail"]["message"]
 
 
 class TestDeleteSpecification:
@@ -449,7 +581,7 @@ class TestDeleteSpecification:
         assert body["removed_owned_approvals"] == 1
         assert set(body) == {"version", "service_url", "entities", "removed_owned_links", "removed_owned_approvals"}
         assert "site_name" not in body["entities"]["site"]
-        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         links = sidecar["entities"]["site"]["links"]
         assert "owned-name" not in links
         assert {"owned-code", "other-owner", "manual", "unowned"} <= links.keys()
@@ -472,7 +604,7 @@ class TestDeleteSpecification:
         assert response.status_code == 200, response.text
         assert response.json()["removed_owned_links"] == 1
         assert response.json()["removed_owned_approvals"] == 1
-        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert sidecar["entities"]["site"]["links"] == {}
         assert sidecar["entities"]["site"]["local_only_approvals"] == {}
 
@@ -485,7 +617,7 @@ class TestDeleteSpecification:
             {"owned-code": _owned_link("site", "site_code")},
             {"owned-approval": _owned_approval("site", "site_code")},
         )
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
         original_sidecar = sidecar_path.read_bytes()
 
         def fail_save(*_args, **_kwargs):
@@ -497,7 +629,7 @@ class TestDeleteSpecification:
         assert response.status_code == 409
         assert "changed during specification removal" in response.json()["detail"]["message"]
         assert sidecar_path.read_bytes() == original_sidecar
-        catalog = yaml.safe_load((tmp_path / "test_project" / "test_project-reconciliation.yml").read_text(encoding="utf-8"))
+        catalog = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.reconciliation.yml").read_text(encoding="utf-8"))
         assert "site_code" in catalog["entities"]["site"]
 
     async def test_sidecar_write_failure_keeps_specification(
@@ -509,7 +641,7 @@ class TestDeleteSpecification:
             {"owned-code": _owned_link("site", "site_code")},
             {"owned-approval": _owned_approval("site", "site_code")},
         )
-        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
         original_sidecar = sidecar_path.read_bytes()
 
         def fail_save(*_args, **_kwargs):
@@ -520,7 +652,7 @@ class TestDeleteSpecification:
 
         assert response.status_code == 500
         assert sidecar_path.read_bytes() == original_sidecar
-        catalog = yaml.safe_load((tmp_path / "test_project" / "test_project-reconciliation.yml").read_text(encoding="utf-8"))
+        catalog = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.reconciliation.yml").read_text(encoding="utf-8"))
         assert "site_code" in catalog["entities"]["site"]
 
     async def test_catalog_write_failure_reports_partial_cleanup(
@@ -545,9 +677,9 @@ class TestDeleteSpecification:
         assert response.status_code == 500
         assert "still present" in response.json()["detail"]["message"]
         assert "1 owned mapping link(s) and 1 local-only approval(s) were already removed" in response.json()["detail"]["message"]
-        catalog = yaml.safe_load((tmp_path / "test_project" / "test_project-reconciliation.yml").read_text(encoding="utf-8"))
+        catalog = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.reconciliation.yml").read_text(encoding="utf-8"))
         assert "site_code" in catalog["entities"]["site"]
-        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
         assert set(sidecar["entities"]["site"]["links"]) == {"manual"}
         assert sidecar["entities"]["site"]["local_only_approvals"] == {}
 
@@ -592,7 +724,7 @@ async def test_whole_catalog_update_cleans_removed_spec_owned_links(
     assert response.status_code == 200, response.text
     body = response.json()
     assert "site_name" not in body["entities"]["site"]
-    sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+    sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
     links = sidecar["entities"]["site"]["links"]
     assert "owned-name" not in links
     assert {"owned-code", "manual"} <= links.keys()
@@ -614,7 +746,7 @@ def test_catalog_save_uses_atomic_replace_and_preserves_old_file_on_failure(tmp_
         manager.save_catalog("test_project", catalog)
 
     assert sample_recon_config.read_bytes() == original
-    assert not list(sample_recon_config.parent.glob(".test_project-reconciliation.yml.*.tmp"))
+    assert not list(sample_recon_config.parent.glob(".shapeshifter.reconciliation.yml.*.tmp"))
 
 
 class TestGetAvailableFields:

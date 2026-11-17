@@ -122,10 +122,26 @@
           <v-window-item value="reconcile">
             <div class="py-4">
               <div class="d-flex justify-space-between align-center mb-4">
-                <h3 class="text-h6">
-                  <v-icon start>mdi-auto-fix</v-icon>
-                  Reconcile & Review
-                </h3>
+                <div class="d-flex align-center">
+                  <h3 class="text-h6">
+                    <v-icon start>mdi-auto-fix</v-icon>
+                    Reconcile & Review
+                  </h3>
+                  <v-tooltip location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <v-btn
+                        v-bind="tooltipProps"
+                        icon="mdi-help-circle-outline"
+                        variant="text"
+                        size="small"
+                        data-testid="reconciliation-help-button"
+                        aria-label="Open Reconcile & Review help"
+                        @click="reconciliationHelpDialog = true"
+                      />
+                    </template>
+                    Reconcile &amp; Review help
+                  </v-tooltip>
+                </div>
 
                 <!-- Auto-Reconcile Button -->
                 <v-btn
@@ -147,6 +163,7 @@
                   variant="tonal"
                   color="secondary"
                   prepend-icon="mdi-link-variant"
+                  :disabled="!selectedEntityHasBusinessKeys"
                   @click="openManualLinkDialog()"
                 >
                   Add Manual Link
@@ -159,7 +176,7 @@
                   color="primary"
                   prepend-icon="mdi-export"
                   :loading="loading"
-                  :disabled="loading"
+                  :disabled="loading || !selectedEntityHasBusinessKeys"
                   class="ml-2"
                   @click="handleExportToMapping"
                 >
@@ -177,10 +194,18 @@
                 Candidate search is blocked: {{ matchEligibility.message }}
               </v-alert>
 
-              <v-alert type="info" variant="tonal" class="mb-4">
-                Export checks accepted candidates against SEAD and records local-only approvals separately. Missing or
-                invalid candidates are not exported; links exported while the service is unavailable remain unverified
-                until you export again. Manual and unowned links are protected.
+              <v-alert
+                v-if="showExportGuidance"
+                data-testid="reconciliation-export-info"
+                type="info"
+                variant="tonal"
+                class="mb-4"
+                closable
+                @click:close="showExportGuidance = false"
+              >
+                Export checks accepted candidates against SEAD and records New decisions separately. Missing or invalid
+                candidates are not exported; links exported while the service is unavailable remain unverified until you
+                export again. Manual and unowned links are protected.
               </v-alert>
 
               <v-alert v-if="previewError" data-testid="preview-error" type="error" variant="tonal" class="mb-4">
@@ -188,7 +213,7 @@
               </v-alert>
 
               <v-alert v-if="mappingError" data-testid="mapping-error" type="error" variant="tonal" class="mb-4">
-                Mapping sidecar could not be loaded: {{ mappingError }}. Effective IDs are unavailable until it loads.
+                Mapping sidecar could not be loaded: {{ mappingError }}. Current IDs are unavailable until it loads.
               </v-alert>
 
               <v-alert v-if="autoReconcileError" data-testid="matching-error" type="error" variant="tonal" class="mb-4">
@@ -196,11 +221,13 @@
               </v-alert>
 
               <v-alert
-                v-if="autoReconcileResult"
+                v-if="autoReconcileResult && showCandidateSearchSummary"
                 data-testid="matching-result"
                 type="success"
                 variant="tonal"
                 class="mb-4"
+                closable
+                @click:close="showCandidateSearchSummary = false"
               >
                 Candidate search considered {{ autoReconcileResult.total }} rows, updated
                 {{ autoReconcileResult.proposed }} proposed decisions, and found no candidates for
@@ -216,7 +243,13 @@
 
               <!-- Reconciliation Grid -->
               <reconciliation-grid
-                v-if="selectedEntity && selectedTarget && entitySpec && entityPreviewData.length"
+                v-if="
+                  selectedEntity &&
+                  selectedTarget &&
+                  entitySpec &&
+                  selectedEntityHasBusinessKeys &&
+                  entityPreviewData.length
+                "
                 :entity-spec="entitySpec"
                 :preview-data="entityPreviewData"
                 :mapping-data="entityMappingData"
@@ -244,7 +277,7 @@
 
               <!-- Empty State - No Data -->
               <v-card
-                v-else-if="!previewError && !entityPreviewData.length"
+                v-else-if="selectedEntityHasBusinessKeys && !previewError && !entityPreviewData.length"
                 variant="outlined"
                 class="pa-8 text-center"
               >
@@ -260,6 +293,8 @@
         </v-window>
       </v-card-text>
     </v-card>
+
+    <ReconciliationHelpDialog v-model="reconciliationHelpDialog" />
 
     <v-dialog v-model="manualLinkDialog" max-width="600">
       <v-card>
@@ -319,6 +354,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useReconciliationStore } from '@/stores/reconciliation'
 import { storeToRefs } from 'pinia'
 import ReconciliationGrid from './ReconciliationGrid.vue'
+import ReconciliationHelpDialog from './ReconciliationHelpDialog.vue'
 import SpecificationsList from './SpecificationsList.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
 import type {
@@ -365,6 +401,9 @@ const manifestResult = ref<ReconciliationManifestResult | null>(null)
 const availableEntityTypes = ref<number>(0)
 const autoReconcileResult = ref<AutoReconcileResult | null>(null)
 const autoReconcileError = ref<string | null>(null)
+const showExportGuidance = ref(true)
+const showCandidateSearchSummary = ref(false)
+const reconciliationHelpDialog = ref(false)
 const manualLinkDialog = ref(false)
 const manualLocalKeyValue = ref('')
 const manualTargetId = ref('')
@@ -392,13 +431,29 @@ const entitySpec = computed(() => {
   return entityConfigs[selectedTarget.value] || null
 })
 
-const matchEligibility = computed(() =>
-  getReconciliationCompatibility(
+const selectedSpecification = computed(() =>
+  specifications.value.find(
+    (specification) =>
+      specification.entity_name === selectedEntity.value && specification.target_field === selectedTarget.value
+  )
+)
+
+const selectedEntityHasBusinessKeys = computed(() => selectedSpecification.value?.has_business_keys !== false)
+
+const businessKeysWarning = computed(
+  () =>
+    `Entity '${selectedEntity.value}' has no business keys configured. Add one or more 'keys' to the entity in the project configuration before running reconciliation.`
+)
+
+const matchEligibility = computed(() => {
+  const compatibility = getReconciliationCompatibility(
     manifestResult.value,
     entitySpec.value?.remote?.service_type,
     entitySpec.value?.property_mappings ?? {}
   )
-)
+  if (selectedEntityHasBusinessKeys.value) return compatibility
+  return { ...compatibility, canMatch: false, message: businessKeysWarning.value }
+})
 
 watch(matchEligibility, (eligibility) => {
   if (!eligibility.canMatch) {
@@ -462,6 +517,7 @@ async function handleAutoReconcile() {
 
   autoReconcileError.value = null
   autoReconcileResult.value = null
+  showCandidateSearchSummary.value = false
   if (!matchEligibility.value.canMatch) {
     autoReconcileError.value = matchEligibility.value.message ?? 'Reconciliation compatibility could not be verified.'
     return
@@ -476,6 +532,7 @@ async function handleAutoReconcile() {
       thresholdDecimal,
       entitySpec.value?.review_threshold
     )
+    showCandidateSearchSummary.value = true
 
     const previewKey = currentPreviewKey()
     try {
@@ -501,16 +558,18 @@ async function handleAutoReconcile() {
 }
 
 async function handleExportToMapping() {
-  if (!selectedEntity.value || !selectedTarget.value) return
+  if (!selectedEntity.value || !selectedTarget.value || !selectedEntityHasBusinessKeys.value) return
 
   try {
     const entityName = selectedEntity.value
     const targetField = selectedTarget.value
     const result = await reconciliationStore.exportToMapping(props.projectName, entityName, targetField)
+    const newApprovalCount = result.exported_local_only_approvals
+    const removedNewApprovalCount = result.removed_local_only_approvals
     const summary =
       `${result.exported} link(s) exported; ${result.removed} stale link(s) removed; ` +
-      `${result.exported_local_only_approvals} local-only approval(s) exported; ` +
-      `${result.removed_local_only_approvals} stale local-only approval(s) removed; ` +
+      `${newApprovalCount} New-row approval${newApprovalCount === 1 ? '' : 's'} recorded; ` +
+      `${removedNewApprovalCount} stale New-row approval${removedNewApprovalCount === 1 ? '' : 's'} removed; ` +
       `${result.skipped_manual} protected link(s) skipped.`
 
     try {
@@ -742,9 +801,9 @@ watch(
 )
 
 watch(
-  [() => props.projectName, selectedEntity],
-  async ([projectName, entityName]) => {
-    if (!projectName || !entityName) return
+  [() => props.projectName, selectedEntity, selectedEntityHasBusinessKeys],
+  async ([projectName, entityName, hasBusinessKeys]) => {
+    if (!projectName || !entityName || !hasBusinessKeys) return
     try {
       await reconciliationStore.loadMappingData(projectName, entityName)
     } catch (e) {
@@ -774,6 +833,7 @@ function reportPreviewFailure(e: any) {
 async function ensurePreviewLoaded() {
   if (activeTab.value !== 'reconcile') return
   if (!selectedEntity.value || !selectedTarget.value || !entitySpec.value) return
+  if (!selectedEntityHasBusinessKeys.value) return
 
   const key = currentPreviewKey()
   if (key === previewLoadedKey || key === previewInFlightKey) return

@@ -10,7 +10,7 @@ database connections are available.
 From the repository root, run:
 
 ```bash
-uv run python scripts/validate_project.py path/to/shapeshifter.yml \
+uv run python scripts/project/validate_project.py path/to/shapeshifter.yml \
   --workflow structural --log-level ERROR
 ```
 
@@ -126,14 +126,14 @@ validation if the required files, environment variables, and external data
 sources are available:
 
 ```bash
-uv run python scripts/validate_project.py path/to/shapeshifter.yml \
+uv run python scripts/project/validate_project.py path/to/shapeshifter.yml \
   --workflow data --log-level ERROR
 ```
 
 When a target model is configured, validate conformance as well:
 
 ```bash
-uv run python scripts/validate_project.py path/to/shapeshifter.yml \
+uv run python scripts/project/validate_project.py path/to/shapeshifter.yml \
   --workflow target-model-conformance --log-level ERROR
 ```
 

@@ -18,14 +18,15 @@ from src.model import ShapeShiftProject
 
 # backend/tests/test_data is a symlink to the repository level tests/test_data.
 BACKEND_TESTS_DIR = Path(__file__).resolve().parents[2]
-PROJECT_PATH = Path("data/projects/arbodat/shapeshifter.yml")
+PROJECT_PATH = Path("projects/arbodat/shapeshifter.yml")
 
 
 @pytest.fixture(scope="module", name="arbodat_project")
-def _arbodat_project() -> ShapeShiftProject:
+def _arbodat_project(local_data_directory: Path) -> ShapeShiftProject:
     """Load the real arbodat project once for all tests in this module."""
-    assert PROJECT_PATH.exists(), f"Test project file not found: {PROJECT_PATH}"
-    return ShapeShiftProject.from_file(str(PROJECT_PATH), env_file="data/test.env")
+    project_path = local_data_directory / PROJECT_PATH
+    assert project_path.exists(), f"Test project file not found: {project_path}"
+    return ShapeShiftProject.from_file(str(project_path), env_file=str(local_data_directory / "test.env"))
 
 
 class TestProjectMapperIntegration:

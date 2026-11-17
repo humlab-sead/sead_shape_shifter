@@ -6,7 +6,7 @@ repos:
   #     - id: ruff
   #       args: [--fix, --exit-non-zero-on-fix]
   - repo: https://github.com/psf/black
-    rev: 25.12.0
+    rev: 26.10.1
     hooks:
       - id: black
         language_version: python3.13
@@ -16,3 +16,11 @@ repos:
       - id: isort
         args: ["--profile", "black", "--line-length", "142"]
         language_version: python3.13
+  - repo: local
+    hooks:
+      - id: protected-branch-commit
+        name: Block protected-path commits on protected branches
+        entry: bash scripts/ci/verify_promotion_provenance.sh --check-local-commit
+        language: system
+        pass_filenames: false
+        always_run: true

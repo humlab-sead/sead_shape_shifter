@@ -19,7 +19,9 @@ from backend.app.ingesters.protocol import (
     ValidationResult,
 )
 from backend.app.ingesters.registry import get_ingester_registry
+from backend.app.mappers.output_expectation_mapper import OutputExpectationMapper
 from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.models.execute import OutputExpectationResult
 from backend.app.models.ingester import IngestResponse, ProjectIngesterRequest, ValidateResponse
 from backend.app.models.project import Project
 from backend.app.services.ingester_runtime import inject_ingester_database_dependencies, inject_ingester_runtime_dependencies
@@ -125,11 +127,36 @@ class ProjectIngesterService:
             drop_foreign_keys=request.drop_foreign_keys,
             default_entity=request.default_entity,
             env_file=None,
+            check_output_expectations=True,
         )
+        evaluation = shapeshifter.output_expectation_evaluation
+        expectation_results = OutputExpectationMapper.to_api_results(evaluation)
+        if evaluation is not None and not evaluation.passed:
+            failed_reasons = [result.failure_reason for result in expectation_results if result.failure_reason]
+            logger.error(
+                "Project '{}' failed output expectation checks: {} of {} checks",
+                project_name,
+                len(failed_reasons),
+                len(expectation_results),
+            )
+            return self._ingestion_failure(
+                "Output expectation checks failed; no tables were ingested.",
+                failed_reasons or ["One or more output expectations did not match the measured output."],
+                expectation_results,
+            )
+
+        if shapeshifter.incomplete_entities:
+            logger.error("Project '{}' produced incomplete output: {}", project_name, shapeshifter.incomplete_entities)
+            return self._ingestion_failure(
+                "Full-run output is incomplete; no tables were ingested.",
+                [self._incomplete_output_detail(shapeshifter.incomplete_entities)],
+                expectation_results,
+            )
+
         try:
             config = self._attach_local_only_approvals(key, project_name, config, shapeshifter.mapping_catalog)
         except ProjectIngesterConfigurationError as exc:
-            return self._ingestion_failure("Ingestion configuration failed", [str(exc)])
+            return self._ingestion_failure("Ingestion configuration failed", [str(exc)], expectation_results)
         tables = shapeshifter.table_store
         self._log_table_counts(project_name, tables)
         ingester: TableSourceIngester = ingester_class(config=config)
@@ -152,6 +179,7 @@ class ProjectIngesterService:
             run_id=result.run_id,
             deploy_artifact=result.deploy_artifact,
             pending_confirmation_report=result.pending_confirmation_report,
+            output_expectation_results=expectation_results,
         )
 
     def _guard_project_call(self, authorized_project: AuthorizedResource, request: ProjectIngesterRequest) -> str:
@@ -422,7 +450,17 @@ class ProjectIngesterService:
         )
 
     @staticmethod
-    def _ingestion_failure(message: str, errors: list[str]) -> IngestResponse:
+    def _incomplete_output_detail(incomplete_entities: dict[str, str]) -> str:
+        """Describe incomplete entities that block a full project-table write."""
+        details = "; ".join(f"entity '{entity}': {reason}" for entity, reason in incomplete_entities.items())
+        return f"Full-run output is incomplete and was not ingested: {details}"
+
+    @staticmethod
+    def _ingestion_failure(
+        message: str,
+        errors: list[str],
+        output_expectation_results: list[OutputExpectationResult] | None = None,
+    ) -> IngestResponse:
         """Build a failed response without a bundle or output path."""
         return IngestResponse(
             success=False,
@@ -430,6 +468,7 @@ class ProjectIngesterService:
             message=message,
             output_path=None,
             error_details="\n".join(errors),
+            output_expectation_results=output_expectation_results or [],
         )
 
 

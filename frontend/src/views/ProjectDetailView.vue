@@ -607,12 +607,16 @@
 
           <!-- Reconciliation Tab -->
           <v-window-item value="reconciliation">
-            <reconciliation-view :project-name="projectName" />
+            <reconciliation-view v-if="isTabVisited('reconciliation')" :project-name="projectName" />
           </v-window-item>
 
           <!-- Data Sources Tab -->
           <v-window-item value="data-sources">
-            <project-data-sources :project-name="projectName" @updated="handleDataSourcesUpdated" />
+            <project-data-sources
+              v-if="isTabVisited('data-sources')"
+              :project-name="projectName"
+              @updated="handleDataSourcesUpdated"
+            />
           </v-window-item>
 
           <!-- Validation Tab -->
@@ -636,12 +640,12 @@
 
           <!-- Metadata Tab -->
           <v-window-item value="metadata">
-            <metadata-editor :project-name="projectName" />
+            <metadata-editor v-if="isTabVisited('metadata')" :project-name="projectName" />
           </v-window-item>
 
           <!-- Files Tab -->
           <v-window-item value="files">
-            <project-file-upload-card :project-name="projectName" />
+            <project-file-upload-card v-if="isTabVisited('files')" :project-name="projectName" />
           </v-window-item>
 
           <!-- Dispatch Tab -->
@@ -659,7 +663,11 @@
                   </div>
                 </v-alert>
 
-                <ingester-form :project-name="projectName" :project-loading="projectLoading" />
+                <ingester-form
+                  v-if="isTabVisited('dispatch')"
+                  :project-name="projectName"
+                  :project-loading="projectLoading"
+                />
               </v-card-text>
             </v-card>
           </v-window-item>
@@ -1101,6 +1109,16 @@ const {
 
 // Local state
 const activeTab = ref('entities')
+
+// Tabs whose content loads data in onMounted. Their content mounts only after the
+// operator first opens the tab, so opening a project does not run reconciliation,
+// data-source, metadata, file, or ingester loading for tabs nobody looked at.
+const visitedTabs = ref<Record<string, boolean>>({ [activeTab.value]: true })
+
+function isTabVisited(tab: string): boolean {
+  return visitedTabs.value[tab] === true
+}
+
 const activeYamlSubTab = ref('project-yaml')
 const showBackupsDialog = ref(false)
 const showExecuteDialog = ref(false)
@@ -2656,6 +2674,8 @@ watch(
 
 // Watch for tab changes to load YAML when YAML tab is activated
 watch(activeTab, async (newTab) => {
+  visitedTabs.value[newTab] = true
+
   if (newTab === 'yaml' && rawYamlContent.value === null) {
     await handleLoadYaml()
   }

@@ -2,6 +2,210 @@
 
 This directory contains CLI scripts for Shape Shifter workflows.
 
+**New here?** [Layout](#layout) explains the folders, [Script Index](#script-index)
+lists every script with one line of purpose, and the sections after the index
+give options and worked examples.
+
+## Layout
+
+Scripts are grouped by who runs them and when:
+
+| Folder | Purpose | Examples |
+| --- | --- | --- |
+| `_shared/` | Import bootstrap and environment-file helpers used by the scripts below | `paths.py`, `env.py` |
+| `ci/` | Checks run by `make` and CI | `check_doc_links.sh`, `verify_promotion_provenance.sh` |
+| `workflow/` | Pull request, promotion, and release automation | `create_change_pr.py`, `update_pr_descriptions.py`, `generate_whats_new.py` |
+| `project/` | Shape Shifter project configuration and data tooling | `validate_project.py`, `sort_project_yaml.py`, `auto_reconcile.py` |
+| `target_model/` | Target-model generation, export, and audits | `print_target_model_entity.py`, `export_target_tables.py` |
+| `dev/` | Diagnostics and local test infrastructure run on demand | `profile_normalization.py`, `spinup_disposable_postgres.py` |
+| `postgres/` | Role setup and grant verification assets | `create-readonly-role.sh` |
+| `tests/` | Tests for the scripts, mirroring the folders above | `tests/workflow/test_create_change_pr.py` |
+
+Run scripts from the repository root, for example
+`uv run python scripts/project/validate_project.py <project>`. Each folder is a
+package, so `scripts.project.sort_project_yaml` is importable and backs the
+`sort-project` console script.
+
+## Shared Setup
+
+`scripts/_shared/` holds the two things that more than one script needs. Import
+from the concrete module, so a script that only needs the repository root does
+not pull in the environment-file dependencies:
+
+```python
+from scripts._shared.paths import REPO_ROOT
+from scripts._shared.env import apply_env_files
+```
+
+- `REPO_ROOT` is the repository root, derived from the package location, so a
+  script keeps working when it moves between the folders above.
+- `apply_env_files()` merges environment files with a per-file override flag.
+- `load_local_env()` copies only the named keys from a file into `os.environ`.
+
+### Running a script
+
+Run scripts inside the project environment, from the repository root:
+
+```bash
+uv run python scripts/project/validate_project.py <project>   # or: make <target>
+```
+
+That environment installs the repository in editable mode, so `src`, `backend`,
+`ingesters`, and `scripts` are all importable from any directory; a script needs
+no `sys.path` changes of its own.
+
+If you invoke a script with an interpreter that has no such install, the module
+imports fail before the script runs. Set the path explicitly instead:
+
+```bash
+PYTHONPATH=. python scripts/target_model/generate_target_model_docs.py <model.yml>
+```
+
+`scripts/` is formatted and ruff-checked by `make tidy` and `make ruff`. It is
+not yet part of `make pylint`. Most of the remaining messages are
+`import-outside-toplevel` in the diagnostic scripts, which defer imports until
+they have set up the environment they need. That is intentional, so pylint stays
+off the folder until its configuration can express the intent instead of
+suppressing it file by file.
+
+## Script Index
+
+Every script, in folder order. Sections further down give the options and
+worked examples.
+
+### `ci/`
+
+| Script | Purpose |
+| --- | --- |
+| `check_doc_links.sh` | Report relative Markdown links that no longer resolve inside `README.md`, `docs/*.md`, and `deployment/container/*.md`. |
+| `verify_promotion_provenance.sh` | Fail a promotion when a commit on a protected path reached the source branch without its own pull request. |
+
+### `workflow/`
+
+| Script | Purpose |
+| --- | --- |
+| `create_change_pr.py` | Move uncommitted work onto a branch, commit, push, open a pull request into `dev`, and merge it. |
+| `update_pr_descriptions.py` | Draft and publish pull request title and body files from `docs/whats-new/PRs/`. |
+| `draft_all_pr_descriptions.py` | Draft descriptions for many pull requests in batches by driving `update_pr_descriptions.py`. |
+| `generate_whats_new.py` | Build a versioned What's New note and the rolling `PENDING.md` snapshot from merged pull requests. |
+| `generate_user_release_notes.py` | Build a release-note draft from `CHANGELOG.md` entries. |
+| `prepare_copilot_release_notes.py` | Produce a heuristic release-note draft plus a ready-to-paste Copilot CLI prompt. |
+| `promote_dev_to_staging.sh` | Verify provenance, open a draft promotion pull request, and prepare its description. |
+
+### `project/`
+
+| Script | Purpose |
+| --- | --- |
+| `validate_project.py` | Run structural, data, and target-model conformance validation for one project file. |
+| `sort_project_yaml.py` | Re-order entity keys the way a full project save does, to remove key-order noise from diffs. |
+| `generate_schemas.py` | Generate the frontend Monaco JSON schemas from the backend Pydantic models. |
+| `auto_reconcile.py` | Run the entity reconciliation workflow from the command line. |
+| `record_sims_site_no_match.py` | Record a reviewer-approved site no-match in a project after checking the source row and saved mapping. |
+
+### `target_model/`
+
+| Script | Purpose |
+| --- | --- |
+| `print_target_model_entity.py` | Print one entity specification from a target model YAML file. |
+| `generate_target_model_schema_reference.py` | Generate or check `docs/TARGET_MODEL_SCHEMA_REFERENCE.md` from the Pydantic schema. |
+| `generate_target_model_docs.py` | Render target-model documentation as HTML, Markdown, Excel, or a SIMS reference. |
+| `generate_project_template.py` | Build a starter `shapeshifter.yml` scaffold from a target model. |
+| `export_target_tables.py` | Export target-model entities from a PostgreSQL schema to one Excel workbook. |
+| `export_types_tables.py` | Export every `*_types` table from a PostgreSQL schema to one Excel workbook. |
+| `review_staging_id_generators.py` | Report whether deployed ID generators can allocate IDs at deploy time. Read-only audit. |
+| `compare_target_models.py` | Compare conformance validation results between two target models. |
+
+### `dev/`
+
+| Script | Purpose |
+| --- | --- |
+| `profile_normalization.py` | Profile normalization: per-entity wall time plus `cProfile` summaries. |
+| `profile_validation.py` | Profile full data validation for the Arbodat test project. |
+| `profile_workflow.py` | Profile the access-database CSV workflow end to end. |
+| `profile_projects_listing.py` | Profile the backend path behind `GET /projects`. |
+| `spinup_disposable_postgres.py` | Start, inspect, and remove a loopback disposable PostgreSQL container for integration tests. |
+| `install-uncanccess.sh` | Download the UCanAccess JDBC package into `lib/ucanaccess/`. |
+| `archie` | Archive a directory to `archive/<name>_<timestamp>.tar.gz`. |
+| `graphify-to-wiki.py` | Convert `graphify-out/graph.json` into graphify wiki pages. |
+
+### `postgres/`
+
+| Script | Purpose |
+| --- | --- |
+| `create-readonly-role.sh` | Create a least-privilege read-only role for a schema. |
+| `test-readonly-role.sh` | Verify that a read-only role can read one table and cannot write, change schema, grant, or copy. |
+| `configure_readonly_role.sql` | SQL template used by `create-readonly-role.sh`. |
+
+## Documentation Link Checking
+
+`scripts/ci/check_doc_links.sh` reports relative Markdown links that do not
+resolve. It scans `README.md`, the documents directly in `docs/`, and the
+documents directly in `deployment/container/` — deeper folders such as
+`docs/proposals/` are out of scope. Links and image targets inside fenced code
+blocks are skipped, because link syntax shown as an example is documentation,
+not a link.
+
+```bash
+# Same check as `make check-doc-links`
+scripts/ci/check_doc_links.sh
+```
+
+Broken links print to standard error as `Broken link: <document> -> <link>` and
+the script exits 1. `make lint` runs it, so a broken link fails the standard
+quality gate.
+
+## Read-Only PostgreSQL Role
+
+`scripts/postgres/` holds the least-privilege role setup and its verification
+check. Both shell scripts take their options on the command line; connection
+details come from `psql` itself through `~/.pgpass`, `PGPASSFILE`,
+`PGPASSWORD`, or an interactive prompt, so no credential is written into a file
+in the repository.
+
+```bash
+# Create the role, owned objects excluded and no schema CREATE
+scripts/postgres/create-readonly-role.sh \
+  --role ss_ro_test --database ss_ro_test --schema public
+
+# Verify the role reads one table and cannot write, change schema, grant, or copy
+scripts/postgres/test-readonly-role.sh \
+  --role ss_ro_test --database ss_ro_test --schema public \
+  --table tbl_site --column site_id
+```
+
+`create-readonly-role.sh` runs the statements in
+`configure_readonly_role.sql`. `test-readonly-role.sh` connects as an
+administrator, switches to the role with `SET ROLE`, and then checks the role's
+effective privileges. It exits 2 on a usage error.
+
+## Local Environment Helpers
+
+Three helpers support local setup and housekeeping rather than a Shape Shifter
+workflow.
+
+```bash
+# Install the UCanAccess JDBC package into lib/ucanaccess/ (requires a Java JRE)
+scripts/dev/install-uncanccess.sh
+
+# Archive a directory, optionally removing the original afterwards
+scripts/dev/archie <folder>
+scripts/dev/archie -d <folder>
+
+# Rebuild the graphify wiki pages from the current graph
+uv run python scripts/dev/graphify-to-wiki.py
+```
+
+`install-uncanccess.sh` downloads the current UCanAccess release from
+SourceForge and unpacks it into `lib/ucanaccess/`, replacing any earlier copy.
+The Access-database loaders read their JAR files from that directory.
+
+`archie` writes `archive/<folder>_<YYYYmmddHHMMSS>.tar.gz` and leaves the
+original directory in place unless `-d` is given. It takes no other options.
+
+`graphify-to-wiki.py` reads `graphify-out/graph.json` and writes the wiki pages
+graphify uses for navigation. Run it from the repository root, after
+`graphify update`.
+
 ## Disposable PostgreSQL Container
 
 `spinup_disposable_postgres.py` starts a throwaway PostgreSQL container with podman
@@ -11,14 +215,14 @@ their own schemas in it.
 
 ```bash
 # Start (or reuse) the container and print the export lines
-uv run python scripts/spinup_disposable_postgres.py up
+uv run python scripts/dev/spinup_disposable_postgres.py up
 
 # Print only the export lines, for eval
-eval "$(uv run python scripts/spinup_disposable_postgres.py env)"
+eval "$(uv run python scripts/dev/spinup_disposable_postgres.py env)"
 
 # Check container readiness, then remove the container and its data
-uv run python scripts/spinup_disposable_postgres.py status
-uv run python scripts/spinup_disposable_postgres.py down
+uv run python scripts/dev/spinup_disposable_postgres.py status
+uv run python scripts/dev/spinup_disposable_postgres.py down
 ```
 
 The same actions are available as Make targets: `make pg-disposable-up`,
@@ -36,18 +240,90 @@ comparisons. `cProfile` cumulative times can include time spent awaiting async w
 
 ```bash
 # Profile the default project
-uv run python scripts/profile_normalization.py
+uv run python scripts/dev/profile_normalization.py
 
 # Save a profile for interactive inspection
-uv run python scripts/profile_normalization.py --out tmp/copy_strucke_MS.prof
+uv run python scripts/dev/profile_normalization.py --out tmp/copy_strucke_MS.prof
 uv run snakeviz tmp/copy_strucke_MS.prof
 
 # Profile another project configuration
-uv run python scripts/profile_normalization.py --project data/projects/example/shapeshifter.yml
+uv run python scripts/dev/profile_normalization.py --project data/projects/example/shapeshifter.yml
 ```
 
 The script loads `data/test.env` and `data/.env` using the same precedence as
 `profile_validation.py`.
+
+## Profiling Validation
+
+`profile_validation.py` follows the data-validation test: it normalizes the
+Arbodat test project, then runs the data validators against the normalized table
+store. It reports elapsed time and the most expensive functions.
+
+```bash
+# Text report to stdout
+uv run python scripts/dev/profile_validation.py
+
+# Flamegraph via flameprof (pip install flameprof)
+uv run python scripts/dev/profile_validation.py --svg
+
+# Save a profile for snakeviz or py-spy
+uv run python scripts/dev/profile_validation.py --out validation.prof
+```
+
+The project is fixed to `tests/test_data/projects/arbodat/shapeshifter.yml`, so
+there is no `--project` option. Both this script and `profile_normalization.py`
+merge `data/test.env` first without replacing exported values, then
+`data/.env` as an override.
+
+## Profiling the Access-Database Workflow
+
+`profile_workflow.py` mirrors the Arbodat access-database workflow test: it
+loads the project, runs the workflow into `tmp/arbodat-profile-run`, and prints
+`cProfile` statistics.
+
+```bash
+# Text report to stdout
+uv run python scripts/dev/profile_workflow.py
+
+# Flamegraph via flameprof
+uv run python scripts/dev/profile_workflow.py --svg
+
+# Save a profile for snakeviz or py-spy
+uv run python scripts/dev/profile_workflow.py --out my.prof
+```
+
+The script reads its arguments from `sys.argv` directly rather than through
+`argparse`, so `--help` does not print usage; an unknown argument is ignored and
+the profile runs. The project file and output directory are fixed at the top of
+the script. A Java runtime is required, because the Access loader starts a JVM.
+
+## Profiling the Project Listing
+
+`profile_projects_listing.py` measures the backend work behind `GET /projects`,
+which is slow on its first visit. It runs the real
+`ProjectService.list_authorized_projects()` against a project directory and
+reports wall time for directory scanning, `list_projects()`, and the
+authorization loop, plus a per-file breakdown of the heaviest projects.
+
+```bash
+# Text report, three runs (first is cold, the rest warm)
+uv run python scripts/dev/profile_projects_listing.py
+
+# Compare against a single real service call
+uv run python scripts/dev/profile_projects_listing.py --verify
+
+# Profile with cProfile and keep the statistics
+uv run python scripts/dev/profile_projects_listing.py --cprofile --out listing.prof
+
+# Machine-readable summary
+uv run python scripts/dev/profile_projects_listing.py --json > listing-508.json
+```
+
+`--runs` sets the run count (default 3) and `--top` sets how many files the
+per-file table shows (default 20). `--verbose` keeps application log output,
+which the script silences by default. This covers the backend only: if the
+endpoint is fast here but the page is still slow, the remaining time is frontend
+bundle loading or row rendering.
 
 ## Normalizing Entity Key Order
 
@@ -68,7 +344,7 @@ Without an activated virtualenv, run it through `uv` or the module path:
 
 ```bash
 uv run sort-project --inplace data/projects/example/shapeshifter.yml
-uv run python scripts/sort_project_yaml.py data/projects/example/shapeshifter.yml
+uv run python scripts/project/sort_project_yaml.py data/projects/example/shapeshifter.yml
 ```
 
 The script reformats only; it runs no project validation. The `sort-project` command
@@ -80,10 +356,172 @@ that after changing `[project.scripts]` in `pyproject.toml`.
 `print_target_model_entity.py` prints one entity specification from a target model YAML file:
 
 ```bash
-python scripts/print_target_model_entity.py \
+python scripts/target_model/print_target_model_entity.py \
   --spec resources/target_models/sead_standard_model.yml \
   --entity data_type
 ```
+
+`--spec` also accepts the alias `--target-model`. Unknown entity names print the
+available names and exit 1.
+
+## Generating the Frontend Schemas
+
+`generate_schemas.py` builds JSON Schema Draft 7 files from the backend Pydantic
+models so the Monaco YAML editor can autocomplete project files. The schemas
+drive autocomplete only; validation happens in the backend against the actual
+models.
+
+```bash
+# Regenerate and write into frontend/src/schemas/
+make generate-schemas
+
+# Fail when a committed schema is out of date (CI, and part of `make lint`)
+make check-schemas
+```
+
+Running the script directly gives the same three modes:
+`--check`, `--print`, and a plain write.
+
+```bash
+uv run python scripts/project/generate_schemas.py
+uv run python scripts/project/generate_schemas.py --check
+uv run python scripts/project/generate_schemas.py --print
+```
+
+Edit the Pydantic models and regenerate. Do not hand-edit the JSON files.
+
+## Generating the Target Model Schema Reference
+
+`generate_target_model_schema_reference.py` writes
+`docs/TARGET_MODEL_SCHEMA_REFERENCE.md`, a Markdown list of the YAML sections
+and keys the strict target-model schema accepts.
+
+```bash
+# Regenerate the reference
+make generate-target-model-schema-reference
+
+# Fail when the committed file is out of sync (part of `make lint`)
+make check-target-model-schema-reference
+```
+
+`--print` sends the rendered Markdown to standard output, and `--output` writes
+to a different path. `--check` prints a unified diff to standard error when the
+committed file differs.
+
+## Other Target Model Tools
+
+### `generate_target_model_docs.py`
+
+Renders target-model documentation from a model YAML file.
+
+```bash
+# All formats
+uv run python scripts/target_model/generate_target_model_docs.py \
+  resources/target_models/sead_standard_model.yml
+
+# One format
+uv run python scripts/target_model/generate_target_model_docs.py \
+  resources/target_models/sead_standard_model.yml --format html --output-dir /tmp/model-docs
+```
+
+`--format` accepts `html`, `markdown`, `excel`, `sims`, or `all` (the default).
+Output goes to `docs/generated` unless `--output-dir` is given. This is a thin
+CLI wrapper around `src.target_model.TargetModelDocumentGenerator`; the
+rendering logic lives in `src/` so the backend can reuse it.
+
+### `generate_project_template.py`
+
+Builds a starter `shapeshifter.yml` scaffold from a target model, for starting a
+new project from the standard model rather than from a blank file.
+
+```bash
+uv run python scripts/target_model/generate_project_template.py \
+  --spec resources/target_models/sead_standard_model.yml \
+  --entity site \
+  --output /tmp/new-project-shapeshifter.yml
+```
+
+Without `--output` the scaffold is written to standard output. `--domain` and
+`--entity` are repeatable filters; `--project-name` overrides the generated
+metadata name.
+
+### `export_target_tables.py`
+
+Exports target-model entities from a live PostgreSQL schema into one Excel
+workbook, one sheet per entity, for review and annotation.
+
+```bash
+# Default: lookup and classifier roles in the standard model
+make export-target-tables
+
+# Explicit roles and output path
+uv run python scripts/target_model/export_target_tables.py output/tables.xlsx \
+  --role lookup --role classifier
+```
+
+`--model` selects a different target-model file, and `--role` is repeatable
+(`bridge`, `classifier`, `fact`, `lookup`); omitting it exports every role.
+Connection settings default to the vault file
+`~/vault/sead_staging@staging_cluster` and `--host`, `--port`, `--dbname`, and
+`--user` override single values from it.
+
+### `export_types_tables.py`
+
+Exports every table named `*_types` in a schema to an Excel workbook. It is the
+narrower companion to `export_target_tables.py` and does not read a target
+model.
+
+```bash
+uv run python scripts/target_model/export_types_tables.py output/types.xlsx
+uv run python scripts/target_model/export_types_tables.py output/types.xlsx --schema sead_staging
+```
+
+`--schema` defaults to `public`. Sheet names drop the `tbl_` prefix and are
+truncated to Excel's 31-character limit. Connection defaults match
+`export_target_tables.py`.
+
+### `review_staging_id_generators.py`
+
+Reports whether the deployed ID generators behind target-model aggregate
+children can allocate IDs at deploy time. Supported means a positive,
+non-cycling sequence with `CACHE 1` and a usable column default or identity
+mode. An enabled insert trigger is reported for manual review, because catalog
+metadata cannot show whether it rewrites IDs.
+
+```bash
+PGUSER=sead_ro PGDATABASE=sead_staging PGHOST=db.example.test \
+  uv run python scripts/target_model/review_staging_id_generators.py \
+  resources/target_models/sead_standard_model.yml
+
+# Machine-readable output
+uv run python scripts/target_model/review_staging_id_generators.py \
+  resources/target_models/sead_standard_model.yml --json
+```
+
+The audit is read-only: it opens a `default_transaction_read_only=on` session
+and never calls `nextval`. Sequence mutation and lock checks belong on a
+disposable clone. Connection settings come from the libpq environment; `--host`,
+`--port`, `--dbname`, and `--user` override them, and `--schema` restricts which
+tables are resolved.
+
+Exit status is 0 when every candidate is supported and 1 when any candidate is
+unsupported or needs manual review, so a release check can fail on it.
+
+### `compare_target_models.py`
+
+Runs the target-model conformance validator against the Arbodat test project for
+two model files and prints the difference in reported errors. Supply separate
+paths for the original and extended models; the script prints each model's
+name, version, and path. The Arbodat project path is fixed.
+
+```bash
+uv run python scripts/target_model/compare_target_models.py \
+  --original-model path/to/original_model.yml \
+  --extended-model path/to/extended_model.yml
+```
+
+The two options are required and must refer to different files. Use `--help` to
+see the command-line options.
 
 ## Release Notes Drafting
 
@@ -95,7 +533,7 @@ Promotion pull requests carry the `<!-- promotion-pr -->` marker and contribute 
 Generate a release draft manually with:
 
 ```bash
-python3 scripts/generate_whats_new.py --version X.Y.Z
+python3 scripts/workflow/generate_whats_new.py --version X.Y.Z
 ```
 
 Use `--current-ref`, `--previous-tag`, or `--source-branches` when you need a custom release window.
@@ -113,7 +551,7 @@ Use provider type `openai` or `openai-compatible` and an API-root base URL, such
 For a changelog-based draft and Copilot CLI prompt:
 
 ```bash
-python3 scripts/prepare_copilot_release_notes.py --version X.Y.Z
+python3 scripts/workflow/prepare_copilot_release_notes.py --version X.Y.Z
 ```
 
 ## `update_pr_descriptions.py`
@@ -122,25 +560,25 @@ python3 scripts/prepare_copilot_release_notes.py --version X.Y.Z
 
 ```bash
 # Draft into docs/whats-new/PRs/PR_<number>.txt
-python3 scripts/update_pr_descriptions.py 620-634 --draft
+python3 scripts/workflow/update_pr_descriptions.py 620-634 --draft
 
 # Override the detected included pull requests for a promotion
-python3 scripts/update_pr_descriptions.py 627 --draft --included-prs 621,626
+python3 scripts/workflow/update_pr_descriptions.py 627 --draft --included-prs 621,626
 
 # Record commits that reached the base branch without a pull request
-python3 scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned
+python3 scripts/workflow/update_pr_descriptions.py 620-634 --draft --include-orphaned
 
 # Remove terminal escape sequences from existing drafts, without publishing
-python3 scripts/update_pr_descriptions.py 620-634 --clean-drafts
+python3 scripts/workflow/update_pr_descriptions.py 620-634 --clean-drafts
 
 # List every detected commit instead of filtering housekeeping
-python3 scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned --show-all-orphaned
+python3 scripts/workflow/update_pr_descriptions.py 620-634 --draft --include-orphaned --show-all-orphaned
 
 # Publish the reviewed files
-python3 scripts/update_pr_descriptions.py 620-634 --publish
+python3 scripts/workflow/update_pr_descriptions.py 620-634 --publish
 ```
 
-Promotion pull requests (`dev` into `staging`, or `staging` into `main`) are drafted from branch history without a model, listing the pull requests merged into the source branch and absent from the target branch.
+Promotion pull requests (`dev` into `staging`, or `staging` into `main`) are drafted from branch history without a model, listing the pull requests merged into the source branch and absent from the target branch. Issues resolved by those pull requests are listed as `Closes #<issue>` lines in `Summary`, so merging the promotion into `main` closes them; they are kept out of `Included PRs`, which the release generator reads as pull request numbers. GitHub records no closing reference for a pull request into `dev`, so the issues come from `Closes` lines at the start of a line in each included pull request's `Summary`, with any recorded reference used as well. A keyword quoted inside a sentence is ignored.
 
 `--include-orphaned` appends a `Detected orphaned commits` section covering the commits pushed to the base branch between the previous merged pull request and this one. Generated output, release bookkeeping, documentation-only commits, and contributor configuration are filtered out of that section by default, and the filtered counts stay visible in the section and on standard error. See [the What's New workflow](../docs/whats-new/README.md#recording-commits-without-a-pull-request).
 
@@ -155,7 +593,7 @@ Promotion pull requests (`dev` into `staging`, or `staging` into `main`) are dra
 
 ```bash
 # Show the branch, commit message, file list, and pull request body first
-uv run python scripts/create_change_pr.py \
+uv run python scripts/workflow/create_change_pr.py \
   --type chore --scope deps \
   --subject "upgrade dev tooling and adapt code to new checks" \
   --path uv.lock --path src/loaders --path src/specifications \
@@ -163,30 +601,35 @@ uv run python scripts/create_change_pr.py \
   --dry-run
 
 # Create the branch, commit, push, open the pull request, and merge it
-uv run python scripts/create_change_pr.py \
+uv run python scripts/workflow/create_change_pr.py \
   --type chore --scope deps \
   --subject "upgrade dev tooling and adapt code to new checks" \
   --path uv.lock --path src/loaders --path src/specifications
 
 # Open the pull request and stop before merging
-uv run python scripts/create_change_pr.py \
+uv run python scripts/workflow/create_change_pr.py \
   --type fix --subject "reject blank entity keys" \
   --path src/validators --no-merge
 
 # Stage the whole working tree when every pending change is one logical commit
-uv run python scripts/create_change_pr.py \
+uv run python scripts/workflow/create_change_pr.py \
   --type feat --scope workflow \
   --subject "add script and skill for change pull requests" \
   --all --generate-description
 
 # Report the default pylint and pytest lines instead of typing them
-uv run python scripts/create_change_pr.py \
+uv run python scripts/workflow/create_change_pr.py \
   --type fix --subject "reject blank entity keys" \
   --path src/validators --default-validation
 
 # Let Copilot draft the commit subject from the pending diff
-uv run python scripts/create_change_pr.py \
+uv run python scripts/workflow/create_change_pr.py \
   --generate-subject --all --default-validation --dry-run
+
+# Record the issues this change resolves
+uv run python scripts/workflow/create_change_pr.py \
+  --type fix --subject "evaluate deferred extra columns before post-unnest fk linking" \
+  --path src --closes 695 --default-validation
 ```
 
 The script stages only the paths given with `--path`, so unrelated work stays
@@ -195,9 +638,16 @@ whole working tree is one logical commit; it is mutually exclusive with `--path`
 Both modes refuse the literal blanket values such as `.`, reject a dirty index,
 and refuse `staging` and `main` as targets because those are promotion branches.
 The pull request body uses the four sections required by
-[.github/pull_request_template.md](../.github/pull_request_template.md);
+[.github/pull_request_template.md](../github/pull_request_template.md);
 `--release-note`, `--upgrade-notes`, and `--validation` supply the content that
 the author knows, and the template fallback text is used otherwise.
+
+`--closes` records the issues a change resolves. It accepts `695` or `#695`,
+repeats one `Closes #<issue>` line per issue at the end of `Summary`, and adds
+the same lines to the commit message body. The body line gives the pull request
+a closing reference that the promotion description copies; the commit message
+line closes the issue when the commit reaches `main`. A pull request into `dev`
+closes nothing on its own, because `dev` is not the default branch.
 
 `--generate-description` runs `update_pr_descriptions.py` for the new pull
 request once it exists, so the Copilot-written description replaces the scaffold
@@ -230,19 +680,19 @@ subject it would use. A generation failure stops the run and asks for
 
 ```bash
 # Show the plan without writing anything
-python3 scripts/draft_all_pr_descriptions.py --dry-run
+python3 scripts/workflow/draft_all_pr_descriptions.py --dry-run
 
 # Draft every merged pull request that has no draft file yet
-python3 scripts/draft_all_pr_descriptions.py
+python3 scripts/workflow/draft_all_pr_descriptions.py
 
 # Redraft everything, newest first, in batches of 10
-python3 scripts/draft_all_pr_descriptions.py --force --newest-first --batch-size 10
+python3 scripts/workflow/draft_all_pr_descriptions.py --force --newest-first --batch-size 10
 
 # Retry a malformed model response up to three times per pull request
-python3 scripts/draft_all_pr_descriptions.py --attempts 3
+python3 scripts/workflow/draft_all_pr_descriptions.py --attempts 3
 
 # Include closed and open pull requests, newest first
-python3 scripts/draft_all_pr_descriptions.py --state all --newest-first
+python3 scripts/workflow/draft_all_pr_descriptions.py --state all --newest-first
 ```
 
 Enumerates pull requests with `gh pr list` and drives `update_pr_descriptions.py` with `--draft --include-orphaned`. Existing drafts are kept unless `--force` is given, so an interrupted run resumes and a later run retries only missing drafts. `--batch-size` controls how many pull requests each invocation receives. `--limit` caps the run size, `--fail-fast` stops after the first failing batch, and `--no-preflight` skips the Copilot configuration check for promotion-only sets. It never publishes. See [the What's New workflow](../docs/whats-new/README.md#drafting-every-pull-request).
@@ -252,10 +702,10 @@ Enumerates pull requests with `gh pr list` and drives `update_pr_descriptions.py
 ### Usage
 
 ```bash
-python3 scripts/prepare_copilot_release_notes.py --version 1.24.0
+python3 scripts/workflow/prepare_copilot_release_notes.py --version 1.24.0
 
 # List versions available in CHANGELOG.md
-python3 scripts/prepare_copilot_release_notes.py --list-versions
+python3 scripts/workflow/prepare_copilot_release_notes.py --list-versions
 ```
 
 ## `generate_whats_new.py`
@@ -270,7 +720,7 @@ make release-notes VERSION=2.5.0
 make release-notes-ai VERSION=2.5.0
 
 # Direct usage
-python3 scripts/generate_whats_new.py --version 2.5.0
+python3 scripts/workflow/generate_whats_new.py --version 2.5.0
 ```
 
 The script requires authenticated `gh` access to merged PRs. It replaces the versioned output file and refreshes `PENDING.md` on each run. See [the What's New workflow](../docs/whats-new/README.md).
@@ -290,13 +740,13 @@ make release-notes-missing-ai
 make release-notes-list
 
 # Generate release notes for all missing versions (heuristic mode)
-python3 scripts/generate_user_release_notes.py --generate-missing --force-heuristic
+python3 scripts/workflow/generate_user_release_notes.py --generate-missing --force-heuristic
 
 # Generate release notes for all missing versions (AI mode)
-python3 scripts/generate_user_release_notes.py --generate-missing
+python3 scripts/workflow/generate_user_release_notes.py --generate-missing
 
 # Generate release notes for a specific version
-python3 scripts/generate_user_release_notes.py --version 1.26.0 --force-heuristic
+python3 scripts/workflow/generate_user_release_notes.py --version 1.26.0 --force-heuristic
 ```
 
 ### What It Does
@@ -323,11 +773,11 @@ Fails a promotion when code changes were pushed straight to the source branch in
 
 ```bash
 # Check a dev into staging promotion before opening the pull request
-GH_TOKEN=$(gh auth token) scripts/verify_promotion_provenance.sh \
+GH_TOKEN=$(gh auth token) scripts/ci/verify_promotion_provenance.sh \
   --base origin/staging --head origin/dev
 
 # Check one explicit range
-scripts/verify_promotion_provenance.sh --base 7a90e566 --head f4c8a177
+scripts/ci/verify_promotion_provenance.sh --base 7a90e566 --head f4c8a177
 ```
 
 ### What It Does
@@ -340,6 +790,12 @@ scripts/verify_promotion_provenance.sh --base 7a90e566 --head f4c8a177
 ### Protected Paths
 
 `scripts/`, `src/`, `backend/`, `frontend/`, `ingesters/`, `tests/`, and `.github/workflows/`. Override with the colon-separated `PROTECTED_PATHS` environment variable, for example `PROTECTED_PATHS="src/:backend/"` to check only backend code.
+
+### Local Commit Hook
+
+The pre-commit hook rejects commits on `dev`, `staging`, or `main` when staged files use a protected path. It uses the same path list and `PROTECTED_PATHS` override as the promotion check. `make install` and `make sync` install the hook; run `make install-hooks` to install it separately.
+
+The hook is a local safeguard and can be bypassed with `git commit --no-verify`. The promotion guard remains the enforced check for pull requests into `staging` and `main`.
 
 ### Exit Codes
 
@@ -368,10 +824,10 @@ description from branch history:
 make promote-dev-to-staging
 
 # Or run the script directly
-scripts/promote_dev_to_staging.sh prepare
+scripts/workflow/promote_dev_to_staging.sh prepare
 
 # Review or edit docs/whats-new/PRs/PR_<number>.txt, then publish it
-scripts/promote_dev_to_staging.sh publish <pull-request-number>
+scripts/workflow/promote_dev_to_staging.sh publish <pull-request-number>
 ```
 
 The script requires authenticated `gh` access, the repository `.venv`, and an
@@ -386,12 +842,18 @@ If `dev` changes after the description draft is generated, regenerate and review
 the draft before publishing it:
 
 ```bash
-.venv/bin/python scripts/update_pr_descriptions.py <pull-request-number> --draft --force
+.venv/bin/python scripts/workflow/update_pr_descriptions.py <pull-request-number> --draft --force
 ```
 
-## Deployment Scripts
+## Deployment Scripts (kept outside this directory)
 
-These scripts package the deployment steps from the container deployment guide into reusable command-line helpers. They are host tools: run them from a repository checkout. They live in `deployment/container-host/`, outside the `deployment/container/` release bundle, so they are never shipped in a release archive.
+These scripts package the deployment steps from the container deployment guide
+into reusable command-line helpers. They are **not** part of `scripts/`: they
+live in `deployment/container-host/`, outside the `deployment/container/`
+release bundle, so they are never shipped in a release archive. They stay
+described here because they are run from a repository checkout in the same way.
+See [the container host guide](../deployment/container-host/README.md) for the
+project-copy and bundle behaviour that guide covers.
 
 ### `deploy_environment.sh`
 
@@ -428,28 +890,35 @@ deployment/container-host/deploy/install_systemd_service.sh shapeshifter-test
 
 ## Auto-Reconcile Script
 
-The `auto_reconcile.py` script runs the entity reconciliation workflow from the command line.
+`auto_reconcile.py` runs the entity reconciliation workflow from the command
+line. It loads the project's reconciliation catalog, asks the reconciliation
+service for candidates, and writes the proposed decisions back to that catalog.
+Review them in the web interface before exporting them to the mapping.
 
 ### Usage
 
 ```bash
-# Basic usage
-python scripts/auto_reconcile.py PROJECT_NAME ENTITY_NAME
+# Basic usage: the entity's only configured target field is used
+python scripts/project/auto_reconcile.py PROJECT_NAME ENTITY_NAME
 
 # Using make
 make reconcile ARGS="PROJECT_NAME ENTITY_NAME"
 
-# With custom threshold (0.90 = 90% confidence)
-python scripts/auto_reconcile.py my_project site --threshold 0.90
+# Name the target field when the entity has several configured fields
+python scripts/project/auto_reconcile.py my_project site --target-field site_name
+
+# With custom thresholds (0.90 = 90% confidence)
+python scripts/project/auto_reconcile.py my_project site --threshold 0.90 --review-threshold 0.40
 
 # With custom service URL
-python scripts/auto_reconcile.py my_project site --service-url http://localhost:8000
+python scripts/project/auto_reconcile.py my_project site --service-url http://localhost:8000
 
 # With verbose logging
-python scripts/auto_reconcile.py my_project site -v
+python scripts/project/auto_reconcile.py my_project site -v
 
 # All options combined
-python scripts/auto_reconcile.py my_project site \
+python scripts/project/auto_reconcile.py my_project site \
+    --target-field site_name \
     --threshold 0.90 \
     --max-candidates 5 \
     --service-url http://reconciliation:8000 \
@@ -458,33 +927,44 @@ python scripts/auto_reconcile.py my_project site \
 
 ### Options
 
-- `--threshold, -t`: Auto-accept threshold (0.0-1.0). Default: 0.95
+- `--target-field, -f`: Reconciliation target field. Default: the entity's only
+  configured field. An entity with several fields is reported instead of
+  guessed, so pass this option or reconcile each field separately.
+- `--threshold, -t`: Auto-accept threshold (0.0-1.0). Default: the value saved in
+  the specification.
+- `--review-threshold, -r`: Review threshold (0.0-1.0). Default: the value saved
+  in the specification.
 - `--max-candidates, -m`: Maximum candidates per query. Default: 3
 - `--service-url, -s`: Reconciliation service URL. Default: from settings
+- `--project-dir, -p`: Directory containing the project folders. Default:
+  `settings.PROJECTS_DIR`.
 - `--verbose, -v`: Enable verbose logging (DEBUG level)
 - `--help`: Show help message
+
+Omitting `--threshold` or `--review-threshold` keeps whatever the specification
+already holds, so a routine run does not silently change a tuned setting.
 
 ### Examples
 
 **Reconcile site entity with high confidence threshold:**
 ```bash
-python scripts/auto_reconcile.py arbodat_project site --threshold 0.98
+python scripts/project/auto_reconcile.py arbodat_project site --threshold 0.98
 ```
 
 **Reconcile with more candidate options:**
 ```bash
-python scripts/auto_reconcile.py arbodat_project taxon --max-candidates 10
+python scripts/project/auto_reconcile.py arbodat_project taxon --max-candidates 10
 ```
 
 **Use custom reconciliation service:**
 ```bash
-python scripts/auto_reconcile.py arbodat_project site \
+python scripts/project/auto_reconcile.py arbodat_project site \
     --service-url http://sead-reconciliation:8000
 ```
 
 **Debug reconciliation issues:**
 ```bash
-python scripts/auto_reconcile.py arbodat_project site -v
+python scripts/project/auto_reconcile.py arbodat_project site -v
 ```
 
 **Real workflow example:**
@@ -493,44 +973,41 @@ python scripts/auto_reconcile.py arbodat_project site -v
 curl http://localhost:8000/reconcile
 
 # 2. Run reconciliation with verbose output
-python scripts/auto_reconcile.py arbodat-test site --verbose
+python scripts/project/auto_reconcile.py arbodat-test site --verbose
 
 # 3. Review the results
-# Auto-accepted: matches with score >= 0.95 (default threshold)
-# Needs review: matches with score 0.8-0.95
-# Unmatched: no suitable candidates found
+# Decisions proposed: rows where a candidate was proposed for review
+# Unmatched: rows with no suitable candidates
+# Rows not reconciled: rows skipped for a data problem, with the reason
 
 # 4. Adjust threshold if needed and re-run
-python scripts/auto_reconcile.py arbodat-test site --threshold 0.90
+python scripts/project/auto_reconcile.py arbodat-test site --threshold 0.90
 ```
 
 ### Exit Codes
 
 - `0`: Success - reconciliation completed
-- `1`: Unexpected error
-- `2`: Warning - no queries processed
-- `3`: Warning - all queries unmatched
-- `4`: Entity not found in reconciliation config
-- `5`: Bad request (e.g., unsaved changes)
-- `6`: Service unavailable
+- `1`: Invalid argument, or an unexpected error
+- `2`: Warning - no rows were processed
+- `3`: Warning - every row was unmatched
+- `4`: Entity or target field not found in the reconciliation catalog
+- `5`: Bad request, including an entity with several target fields and no
+  `--target-field`
+- `6`: Reconciliation service unavailable
 
 ### Output
 
-The script provides formatted output showing:
-- Total queries processed
-- Auto-accepted matches (green)
-- Matches needing review (yellow)
-- Unmatched queries (red)
-- Acceptance rate percentage
-- Sample candidates (with `--verbose`)
+The report shows the target field used, the number of rows considered, the
+number of decisions proposed, the number of unmatched rows, the proposal rate,
+any rows that could not be reconciled with their reason, and sample candidates
+with `--verbose`.
 
 ### Requirements
 
-The script reuses the existing reconciliation service code and requires:
 - Python virtual environment activated
 - Backend dependencies installed (`uv pip install -e ".[api]"`)
-- Valid project configuration with reconciliation spec
-- Running reconciliation service (check with health endpoint)
+- A project with a reconciliation specification for the entity
+- A running reconciliation service (check the health endpoint first)
 
 ### Logging
 
@@ -561,7 +1038,7 @@ The `record_sims_site_no_match.py` script records an explicitly reviewed site no
 The script requires the reviewer to supply snapshot details, a reason, and a non-empty reconciliation evidence file. It defaults to a dry run. It only accepts `disposable` or `staging`; disposable runs must use a loopback API URL. Production is not supported.
 
 ```bash
-python scripts/record_sims_site_no_match.py \
+python scripts/project/record_sims_site_no_match.py \
   --base-url http://127.0.0.1:8012 \
   --environment disposable \
   --project my_project \
@@ -575,7 +1052,7 @@ python scripts/record_sims_site_no_match.py \
   --evidence tmp/site-reconciliation-review.json
 
 # After reviewing the dry-run checks:
-python scripts/record_sims_site_no_match.py \
+python scripts/project/record_sims_site_no_match.py \
   --base-url http://127.0.0.1:8012 \
   --environment disposable \
   --project my_project \

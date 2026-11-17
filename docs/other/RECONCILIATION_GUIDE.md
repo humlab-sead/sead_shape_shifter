@@ -73,7 +73,7 @@ The Reconciliation tab shows **Online** with a supported-type count when the bac
 Reconciliation data lives in a separate catalog file. Shape Shifter looks for it in the project folder:
 
 ```text
-data/projects/<project>/<project>-reconciliation.yml
+data/projects/<project>/shapeshifter.reconciliation.yml
 ```
 
 There is no `@include` entry and no `reconciliation:` block in `shapeshifter.yml`. When the file is missing, Shape Shifter starts with an empty catalog.
@@ -263,7 +263,7 @@ A row with no candidate, or only low-scoring candidates, needs a reviewer decisi
 Select **Export to Mapping** to copy accepted decisions into the mapping sidecar.
 
 - Each accepted candidate URI is checked against SEAD.
-- Valid decisions are written to `<project>-mapping.yml` with `source: reconciliation`, `committed_at`, and an owner recorded.
+- Valid decisions are written to `shapeshifter.mapping.yml` with `source: reconciliation`, `committed_at`, and an owner recorded.
 - A candidate reported as absent or invalid is not exported, and any older link owned by that specification for the same key is removed. The result names the key and the reason.
 - When the Authority Service is unavailable, the link is written with an empty `verified_at` and shown as unverified. Export again after recovery to retry the check.
 - Only links owned by that specification are updated; its stale owned links are removed. Manual links and unowned links are protected.
@@ -351,7 +351,7 @@ curl http://localhost:8000/reconcile
 curl http://localhost:8025/api/v1/reconciliation/health
 
 # The configured service URL
-grep service_url data/projects/my_project/my_project-reconciliation.yml
+grep service_url data/projects/my_project/shapeshifter.reconciliation.yml
 ```
 
 ### Every Row Is Unreviewable
@@ -377,7 +377,7 @@ A key is already owned by another specification, or the sidecar metadata does no
 ### Decisions Do Not Persist
 
 1. Check the browser console and the network tab for failed requests.
-2. Confirm `data/projects/<project>/<project>-reconciliation.yml` is writable.
+2. Confirm `data/projects/<project>/shapeshifter.reconciliation.yml` is writable.
 3. Reload the project and check that the decisions are listed again.
 
 ### Matching Looks Out of Date
@@ -499,9 +499,24 @@ All routes are under the `/api/v1` prefix. `{field}` is the search field name, s
 
 Neither candidate-search route accepts a candidate.
 
-### Command-Line Matching Currently Fails
+### Command-Line Matching
 
-`scripts/auto_reconcile.py` and the `make reconcile` target fail on import because the script uses model names that no longer exist (`EntityMapping`, `EntityMappingRegistry`). Use the web interface or the API routes above until the script is repaired.
+`scripts/project/auto_reconcile.py` and the `make reconcile` target run the same
+matching operation from a terminal:
+
+```bash
+# The entity's only configured target field is used
+uv run python scripts/project/auto_reconcile.py my_project site
+
+# Name the field when the entity has several, and override the saved thresholds
+uv run python scripts/project/auto_reconcile.py my_project site --target-field site_name --threshold 0.90
+```
+
+The script writes proposed decisions to the project's reconciliation catalog, so
+review them in the web interface before exporting them to the mapping. Exit
+status 4 means the entity or target field is not in the catalog, 5 means the
+entity has several target fields and none was named, and 6 means the
+reconciliation service is unreachable.
 
 ## Workflow Checklist
 

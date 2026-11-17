@@ -45,13 +45,13 @@ flowchart TB
 ```
 
 1. **Add notes to the change PR.** Complete `User-facing release note` and `Upgrade notes` in [the PR template](../../.github/pull_request_template.md). Use one or two plain-language sentences and the template's exact `None` text when a section does not apply.
-2. **List included PRs on promotions.** For `dev` to `staging` or `staging` to `main`, use [the promotion template](../../.github/promotion_pr_template.md), keep its `<!-- promotion-pr -->` marker, and list carried PRs under `Included PRs`. The release generator uses those PRs' notes instead of the promotion's.
-3. **Review the release draft.** At release, semantic-release runs `scripts/generate_whats_new.py`. The versioned note includes PRs shipped since the previous release. Every run also refreshes [`PENDING.md`](PENDING.md) with merged PRs not yet on `main`; the What's New page displays this snapshot above the versioned release archive. It is not part of a versioned note or GitHub release body.
+2. **List included PRs on promotions.** For `dev` to `staging` or `staging` to `main`, use [the promotion template](../../.github/promotion_pr_template.md), keep its `<!-- promotion-pr -->` marker, and list carried PRs under `Included PRs`. The release generator uses those PRs' notes instead of the promotion's. List issues the promotion resolves as `Closes #<issue>` lines in `Summary`; merging the promotion into `main` closes them, and issue references do not belong under `Included PRs`.
+3. **Review the release draft.** At release, semantic-release runs `scripts/workflow/generate_whats_new.py`. The versioned note includes PRs shipped since the previous release. Every run also refreshes [`PENDING.md`](PENDING.md) with merged PRs not yet on `main`; the What's New page displays this snapshot above the versioned release archive. It is not part of a versioned note or GitHub release body.
 
    To generate a draft manually:
 
    ```bash
-   python3 scripts/generate_whats_new.py --version X.Y.Z
+   python3 scripts/workflow/generate_whats_new.py --version X.Y.Z
    ```
 
    See [the scripts guide](../../scripts/README.md) for prerequisites and options.
@@ -64,7 +64,7 @@ flowchart TB
 To create a draft and Copilot CLI prompt from `CHANGELOG.md`:
 
 ```bash
-python3 scripts/prepare_copilot_release_notes.py --version X.Y.Z
+python3 scripts/workflow/prepare_copilot_release_notes.py --version X.Y.Z
 ```
 
 The prompt uses changelog content, not PR-body notes. Review the result against the merged PRs. See [the scripts guide](../../scripts/README.md) for output paths and options.
@@ -74,8 +74,8 @@ The prompt uses changelog content, not PR-body notes. Review the result against 
 Draft and publish an individual PR description with:
 
 ```bash
-.venv/bin/python scripts/update_pr_descriptions.py <pr-number> --draft
-.venv/bin/python scripts/update_pr_descriptions.py <pr-number> --publish
+.venv/bin/python scripts/workflow/update_pr_descriptions.py <pr-number> --draft
+.venv/bin/python scripts/workflow/update_pr_descriptions.py <pr-number> --publish
 ```
 
 Review and edit `docs/whats-new/PRs/PR_<number>.txt` between the commands. Publishing replaces the PR's full title and body, so keep any existing text you want to retain. For provider setup, bulk drafting, and other options, see [the scripts guide](../../scripts/README.md).
@@ -83,7 +83,7 @@ Review and edit `docs/whats-new/PRs/PR_<number>.txt` between the commands. Publi
 For a direct commit that should be described with the next PR, add `--include-orphaned` when drafting:
 
 ```bash
-.venv/bin/python scripts/update_pr_descriptions.py <pr-number> --draft --include-orphaned
+.venv/bin/python scripts/workflow/update_pr_descriptions.py <pr-number> --draft --include-orphaned
 ```
 
 Review the detected commits and describe any user-visible effect in the PR's `User-facing release note` section. For bulk drafting and cleanup options, see [the scripts guide](../../scripts/README.md).
