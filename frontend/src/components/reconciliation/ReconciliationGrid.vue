@@ -3,12 +3,108 @@
     <v-toolbar density="comfortable" color="transparent" flat class="mb-2">
       <v-chip-group v-model="statusFilter" mandatory>
         <v-chip value="all" variant="outlined">All ({{ previewData.length }})</v-chip>
-        <v-chip value="proposed" color="warning" variant="outlined">Proposed ({{ stats.proposed }})</v-chip>
-        <v-chip value="accepted" color="success" variant="outlined">Accepted ({{ stats.accepted }})</v-chip>
-        <v-chip value="rejected" color="error" variant="outlined">Rejected ({{ stats.rejected }})</v-chip>
-        <v-chip value="local-only" color="grey" variant="outlined">New ({{ stats.localOnly }})</v-chip>
-        <v-chip value="unresolved" color="warning" variant="outlined">Unresolved ({{ stats.unresolved }})</v-chip>
-        <v-chip value="errors" color="error" variant="outlined">Errors ({{ stats.errors }})</v-chip>
+        <v-chip
+          data-testid="status-filter-proposed"
+          value="proposed"
+          :color="RECONCILIATION_STATUS_PRESENTATION.proposed.color"
+          variant="outlined"
+          :aria-label="`Proposed (${stats.proposed})`"
+          title="Proposed"
+        >
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.proposed.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.proposed.color"
+            size="small"
+            class="me-2"
+            aria-hidden="true"
+          />
+          Proposed ({{ stats.proposed }})
+        </v-chip>
+        <v-chip
+          data-testid="status-filter-accepted"
+          value="accepted"
+          :color="RECONCILIATION_STATUS_PRESENTATION.accepted.color"
+          variant="outlined"
+          :aria-label="`Accepted (${stats.accepted})`"
+          title="Accepted"
+        >
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.accepted.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.accepted.color"
+            size="small"
+            class="me-2"
+            aria-hidden="true"
+          />
+          Accepted ({{ stats.accepted }})
+        </v-chip>
+        <v-chip
+          data-testid="status-filter-rejected"
+          value="rejected"
+          :color="RECONCILIATION_STATUS_PRESENTATION.rejected.color"
+          variant="outlined"
+          :aria-label="`Rejected (${stats.rejected})`"
+          title="Rejected"
+        >
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.rejected.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.rejected.color"
+            size="small"
+            class="me-2"
+            aria-hidden="true"
+          />
+          Rejected ({{ stats.rejected }})
+        </v-chip>
+        <v-chip
+          data-testid="status-filter-local-only"
+          value="local-only"
+          :color="RECONCILIATION_STATUS_PRESENTATION.local.color"
+          variant="outlined"
+          :aria-label="`New (${stats.localOnly})`"
+          title="New"
+        >
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.local.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.local.color"
+            size="small"
+            class="me-2"
+            aria-hidden="true"
+          />
+          New ({{ stats.localOnly }})
+        </v-chip>
+        <v-chip
+          data-testid="status-filter-unresolved"
+          value="unresolved"
+          :color="RECONCILIATION_STATUS_PRESENTATION.unresolved.color"
+          variant="outlined"
+          :aria-label="`Unresolved (${stats.unresolved})`"
+          title="Unresolved"
+        >
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.unresolved.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.unresolved.color"
+            size="small"
+            class="me-2"
+            aria-hidden="true"
+          />
+          Unresolved ({{ stats.unresolved }})
+        </v-chip>
+        <v-chip
+          data-testid="status-filter-errors"
+          value="errors"
+          :color="RECONCILIATION_STATUS_PRESENTATION.errors.color"
+          variant="outlined"
+          :aria-label="`Errors (${stats.errors})`"
+          title="Errors"
+        >
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.errors.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.errors.color"
+            size="small"
+            class="me-2"
+            aria-hidden="true"
+          />
+          Errors ({{ stats.errors }})
+        </v-chip>
       </v-chip-group>
 
       <v-spacer />
@@ -24,16 +120,6 @@
         hide-details
         style="max-width: 260px"
       />
-
-      <v-btn
-        data-testid="preview-reconciliation"
-        variant="tonal"
-        color="info"
-        prepend-icon="mdi-table-eye"
-        @click="previewDialog = true"
-      >
-        Preview
-      </v-btn>
     </v-toolbar>
 
     <v-toolbar density="compact" color="transparent" flat class="mb-2">
@@ -64,7 +150,7 @@
         :columnDefs="columnDefs"
         :rowData="gridData"
         :defaultColDef="defaultColDef"
-        :rowHeight="36"
+        :rowHeight="32"
         :rowClassRules="rowClassRules"
         :quickFilterText="appliedSearchQuery"
         :suppressRowClickSelection="true"
@@ -163,8 +249,6 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-
-    <preview-matched-data-dialog v-model="previewDialog" :preview-data="previewData" :entity-spec="entitySpec" />
   </div>
 </template>
 
@@ -181,7 +265,11 @@ import type {
   ReconciliationPreviewRow,
 } from '@/types'
 import AlternativeSearchDialog from './AlternativeSearchDialog.vue'
-import PreviewMatchedDataDialog from './PreviewMatchedDataDialog.vue'
+import {
+  getReconciliationStatusPresentation,
+  RECONCILIATION_ACTION_ICONS,
+  RECONCILIATION_STATUS_PRESENTATION,
+} from './reconciliationHelp'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-material.css'
@@ -200,6 +288,9 @@ interface Props {
 interface CurrentIdSource {
   label: string
   description: string
+  icon: string
+  verificationIcon?: string
+  verificationColor?: 'success' | 'warning'
 }
 
 const props = withDefaults(defineProps<Props>(), { loading: false })
@@ -221,7 +312,6 @@ const candidateDialog = ref(false)
 const alternativeSearchDialog = ref(false)
 const localOnlyDialog = ref(false)
 const localOnlyNotes = ref('')
-const previewDialog = ref(false)
 
 const defaultColDef: ColDef = {
   resizable: true,
@@ -235,35 +325,49 @@ function getCurrentIdSource(link: MappingLink | undefined, mappingAvailable: boo
     return {
       label: 'Unavailable',
       description: 'The mapping sidecar could not be loaded, so the current ID cannot be confirmed.',
+      icon: 'mdi-database-off-outline',
     }
   }
   if (!link?.committed_at) {
     return {
-      label: 'Normalized row',
+      label: 'Normalized',
       description: 'No committed mapping link overrides the normalized row ID.',
+      icon: 'mdi-table-row',
     }
   }
   if (link.source === 'manual') {
     return {
-      label: 'Manual · not checked',
-      description: 'This trusted manual link was not checked against SEAD.',
+      label: 'Manual',
+      description: 'This trusted manual link was not checked.',
+      icon: 'mdi-pencil-outline',
     }
   }
   if (link.source === 'reconciliation') {
     return link.verified_at
       ? {
-          label: 'Reconciliation · verified',
-          description: `Verified against SEAD at ${link.verified_at}.`,
+          label: 'Reconciled · verified',
+          description: `Verified at ${link.verified_at}.`,
+          icon: 'mdi-link-variant',
+          verificationIcon: 'mdi-check-circle-outline',
+          verificationColor: 'success',
         }
       : {
-          label: 'Reconciliation · unverified',
-          description: 'This reconciliation link has not been verified against SEAD.',
+          label: 'Reconciled · unverified',
+          description: 'This reconciled link has not been verified.',
+          icon: 'mdi-link-variant',
+          verificationIcon: 'mdi-help-circle-outline',
+          verificationColor: 'warning',
         }
   }
   return {
-    label: 'Import · not checked',
-    description: 'This imported mapping was not checked against SEAD.',
+    label: 'Imported',
+    description: 'This imported mapping was not checked.',
+    icon: 'mdi-database-import-outline',
   }
+}
+
+function hasDisplayableId(value: unknown): boolean {
+  return value != null && String(value).trim() !== ''
 }
 
 const gridRows = computed(() =>
@@ -271,12 +375,18 @@ const gridRows = computed(() =>
     const sidecarLink = row.local_key_value ? props.mappingData?.links[row.local_key_value] : undefined
     const committedLink = sidecarLink?.committed_at ? sidecarLink : undefined
     const savedRowId = props.mappingData ? row[props.mappingData.public_id] : null
+    const currentId = props.mappingData ? (committedLink?.target_id ?? savedRowId) : null
     const currentIdSource = getCurrentIdSource(committedLink, Boolean(props.mappingData))
+    const hasCurrentId = hasDisplayableId(currentId)
+    const showCurrentIdSource = hasCurrentId || !props.mappingData
     return {
       ...row,
-      current_id: props.mappingData ? (committedLink?.target_id ?? savedRowId) : null,
-      current_id_source_label: currentIdSource.label,
-      current_id_source_description: currentIdSource.description,
+      current_id: currentId,
+      current_id_source_label: showCurrentIdSource ? currentIdSource.label : null,
+      current_id_source_description: showCurrentIdSource ? currentIdSource.description : null,
+      current_id_source_icon: showCurrentIdSource ? currentIdSource.icon : null,
+      current_id_source_verification_icon: showCurrentIdSource ? (currentIdSource.verificationIcon ?? null) : null,
+      current_id_source_verification_color: showCurrentIdSource ? (currentIdSource.verificationColor ?? null) : null,
       status_display: formatStatus(row),
       confidence_percent: row.confidence == null ? null : row.confidence * 100,
       errors_display: row.errors?.join('; ') ?? '',
@@ -289,6 +399,31 @@ const columnDefs = computed<ColDef[]>(() => {
   if (!props.entitySpec) return []
 
   const columns: ColDef[] = [
+    {
+      field: 'status_display',
+      headerName: 'Review status',
+      width: 140,
+      pinned: 'left',
+      filter: false,
+      cellRenderer: (params: ICellRendererParams) => {
+        const label = typeof params.value === 'string' ? params.value : ''
+        const presentation = getReconciliationStatusPresentation(label)
+        if (!presentation) return label
+
+        const status = document.createElement('span')
+        status.className = 'reconciliation-status-icon'
+        status.setAttribute('role', 'img')
+        status.setAttribute('aria-label', label)
+        const errorMessage = params.data?.errors?.join('; ')
+        status.title = label === 'Needs attention' && errorMessage ? errorMessage : label
+
+        const icon = document.createElement('span')
+        icon.className = `mdi ${presentation.icon} text-${presentation.color}`
+        icon.setAttribute('aria-hidden', 'true')
+        status.append(icon)
+        return status
+      },
+    },
     {
       field: props.targetField,
       headerName: `${props.targetField.replace(/_/g, ' ')} (Search label)`,
@@ -303,17 +438,18 @@ const columnDefs = computed<ColDef[]>(() => {
   }
 
   columns.push(
-    { field: 'target_id', headerName: 'Decision ID', width: 120 },
+    { field: 'target_id', headerName: 'Selected target ID', width: 150 },
     {
       field: 'confidence_percent',
-      headerName: 'Decision confidence',
+      headerName: 'Score',
+      filter: false,
       width: 150,
-      valueFormatter: (params) => (params.value == null ? 'Unknown' : `${Math.round(params.value)}%`),
+      valueFormatter: (params) => (params.value == null ? '' : `${Math.round(params.value)}%`),
     },
-    { field: 'status_display', headerName: 'Decision status', width: 140 },
     {
       field: 'current_id',
       headerName: 'Current ID',
+      filter: false,
       width: 270,
       cellRenderer: (params: ICellRendererParams) => {
         const cell = document.createElement('div')
@@ -321,14 +457,33 @@ const columnDefs = computed<ColDef[]>(() => {
 
         const id = document.createElement('span')
         id.className = 'current-id-value'
-        id.textContent = params.value == null ? '—' : String(params.value)
+        id.textContent = params.value == null ? '' : String(params.value)
         cell.append(id)
 
         const source = params.data?.current_id_source_label
         if (typeof source === 'string') {
           const badge = document.createElement('span')
           badge.className = 'current-id-source-badge'
-          badge.textContent = source
+          const sourceIcon = params.data?.current_id_source_icon
+          if (typeof sourceIcon === 'string') {
+            const icon = document.createElement('span')
+            icon.className = `mdi ${sourceIcon} current-id-source-icon`
+            icon.setAttribute('aria-hidden', 'true')
+            badge.append(icon)
+          }
+          const verificationIcon = params.data?.current_id_source_verification_icon
+          if (typeof verificationIcon === 'string') {
+            const icon = document.createElement('span')
+            const verificationColor = params.data?.current_id_source_verification_color
+            const colorClass = typeof verificationColor === 'string' ? ` text-${verificationColor}` : ''
+            icon.className = `mdi ${verificationIcon} current-id-source-verification-icon${colorClass}`
+            icon.setAttribute('aria-hidden', 'true')
+            badge.append(icon)
+          }
+          const label = document.createElement('span')
+          label.className = 'current-id-source-label'
+          label.textContent = source
+          badge.append(label)
           const description = params.data?.current_id_source_description
           if (typeof description === 'string') {
             badge.title = description
@@ -355,16 +510,16 @@ const columnDefs = computed<ColDef[]>(() => {
         const disabled = !key || props.loading || isBusy(key)
         const buttons = []
         buttons.push(
-          `<button class="search-btn" data-local-key="${encodedKey}" data-action="search" ${disabled ? 'disabled' : ''}>Search</button>`
+          `<button type="button" class="search-btn action-icon-btn" data-local-key="${encodedKey}" data-action="search" aria-label="Search for another candidate" data-tooltip="Search for another candidate" ${disabled ? 'disabled' : ''}><span class="mdi ${RECONCILIATION_ACTION_ICONS.search} row-action-icon" aria-hidden="true"></span></button>`
         )
         buttons.push(
-          `<button class="reject-btn" data-local-key="${encodedKey}" data-action="reject" ${disabled ? 'disabled' : ''}>Reject</button>`
+          `<button type="button" class="reject-btn action-icon-btn" data-local-key="${encodedKey}" data-action="reject" aria-label="Reject this row" data-tooltip="Reject this row" ${disabled ? 'disabled' : ''}><span class="mdi ${RECONCILIATION_ACTION_ICONS.reject} row-action-icon" aria-hidden="true"></span></button>`
         )
         buttons.push(
-          `<button class="local-only-btn" data-local-key="${encodedKey}" data-action="local-only" ${disabled ? 'disabled' : ''}>New</button>`
+          `<button type="button" class="local-only-btn action-icon-btn" data-local-key="${encodedKey}" data-action="local-only" aria-label="Mark this row as New" data-tooltip="Mark this row as New" ${disabled ? 'disabled' : ''}><span class="mdi ${RECONCILIATION_ACTION_ICONS.new} row-action-icon" aria-hidden="true"></span></button>`
         )
         buttons.push(
-          `<button class="manual-link-btn" data-local-key="${encodedKey}" data-action="manual-link" ${!key ? 'disabled' : ''}>Manual link</button>`
+          `<button type="button" class="manual-link-btn action-icon-btn" data-local-key="${encodedKey}" data-action="manual-link" aria-label="Add a manual link for this row" data-tooltip="Add a manual link for this row" ${!key ? 'disabled' : ''}><span class="mdi ${RECONCILIATION_ACTION_ICONS.manualLink} row-action-icon" aria-hidden="true"></span></button>`
         )
         if (row.candidates?.length) {
           buttons.push(
@@ -385,6 +540,7 @@ const rowClassRules: Record<string, (params: RowClassParams) => boolean> = {
   'row-rejected': (params) => params.data?.row_style_class === 'row-rejected',
   'row-local-only': (params) => params.data?.row_style_class === 'row-local-only',
   'row-proposed': (params) => params.data?.row_style_class === 'row-proposed',
+  'row-unresolved': (params) => params.data?.row_style_class === 'row-unresolved',
 }
 
 /** Status filter only. Text search is delegated to ag-Grid quick filtering. */
@@ -456,8 +612,8 @@ function getConfidenceColor(score: number): string {
 }
 
 function formatStatus(row: ReconciliationPreviewRow | undefined): string {
+  if (row?.errors?.length) return 'Needs attention'
   if (!row?.local_key_value) return 'Unreviewable'
-  if (row.errors?.length) return 'Needs attention'
   if (row.status == null || (row.status === 'proposed' && !row.candidates?.length)) return 'Unresolved'
   if (row.status === 'local-only') return 'New'
   if (row.status === 'accepted' && !row.candidate_id) return 'Accepted · re-accept candidate'
@@ -469,11 +625,13 @@ function formatStatus(row: ReconciliationPreviewRow | undefined): string {
 
 /** Row background class. Computed once per row instead of a style object per render. */
 function rowStyleClass(row: ReconciliationPreviewRow): string {
-  if (row.errors?.length) return 'row-needs-attention'
-  if (row.status === 'accepted') return 'row-accepted'
-  if (row.status === 'rejected') return 'row-rejected'
-  if (row.status === 'local-only') return 'row-local-only'
-  if (row.status === 'proposed') return 'row-proposed'
+  const label = formatStatus(row)
+  if (label === 'Needs attention') return 'row-needs-attention'
+  if (label === 'Unresolved' || label === 'Unreviewable') return 'row-unresolved'
+  if (label === 'Accepted' || label === 'Accepted · re-accept candidate') return 'row-accepted'
+  if (label === 'Rejected') return 'row-rejected'
+  if (label === 'New') return 'row-local-only'
+  if (label === 'Proposed') return 'row-proposed'
   return ''
 }
 
@@ -518,7 +676,7 @@ async function persistDecision(
 ): Promise<boolean> {
   const key = row.local_key_value
   if (!key) {
-    actionError.value = 'This row has no valid business key and cannot receive a decision.'
+    actionError.value = 'This row has no valid business key and cannot be reviewed.'
     return false
   }
 
@@ -535,7 +693,7 @@ async function persistDecision(
     await props.submitDecision(request)
     return true
   } catch (error) {
-    actionError.value = error instanceof Error ? error.message : 'The decision could not be saved.'
+    actionError.value = error instanceof Error ? error.message : 'The review choice could not be saved.'
     return false
   } finally {
     setBusy(key, false)
@@ -646,17 +804,37 @@ async function confirmLocalOnly() {
 }
 
 :deep(.current-id-source-badge) {
+  align-items: center;
   border: 1px solid currentColor;
   border-radius: 999px;
+  display: inline-flex;
   font-size: 10px;
+  gap: 4px;
   line-height: 1.4;
   opacity: 0.8;
   padding: 1px 6px;
   white-space: nowrap;
 }
 
+:deep(.current-id-source-icon) {
+  font-size: 16px;
+  line-height: 1;
+}
+
+:deep(.current-id-source-verification-icon) {
+  font-size: 14px;
+  line-height: 1;
+}
+
+:deep(.reconciliation-status-icon) {
+  align-items: center;
+  display: inline-flex;
+  font-size: 18px;
+  height: 100%;
+}
+
 :deep(.reconciliation-ag-grid .ag-row.row-needs-attention) {
-  background-color: #fff3e0;
+  background-color: #ffebee;
 }
 
 :deep(.reconciliation-ag-grid .ag-row.row-accepted) {
@@ -664,14 +842,18 @@ async function confirmLocalOnly() {
 }
 
 :deep(.reconciliation-ag-grid .ag-row.row-rejected) {
-  background-color: #ffebee;
-}
-
-:deep(.reconciliation-ag-grid .ag-row.row-local-only) {
   background-color: #f5f5f5;
 }
 
+:deep(.reconciliation-ag-grid .ag-row.row-local-only) {
+  background-color: #f3e5f5;
+}
+
 :deep(.reconciliation-ag-grid .ag-row.row-proposed) {
+  background-color: #e3f2fd;
+}
+
+:deep(.reconciliation-ag-grid .ag-row.row-unresolved) {
   background-color: #fff8e1;
 }
 
@@ -680,12 +862,53 @@ async function confirmLocalOnly() {
 :deep(.reject-btn),
 :deep(.local-only-btn),
 :deep(.manual-link-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
+  height: 28px;
   margin: 2px;
   padding: 5px 8px;
+  vertical-align: middle;
+}
+
+:deep(.action-icon-btn) {
+  min-width: 30px;
+  min-height: 28px;
+  padding: 5px;
+  position: relative;
+}
+
+:deep(.row-action-icon) {
+  font-size: 16px;
+  line-height: 1;
+}
+
+:deep(.action-icon-btn:hover::after),
+:deep(.action-icon-btn:focus-visible::after) {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  z-index: 1000;
+  transform: translateX(-50%);
+  border-radius: 4px;
+  background: #333333;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.2;
+  padding: 4px 8px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+:deep(.reconciliation-ag-grid .ag-cell[col-id='candidates']) {
+  background-color: var(--ag-header-background-color);
+  overflow: visible;
 }
 
 :deep(.candidate-btn) {

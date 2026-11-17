@@ -40,7 +40,7 @@ describe('ReconciliationHelpDialog', () => {
     expect(text).toContain('Current ID')
     expect(text).not.toContain('Saved row ID')
     expect(text).not.toContain('Effective ID')
-    expect(text).toContain('Decision confidence')
+    expect(text).toContain('Score')
     expect(text).toContain('Review (n)')
     expect(text).toContain('New')
     expect(text).not.toContain('Local-only')

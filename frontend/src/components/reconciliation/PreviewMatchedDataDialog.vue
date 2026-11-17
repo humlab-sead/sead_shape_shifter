@@ -9,7 +9,8 @@
       </v-card-title>
 
       <v-card-subtitle class="py-3">
-        Preview of row decisions. Accepted decisions are not applied to output until a mapping link is committed.
+        Preview of reconciliation results. Accepting a candidate does not change the current ID until its mapping link
+        is exported.
       </v-card-subtitle>
 
       <v-divider />
@@ -18,7 +19,7 @@
       <v-toolbar density="comfortable" color="transparent" flat>
         <v-switch
           v-model="showOnlyMatched"
-          label="Show only accepted decisions"
+          label="Show only accepted rows"
           density="compact"
           hide-details
           color="primary"
@@ -60,10 +61,10 @@
               <th v-for="column in displayColumns" :key="column" class="text-left">
                 {{ formatColumnName(column) }}
               </th>
-              <th class="text-left">Decision ID</th>
-              <th class="text-left">Selected Candidate</th>
-              <th class="text-left">Decision Confidence</th>
-              <th class="text-left">Decision Status</th>
+              <th class="text-left">Selected target ID</th>
+              <th class="text-left">Candidate</th>
+              <th class="text-left">Score</th>
+              <th class="text-left">Status</th>
               <th class="text-left">Row Errors</th>
             </tr>
           </thead>
@@ -96,8 +97,21 @@
                 <span v-else class="text-grey">—</span>
               </td>
               <td>
-                <v-chip size="small" :color="getStatusColor(row)" variant="flat">
-                  {{ getStatusLabel(row) }}
+                <v-chip
+                  size="small"
+                  :color="getStatusPresentation(row)?.color ?? 'grey'"
+                  variant="text"
+                  :aria-label="getStatusLabel(row)"
+                  :title="getStatusLabel(row)"
+                >
+                  <v-icon
+                    v-if="getStatusPresentation(row)"
+                    :icon="getStatusPresentation(row)?.icon"
+                    :color="getStatusPresentation(row)?.color"
+                    size="small"
+                    aria-hidden="true"
+                  />
+                  <span v-else>{{ getStatusLabel(row) }}</span>
                 </v-chip>
               </td>
               <td>{{ row.errors?.join('; ') || '—' }}</td>
@@ -114,19 +128,51 @@
       <v-divider />
 
       <v-card-actions>
-        <v-chip size="small" variant="text">
-          <v-icon start size="small">mdi-check-circle</v-icon>
-          {{ stats.accepted }} accepted
+        <v-chip size="small" variant="text" :aria-label="`Accepted: ${stats.accepted}`" title="Accepted">
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.accepted.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.accepted.color"
+            size="small"
+            aria-hidden="true"
+          />
+          {{ stats.accepted }}
         </v-chip>
-        <v-chip size="small" variant="text">
-          <v-icon start size="small">mdi-close-circle</v-icon>
-          {{ stats.rejected }} rejected
+        <v-chip size="small" variant="text" :aria-label="`Rejected: ${stats.rejected}`" title="Rejected">
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.rejected.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.rejected.color"
+            size="small"
+            aria-hidden="true"
+          />
+          {{ stats.rejected }}
         </v-chip>
-        <v-chip size="small" variant="text">
-          <v-icon start size="small">mdi-cancel</v-icon>
-          {{ stats.localOnly }} new
+        <v-chip size="small" variant="text" :aria-label="`New: ${stats.localOnly}`" title="New">
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.local.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.local.color"
+            size="small"
+            aria-hidden="true"
+          />
+          {{ stats.localOnly }}
         </v-chip>
-        <v-chip size="small" variant="text"> {{ stats.unresolved }} unresolved · {{ stats.errors }} errors </v-chip>
+        <v-chip size="small" variant="text" :aria-label="`Unresolved: ${stats.unresolved}`" title="Unresolved">
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.unresolved.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.unresolved.color"
+            size="small"
+            aria-hidden="true"
+          />
+          {{ stats.unresolved }}
+        </v-chip>
+        <v-chip size="small" variant="text" :aria-label="`Errors: ${stats.errors}`" title="Errors">
+          <v-icon
+            :icon="RECONCILIATION_STATUS_PRESENTATION.errors.icon"
+            :color="RECONCILIATION_STATUS_PRESENTATION.errors.color"
+            size="small"
+            aria-hidden="true"
+          />
+          {{ stats.errors }}
+        </v-chip>
         <v-spacer />
         <v-btn variant="text" @click="show = false">Close</v-btn>
       </v-card-actions>
@@ -137,6 +183,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { ReconciliationPreviewRow, EntityResolutionSet } from '@/types'
+import { getReconciliationStatusPresentation, RECONCILIATION_STATUS_PRESENTATION } from './reconciliationHelp'
 
 interface Props {
   modelValue: boolean
@@ -206,12 +253,7 @@ function formatColumnName(column: string): string {
 }
 
 function getRowClass(row: ReconciliationPreviewRow): string {
-  if (row.errors?.length) return 'bg-orange-lighten-5'
-  if (row.status === 'accepted') return 'bg-green-lighten-5'
-  if (row.status === 'rejected') return 'bg-red-lighten-5'
-  if (row.status === 'local-only') return 'bg-grey-lighten-3'
-  if (row.status === 'proposed') return 'bg-amber-lighten-5'
-  return 'bg-grey-lighten-5'
+  return getStatusPresentation(row)?.backgroundClass ?? 'bg-grey-lighten-5'
 }
 
 function getConfidenceColor(confidence: number): string {
@@ -221,13 +263,8 @@ function getConfidenceColor(confidence: number): string {
   return 'error'
 }
 
-function getStatusColor(row: ReconciliationPreviewRow): string {
-  if (row.errors?.length) return 'error'
-  if (row.status === 'accepted') return 'success'
-  if (row.status === 'rejected') return 'error'
-  if (row.status === 'local-only') return 'grey'
-  if (row.status === 'proposed') return 'warning'
-  return 'info'
+function getStatusPresentation(row: ReconciliationPreviewRow) {
+  return getReconciliationStatusPresentation(getStatusLabel(row))
 }
 
 function getStatusLabel(row: ReconciliationPreviewRow): string {

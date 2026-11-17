@@ -18,14 +18,15 @@ vi.mock('ag-grid-vue3', () => ({
         <div v-for="row in rowData.slice().reverse()" :key="row.local_key_value" data-testid="grid-row">
           <span data-testid="row-class">{{ row.row_style_class }}</span>
           <span data-testid="row-status">{{ row.status_display }}</span>
-          <span data-testid="row-confidence">{{ row.confidence_percent == null ? 'Unknown' : Math.round(row.confidence_percent) + '%' }}</span>
+          <span data-testid="row-confidence">{{ row.confidence_percent == null ? '' : Math.round(row.confidence_percent) + '%' }}</span>
           <span data-testid="row-errors">{{ row.errors_display || '—' }}</span>
-          <span data-testid="current-id" :data-key="row.local_key_value">{{ row.current_id ?? '—' }}</span>
+          <span data-testid="current-id" :data-key="row.local_key_value">{{ row.current_id ?? '' }}</span>
           <span data-testid="current-id-source" :data-key="row.local_key_value">{{ row.current_id_source_label }}</span>
-          <button :data-local-key="row.local_key_value" data-action="reject">Reject</button>
+          <button :data-local-key="row.local_key_value" data-action="reject" aria-label="Reject this row"><span class="mdi mdi-close-circle-outline" aria-hidden="true"></span></button>
           <button :data-local-key="row.local_key_value" data-action="review">Review</button>
-          <button :data-local-key="row.local_key_value" data-action="search">Search</button>
-          <button :data-local-key="row.local_key_value" data-action="local-only">New</button>
+          <button :data-local-key="row.local_key_value" data-action="search" aria-label="Search for another candidate"><span class="mdi mdi-magnify" aria-hidden="true"></span></button>
+          <button :data-local-key="row.local_key_value" data-action="local-only" aria-label="Mark this row as New"><span class="mdi mdi-plus-circle-outline" aria-hidden="true"></span></button>
+          <button :data-local-key="row.local_key_value" data-action="manual-link" aria-label="Add a manual link for this row"><span class="mdi mdi-link-variant" aria-hidden="true"></span></button>
         </div>
       </div>
     `,
@@ -35,6 +36,7 @@ vi.mock('ag-grid-vue3', () => ({
 import ReconciliationGrid from '../ReconciliationGrid.vue'
 import AlternativeSearchDialog from '../AlternativeSearchDialog.vue'
 import PreviewMatchedDataDialog from '../PreviewMatchedDataDialog.vue'
+import { RECONCILIATION_ACTION_ICONS } from '../reconciliationHelp'
 
 const passthrough = (tag: string) =>
   defineComponent({
@@ -130,6 +132,12 @@ function rowWithoutCandidates(localKeyValue: string) {
 }
 
 describe('ReconciliationGrid', () => {
+  it('hides the preview entry point until source match context is available', () => {
+    const { wrapper } = mountGrid()
+
+    expect(wrapper.find('[data-testid="preview-reconciliation"]').exists()).toBe(false)
+  })
+
   it('submits reject and new actions with the row key and no target ID', async () => {
     const { wrapper, submitDecision } = mountGrid()
 
@@ -201,7 +209,58 @@ describe('ReconciliationGrid', () => {
     if (typeof renderer !== 'function') throw new Error('Actions column renderer is unavailable')
 
     const html = String(renderer({ data: makeRow('A') } as Parameters<typeof renderer>[0]))
-    expect(html.indexOf('Review (3)')).toBeGreaterThan(html.indexOf('Manual link'))
+    expect(html.indexOf('data-action="review"')).toBeGreaterThan(html.indexOf('data-action="manual-link"'))
+  })
+
+  it('shows confidence as Score and leaves missing values empty', () => {
+    const { wrapper } = mountGrid()
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as ColDef[]
+    const scoreColumn = columnDefs.find((column) => column.field === 'confidence_percent')
+    expect(scoreColumn?.headerName).toBe('Score')
+
+    const valueFormatter = scoreColumn?.valueFormatter
+    if (typeof valueFormatter !== 'function') throw new Error('Score column formatter is unavailable')
+    expect(valueFormatter({ value: null } as Parameters<typeof valueFormatter>[0])).toBe('')
+    expect(valueFormatter({ value: 0 } as Parameters<typeof valueFormatter>[0])).toBe('0%')
+    expect(wrapper.get('[data-testid="row-confidence"]').text()).toBe('')
+  })
+
+  it('places Review status as the first pinned column', () => {
+    const { wrapper } = mountGrid()
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as ColDef[]
+
+    expect(columnDefs[0]?.field).toBe('status_display')
+    expect(columnDefs[0]?.headerName).toBe('Review status')
+    expect(columnDefs[0]?.pinned).toBe('left')
+  })
+
+  it('renders icon row actions with accessible names and tooltips', () => {
+    const { wrapper } = mountGrid()
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as ColDef[]
+    const actionsColumn = columnDefs.find((column) => column.field === 'candidates')
+    const renderer = actionsColumn?.cellRenderer
+    if (typeof renderer !== 'function') throw new Error('Actions column renderer is unavailable')
+
+    const container = document.createElement('div')
+    container.innerHTML = String(renderer({ data: makeRow('A') } as Parameters<typeof renderer>[0]))
+    const actions = [
+      { action: 'search', label: 'Search for another candidate', icon: RECONCILIATION_ACTION_ICONS.search },
+      { action: 'reject', label: 'Reject this row', icon: RECONCILIATION_ACTION_ICONS.reject },
+      { action: 'local-only', label: 'Mark this row as New', icon: RECONCILIATION_ACTION_ICONS.new },
+      { action: 'manual-link', label: 'Add a manual link for this row', icon: RECONCILIATION_ACTION_ICONS.manualLink },
+    ]
+
+    for (const action of actions) {
+      const button = container.querySelector<HTMLButtonElement>(`button[data-action="${action.action}"]`)
+      expect(button?.type).toBe('button')
+      expect(button?.getAttribute('aria-label')).toBe(action.label)
+      expect(button?.getAttribute('data-tooltip')).toBe(action.label)
+      expect(button?.textContent?.trim()).toBe('')
+      expect(button?.querySelector(`.mdi.${action.icon}`)).not.toBeNull()
+    }
   })
 
   it('shows one current ID with its mapping source and verification status', () => {
@@ -233,6 +292,13 @@ describe('ReconciliationGrid', () => {
           committed_at: '2026-10-30T00:00:00Z',
           created_by: 'user',
         },
+        E: {
+          target_id: 105,
+          source: 'import',
+          created_at: '2026-10-30T00:00:00Z',
+          committed_at: '2026-10-30T00:00:00Z',
+          created_by: 'import',
+        },
       },
     }
     const rows = [
@@ -240,23 +306,103 @@ describe('ReconciliationGrid', () => {
       { ...makeRow('B'), site_id: 12 },
       { ...makeRow('C'), site_id: 13 },
       { ...makeRow('D'), site_id: 14, status: 'accepted' as const },
+      { ...makeRow('E'), site_id: 15 },
     ]
     const { wrapper } = mountGrid(vi.fn(), rows, mappingData)
 
     expect(wrapper.text()).toContain('Accepted · re-accept candidate')
     const columns = wrapper.get('[data-testid="grid-columns"]').text()
     expect(columns).toContain('Current ID')
+    expect(columns).toContain('Selected target ID')
     expect(columns).not.toContain('Saved row ID')
     expect(columns).not.toContain('Effective ID')
     expect(columns).not.toContain('Effective ID source')
     expect(wrapper.get('[data-testid="current-id"][data-key="A"]').text()).toBe('101')
-    expect(wrapper.get('[data-testid="current-id-source"][data-key="A"]').text()).toBe('Reconciliation · verified')
+    expect(wrapper.get('[data-testid="current-id-source"][data-key="A"]').text()).toBe('Reconciled · verified')
     expect(wrapper.get('[data-testid="current-id"][data-key="B"]').text()).toBe('102')
-    expect(wrapper.get('[data-testid="current-id-source"][data-key="B"]').text()).toBe('Reconciliation · unverified')
+    expect(wrapper.get('[data-testid="current-id-source"][data-key="B"]').text()).toBe('Reconciled · unverified')
     expect(wrapper.get('[data-testid="current-id"][data-key="C"]').text()).toBe('103')
-    expect(wrapper.get('[data-testid="current-id-source"][data-key="C"]').text()).toBe('Manual · not checked')
+    expect(wrapper.get('[data-testid="current-id-source"][data-key="C"]').text()).toBe('Manual')
     expect(wrapper.get('[data-testid="current-id"][data-key="D"]').text()).toBe('14')
-    expect(wrapper.get('[data-testid="current-id-source"][data-key="D"]').text()).toBe('Normalized row')
+    expect(wrapper.get('[data-testid="current-id-source"][data-key="D"]').text()).toBe('Normalized')
+    expect(wrapper.get('[data-testid="current-id-source"][data-key="E"]').text()).toBe('Imported')
+
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const gridRows = gridProps.rowData as Array<Record<string, unknown>>
+    const columnDefs = gridProps.columnDefs as ColDef[]
+    const currentIdColumn = columnDefs.find((column) => column.field === 'current_id')
+    const renderer = currentIdColumn?.cellRenderer
+    if (typeof renderer !== 'function') throw new Error('Current ID column renderer is unavailable')
+
+    const renderSourceCell = (localKey: string): HTMLElement => {
+      const rowData = gridRows.find((row) => row.local_key_value === localKey)
+      if (!rowData) throw new Error(`Grid row ${localKey} is unavailable`)
+      return renderer({ value: rowData.current_id, data: rowData } as Parameters<typeof renderer>[0]) as HTMLElement
+    }
+
+    const verifiedCell = renderSourceCell('A')
+    expect(verifiedCell.querySelector('.current-id-source-icon.mdi-link-variant')).not.toBeNull()
+    expect(
+      verifiedCell.querySelector('.current-id-source-verification-icon.mdi-check-circle-outline.text-success')
+    ).not.toBeNull()
+
+    const unverifiedCell = renderSourceCell('B')
+    expect(unverifiedCell.querySelector('.current-id-source-icon.mdi-link-variant')).not.toBeNull()
+    expect(
+      unverifiedCell.querySelector('.current-id-source-verification-icon.mdi-help-circle-outline.text-warning')
+    ).not.toBeNull()
+
+    const manualCell = renderSourceCell('C')
+    expect(manualCell.querySelector('.current-id-source-icon.mdi-pencil-outline')).not.toBeNull()
+    expect(manualCell.querySelector('.current-id-source-verification-icon')).toBeNull()
+    expect(renderSourceCell('D').querySelector('.current-id-source-icon.mdi-table-row')).not.toBeNull()
+
+    const importedCell = renderSourceCell('E')
+    expect(importedCell.querySelector('.current-id-source-icon.mdi-database-import-outline')).not.toBeNull()
+    expect(importedCell.querySelector('.current-id-source-verification-icon')).toBeNull()
+  })
+
+  it('shows the unavailable source icon when mapping data cannot be loaded', () => {
+    const { wrapper } = mountGrid()
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const rowData = (gridProps.rowData as Array<Record<string, unknown>>)[0]
+    const columnDefs = gridProps.columnDefs as ColDef[]
+    const currentIdColumn = columnDefs.find((column) => column.field === 'current_id')
+    const renderer = currentIdColumn?.cellRenderer
+    if (typeof renderer !== 'function') throw new Error('Current ID column renderer is unavailable')
+
+    const cell = renderer({ value: rowData?.current_id, data: rowData } as Parameters<
+      typeof renderer
+    >[0]) as HTMLElement
+    expect(cell.querySelector('.current-id-source-icon.mdi-database-off-outline')).not.toBeNull()
+    expect(cell.querySelector('.current-id-source-label')?.textContent).toBe('Unavailable')
+  })
+
+  it('hides the source when Current ID is blank, even if a Selected target ID is set', () => {
+    const mappingData: MappingEntityResponse = {
+      entity_name: 'site',
+      local_key: 'site_code',
+      public_id: 'site_id',
+      entity_type: 'primary',
+      links: {},
+    }
+    const { wrapper } = mountGrid(vi.fn(), [{ ...makeRow('A'), target_id: 42 }], mappingData)
+
+    expect(wrapper.get('[data-testid="current-id"][data-key="A"]').text()).toBe('')
+    expect(wrapper.get('[data-testid="current-id-source"][data-key="A"]').text()).toBe('')
+
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const rowData = (gridProps.rowData as Array<Record<string, unknown>>)[0]
+    const columnDefs = gridProps.columnDefs as ColDef[]
+    const currentIdColumn = columnDefs.find((column) => column.field === 'current_id')
+    const renderer = currentIdColumn?.cellRenderer
+    if (typeof renderer !== 'function') throw new Error('Current ID column renderer is unavailable')
+
+    const cell = renderer({ value: rowData?.current_id, data: rowData } as Parameters<
+      typeof renderer
+    >[0]) as HTMLElement
+    expect(cell.querySelector('.current-id-value')?.textContent).toBe('')
+    expect(cell.querySelector('.current-id-source-badge')).toBeNull()
   })
 
   it('displays the local-only decision as New', () => {
@@ -265,16 +411,80 @@ describe('ReconciliationGrid', () => {
     expect(wrapper.get('[data-testid="row-status"]').text()).toBe('New')
   })
 
+  it('renders state filters with labels, counts, colored icons, and accessible names', () => {
+    const { wrapper } = mountGrid()
+    const filters = [
+      { id: 'proposed', label: 'Proposed', icon: 'mdi-lightbulb-outline', color: 'blue', count: 1 },
+      { id: 'accepted', label: 'Accepted', icon: 'mdi-check-circle-outline', color: 'green', count: 0 },
+      { id: 'rejected', label: 'Rejected', icon: 'mdi-close-circle-outline', color: 'grey', count: 0 },
+      { id: 'local-only', label: 'New', icon: 'mdi-home-outline', color: 'purple', count: 0 },
+      { id: 'unresolved', label: 'Unresolved', icon: 'mdi-help-circle-outline', color: 'amber', count: 0 },
+      { id: 'errors', label: 'Errors', icon: 'mdi-alert-circle-outline', color: 'red', count: 0 },
+    ]
+
+    for (const filter of filters) {
+      const chip = wrapper.get(`[data-testid="status-filter-${filter.id}"]`)
+      expect(chip.text().trim()).toBe(`${filter.label} (${filter.count})`)
+      expect(chip.attributes('title')).toBe(filter.label)
+      expect(chip.attributes('aria-label')).toBe(`${filter.label} (${filter.count})`)
+      expect(chip.attributes('color')).toBe(filter.color)
+      expect(chip.get(`[icon="${filter.icon}"]`).attributes('aria-hidden')).toBe('true')
+    }
+  })
+
+  it('renders decision statuses as icon-only cells with accessible labels and tooltips', () => {
+    const { wrapper } = mountGrid()
+    const grid = wrapper.findComponent({ name: 'AgGridVue' })
+    const columnDefs = grid.props('columnDefs') as ColDef[]
+    const statusColumn = columnDefs.find((column) => column.field === 'status_display')
+    const renderer = statusColumn?.cellRenderer
+    if (typeof renderer !== 'function') throw new Error('Decision status renderer is unavailable')
+
+    const statuses = [
+      { label: 'Proposed', icon: 'mdi-lightbulb-outline', color: 'blue' },
+      { label: 'Accepted', icon: 'mdi-check-circle-outline', color: 'green' },
+      { label: 'Rejected', icon: 'mdi-close-circle-outline', color: 'grey' },
+      { label: 'New', icon: 'mdi-home-outline', color: 'purple' },
+      { label: 'Unresolved', icon: 'mdi-help-circle-outline', color: 'amber' },
+      { label: 'Needs attention', icon: 'mdi-alert-circle-outline', color: 'red' },
+    ]
+
+    for (const status of statuses) {
+      const cell = renderer({ value: status.label } as Parameters<typeof renderer>[0]) as HTMLElement
+      expect(cell.getAttribute('role')).toBe('img')
+      expect(cell.getAttribute('aria-label')).toBe(status.label)
+      expect(cell.title).toBe(status.label)
+      expect(cell.textContent).toBe('')
+      expect(cell.querySelector(`.mdi.${status.icon}.text-${status.color}`)).not.toBeNull()
+    }
+
+    const errorCell = renderer({
+      value: 'Needs attention',
+      data: { errors: ['Missing business key'] },
+    } as Parameters<typeof renderer>[0]) as HTMLElement
+    expect(errorCell.title).toBe('Missing business key')
+    expect(errorCell.getAttribute('aria-label')).toBe('Needs attention')
+  })
+
   it('displays unresolved rows and row-specific errors separately', () => {
     const keylessRow = { site_name: 'Missing key', status: null, errors: ['Missing business key'], candidates: [] }
-    const rows = [rowWithoutCandidates('A'), keylessRow, { ...makeRow('B'), errors: ['Invalid target value'] }]
+    const unreviewableRow = { site_name: 'No key or error', status: null, candidates: [] }
+    const rows = [
+      rowWithoutCandidates('A'),
+      keylessRow,
+      unreviewableRow,
+      { ...makeRow('B'), errors: ['Invalid target value'] },
+    ]
     const { wrapper } = mountGrid(vi.fn(), rows)
 
-    expect(wrapper.text()).toContain('Unresolved (2)')
-    expect(wrapper.text()).toContain('Errors (2)')
-    expect(wrapper.findAll('[data-testid="row-status"]').map((status) => status.text())).toContain('Unresolved')
-    expect(wrapper.findAll('[data-testid="row-status"]').map((status) => status.text())).toContain('Unreviewable')
-    expect(wrapper.findAll('[data-testid="row-status"]').map((status) => status.text())).toContain('Needs attention')
+    expect(wrapper.get('[data-testid="status-filter-unresolved"]').attributes('aria-label')).toBe('Unresolved (3)')
+    expect(wrapper.get('[data-testid="status-filter-errors"]').attributes('aria-label')).toBe('Errors (2)')
+    expect(wrapper.findAll('[data-testid="row-status"]').map((status) => status.text())).toEqual([
+      'Needs attention',
+      'Unreviewable',
+      'Needs attention',
+      'Unresolved',
+    ])
     expect(wrapper.findAll('[data-testid="row-errors"]').map((error) => error.text())).toContain('Invalid target value')
   })
 
@@ -359,11 +569,12 @@ describe('PreviewMatchedDataDialog', () => {
     expect(rows[1]?.text()).toContain('82%')
     expect(rows[2]?.text()).toContain('100%')
     expect(rows[3]?.text()).toContain('—')
-    expect(rows[4]?.text()).toContain('Unresolved')
-    expect(rows[5]?.text()).toContain('Unreviewable')
-    expect(rows[6]?.text()).toContain('Needs attention')
+    expect(rows[4]?.find('[aria-label="Unresolved"]').exists()).toBe(true)
+    expect(rows[5]?.find('[aria-label="Unreviewable"]').exists()).toBe(true)
+    expect(rows[6]?.find('[aria-label="Needs attention"]').exists()).toBe(true)
     expect(rows[6]?.text()).toContain('Invalid target value')
-    expect(wrapper.text()).toContain('2 unresolved · 1 errors')
+    expect(wrapper.find('[aria-label="Unresolved: 2"]').exists()).toBe(true)
+    expect(wrapper.find('[aria-label="Errors: 1"]').exists()).toBe(true)
   })
 
   it('uses compact rows while keeping row virtualization enabled', () => {
@@ -372,7 +583,7 @@ describe('PreviewMatchedDataDialog', () => {
     const grid = wrapper.get('[data-testid="grid-stub"]')
     // autoHeight would disable virtualization and render every row at once.
     expect(grid.attributes('domlayout')).toBe('normal')
-    expect(wrapper.get('[data-testid="grid-row-height"]').text()).toBe('36')
+    expect(wrapper.get('[data-testid="grid-row-height"]').text()).toBe('32')
   })
 
   it('assigns a row class name instead of a per-render style object', () => {
@@ -380,6 +591,9 @@ describe('PreviewMatchedDataDialog', () => {
       { local_key_value: 'A', site_name: 'Same', status: 'accepted' as const, candidates: [] },
       { local_key_value: 'B', site_name: 'Same', status: 'rejected' as const, candidates: [] },
       { local_key_value: 'C', site_name: 'Same', status: 'proposed' as const, errors: ['Bad value'], candidates: [] },
+      { local_key_value: 'D', site_name: 'New row', status: 'local-only' as const, candidates: [] },
+      { local_key_value: 'E', site_name: 'Unresolved row', status: 'proposed' as const, candidates: [] },
+      makeRow('F'),
     ]
     const wrapper = mount(ReconciliationGrid, {
       props: {
@@ -405,7 +619,26 @@ describe('PreviewMatchedDataDialog', () => {
     const classes = rows.map((row) => row.find('[data-testid="row-class"]').text())
     expect(classes).toContain('row-accepted')
     expect(classes).toContain('row-rejected')
+    expect(classes).toContain('row-local-only')
+    expect(classes).toContain('row-proposed')
+    expect(classes).toContain('row-unresolved')
     // An error takes precedence over the decision status.
     expect(classes).toContain('row-needs-attention')
+  })
+
+  it('shows an accessible state icon and matching row color in the preview dialog', () => {
+    const wrapper = mount(PreviewMatchedDataDialog, {
+      props: {
+        modelValue: true,
+        previewData: [{ ...makeRow('A'), status: 'rejected' }],
+        entitySpec: null,
+      },
+      global: { plugins: [vuetify], stubs },
+    })
+
+    const status = wrapper.get('[aria-label="Rejected"]')
+    expect(status.attributes('title')).toBe('Rejected')
+    expect(status.get('[icon="mdi-close-circle-outline"]').attributes('aria-hidden')).toBe('true')
+    expect(wrapper.get('tbody tr').classes()).toContain('bg-grey-lighten-5')
   })
 })

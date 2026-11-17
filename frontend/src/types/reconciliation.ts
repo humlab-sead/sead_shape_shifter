@@ -174,6 +174,7 @@ export interface MappingLinkUpsertRequest {
 
 export interface EntityResolutionListItem {
   entity_name: string
+  has_business_keys: boolean
   target_field: string
   source?: string | ReconciliationSource | null
   property_mappings: Record<string, string>

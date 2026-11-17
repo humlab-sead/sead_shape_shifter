@@ -212,11 +212,12 @@ class ProjectMapper:
         return cfg_dict
 
     @staticmethod
-    def to_core(api_config: Project) -> ShapeShiftProject:
+    def to_core(api_config: Project, validate_mapping_sidecar: bool = True) -> ShapeShiftProject:
         """Convert API Project to core ShapeShiftProject.
 
         Conditionally resolves @include:, @load: and @value: directives only if needed.
         Resolves file paths based on location field at the API → Core boundary using strategy pattern.
+        Set validate_mapping_sidecar to False when inspecting resolved project configuration without validating mappings.
         """
         cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_config=api_config)
 
@@ -271,7 +272,8 @@ class ProjectMapper:
                 allowed_vars=settings.resolver_allowed_env_vars,
             )
 
-        ProjectMapper._validate_mapping_sidecar(project, api_config.filename)
+        if validate_mapping_sidecar:
+            ProjectMapper._validate_mapping_sidecar(project, api_config.filename)
 
         return project
 

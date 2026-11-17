@@ -201,6 +201,11 @@ async def auto_reconcile_entity(
     if get_app_state_manager().is_dirty(project_name):
         raise BadRequestError(f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
 
+    service.catalog_manager.require_entity_business_keys(
+        authorized_project.resource.locator,
+        entity_name,
+    )
+
     # Create operation for progress tracking
     operation_id: str = operation_manager.create_operation(
         operation_type="auto_reconcile",
@@ -365,6 +370,11 @@ async def auto_reconcile_entity_sync(
 
     if get_app_state_manager().is_dirty(authorized_project.resource.locator):
         raise BadRequestError(f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
+
+    service.catalog_manager.require_entity_business_keys(
+        authorized_project.resource.locator,
+        entity_name,
+    )
 
     logger.info(f"Starting auto-reconciliation for {entity_name}.{target_field} with threshold {threshold}")
     result: api.AutoReconcileResult = await service.auto_reconcile_entity(
