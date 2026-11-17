@@ -120,16 +120,6 @@
         hide-details
         style="max-width: 260px"
       />
-
-      <v-btn
-        data-testid="preview-reconciliation"
-        variant="tonal"
-        color="info"
-        prepend-icon="mdi-table-eye"
-        @click="previewDialog = true"
-      >
-        Preview
-      </v-btn>
     </v-toolbar>
 
     <v-toolbar density="compact" color="transparent" flat class="mb-2">
@@ -259,8 +249,6 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-
-    <preview-matched-data-dialog v-model="previewDialog" :preview-data="previewData" :entity-spec="entitySpec" />
   </div>
 </template>
 
@@ -277,7 +265,6 @@ import type {
   ReconciliationPreviewRow,
 } from '@/types'
 import AlternativeSearchDialog from './AlternativeSearchDialog.vue'
-import PreviewMatchedDataDialog from './PreviewMatchedDataDialog.vue'
 import {
   getReconciliationStatusPresentation,
   RECONCILIATION_ACTION_ICONS,
@@ -325,7 +312,6 @@ const candidateDialog = ref(false)
 const alternativeSearchDialog = ref(false)
 const localOnlyDialog = ref(false)
 const localOnlyNotes = ref('')
-const previewDialog = ref(false)
 
 const defaultColDef: ColDef = {
   resizable: true,
@@ -344,38 +330,38 @@ function getCurrentIdSource(link: MappingLink | undefined, mappingAvailable: boo
   }
   if (!link?.committed_at) {
     return {
-      label: 'Normalized row',
+      label: 'Normalized',
       description: 'No committed mapping link overrides the normalized row ID.',
       icon: 'mdi-table-row',
     }
   }
   if (link.source === 'manual') {
     return {
-      label: 'Manual · not checked',
-      description: 'This trusted manual link was not checked against SEAD.',
+      label: 'Manual',
+      description: 'This trusted manual link was not checked.',
       icon: 'mdi-pencil-outline',
     }
   }
   if (link.source === 'reconciliation') {
     return link.verified_at
       ? {
-          label: 'Reconciliation · verified',
-          description: `Verified against SEAD at ${link.verified_at}.`,
+          label: 'Reconciled · verified',
+          description: `Verified at ${link.verified_at}.`,
           icon: 'mdi-link-variant',
           verificationIcon: 'mdi-check-circle-outline',
           verificationColor: 'success',
         }
       : {
-          label: 'Reconciliation · unverified',
-          description: 'This reconciliation link has not been verified against SEAD.',
+          label: 'Reconciled · unverified',
+          description: 'This reconciled link has not been verified.',
           icon: 'mdi-link-variant',
           verificationIcon: 'mdi-help-circle-outline',
           verificationColor: 'warning',
         }
   }
   return {
-    label: 'Import · not checked',
-    description: 'This imported mapping was not checked against SEAD.',
+    label: 'Imported',
+    description: 'This imported mapping was not checked.',
     icon: 'mdi-database-import-outline',
   }
 }
@@ -415,7 +401,7 @@ const columnDefs = computed<ColDef[]>(() => {
   const columns: ColDef[] = [
     {
       field: 'status_display',
-      headerName: 'Status',
+      headerName: 'Review status',
       width: 140,
       pinned: 'left',
       filter: false,
@@ -452,16 +438,18 @@ const columnDefs = computed<ColDef[]>(() => {
   }
 
   columns.push(
-    { field: 'target_id', headerName: 'Decision ID', width: 120 },
+    { field: 'target_id', headerName: 'Selected target ID', width: 150 },
     {
       field: 'confidence_percent',
       headerName: 'Score',
+      filter: false,
       width: 150,
       valueFormatter: (params) => (params.value == null ? '' : `${Math.round(params.value)}%`),
     },
     {
       field: 'current_id',
       headerName: 'Current ID',
+      filter: false,
       width: 270,
       cellRenderer: (params: ICellRendererParams) => {
         const cell = document.createElement('div')
@@ -688,7 +676,7 @@ async function persistDecision(
 ): Promise<boolean> {
   const key = row.local_key_value
   if (!key) {
-    actionError.value = 'This row has no valid business key and cannot receive a decision.'
+    actionError.value = 'This row has no valid business key and cannot be reviewed.'
     return false
   }
 
@@ -705,7 +693,7 @@ async function persistDecision(
     await props.submitDecision(request)
     return true
   } catch (error) {
-    actionError.value = error instanceof Error ? error.message : 'The decision could not be saved.'
+    actionError.value = error instanceof Error ? error.message : 'The review choice could not be saved.'
     return false
   } finally {
     setBusy(key, false)

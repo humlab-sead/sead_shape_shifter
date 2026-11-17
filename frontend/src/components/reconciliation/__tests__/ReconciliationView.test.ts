@@ -210,7 +210,7 @@ describe('ReconciliationView', () => {
 
     expect(wrapper.get('[data-testid="reconciliation-help-dialog"]').text()).toContain('Quick workflow')
     expect(wrapper.get('[data-testid="reconciliation-help-dialog"]').text()).toContain(
-      'An accepted decision does not change the effective ID until it is exported.'
+      'Accepting a candidate does not change the current ID until you use Export to Mapping.'
     )
   })
 

@@ -808,7 +808,7 @@ Select **Find Candidates** on the specification row to search the normalized row
 
 ## How Mappings Are Stored
 
-Applied ID links and manual overrides are persisted in a **mapping sidecar file** (`shapeshifter.mapping.yml`) stored alongside `shapeshifter.yml`. This file is the source of truth for links applied during normalization. Reconciliation candidates and review decisions are held separately in `shapeshifter.reconciliation.yml` and do not become applied links merely by being accepted there.
+Applied ID links and manual overrides are persisted in a **mapping sidecar file** (`shapeshifter.mapping.yml`) stored alongside `shapeshifter.yml`. This file is the source of truth for links applied during normalization. Reconciliation candidates and review choices are held separately in `shapeshifter.reconciliation.yml` and do not become applied links merely by being accepted there.
 
 Shape Shifter blocks renaming an entity that has a mapping entry, including an entry with no links. Ask a project maintainer to move or remove that entry before renaming the entity.
 
@@ -836,38 +836,38 @@ During normalization, mappings are applied in this order (first match wins):
 
 1. Configure a reconciliation specification for an entity and search field, as described in [Create a Reconciliation Specification](#create-a-reconciliation-specification).
 2. Select **Find Candidates** to search the normalized rows. Each result is addressed by its encoded business key, not its search label. Missing or duplicate keys, missing labels, and row errors are reported. Candidate scores and thresholds are informational; matching never accepts a candidate for you.
-3. Review each row in the grid. Select a candidate before accepting it, reject the row, or mark it New when it has no mapping to an existing target. These decisions are saved by business key, and rerunning candidate search preserves them. Rows without decisions or candidates are unresolved; rows without a business key are unreviewable. Preview and matching failures are shown separately from an empty result.
+3. Review each row in the grid. Select a candidate before accepting it, reject the row, or mark it New when it has no mapping to an existing target. Your review choices are saved by business key, and rerunning candidate search preserves them. Rows without a review choice or candidates are unresolved; rows without a business key are unreviewable. Preview and matching failures are shown separately from an empty result.
 4. To apply a target ID, select **Add Manual Link** and enter the encoded business key and an integer target ID. This saves a trusted `source: manual` link in the mapping sidecar without checking the ID against SEAD. The committed sidecar ID is effective during the next normalization and takes precedence over the fixed row's saved `public_id`.
-5. Select **Export to Mapping** to check accepted candidate URIs against SEAD and copy valid decisions into the mapping sidecar. An accepted catalog decision does not change normalized IDs until it is exported. A candidate reported as absent or invalid is not exported, and any older link owned by that specification for the same key is removed; the result lists the key and reason. If the Authority Service is unavailable, the link is exported with `verified_at` empty and shown as unverified. Export again after service recovery to retry the check. Older accepted decisions that have only a numeric target ID must be re-accepted by selecting the candidate URI before export. Re-export updates only links owned by that specification and removes its stale owned links; manual and unowned links are protected. A conflicting owner or mismatched sidecar metadata stops the export without changing the sidecar. Normalization continues to apply committed sidecar links offline and does not check IDs.
-6. Export a New decision to store it separately as a committed, owner-tagged approval keyed by the row's business key. It does not set `public_id`. The SEAD Change Request ingester allocates an ID only for an exported New decision in `reconcile-exact` or `reconcile-fuzzy` mode. It blocks undecided rows and New decisions in `lookup-only` or `lookup-extensible` mode. Existing committed ID links and non-conflicting pre-linked IDs keep their existing behavior.
+5. Select **Export to Mapping** to check accepted candidate URIs against SEAD and add valid links to the mapping sidecar. Accepting a candidate does not change the normalized ID; the link takes effect after export. A candidate reported as absent or invalid is not exported, and any older link owned by that specification for the same key is removed; the result lists the key and reason. If the Authority Service is unavailable, the link is exported with `verified_at` empty and shown as unverified. Export again after service recovery to retry the check. Older accepted review choices that have only a numeric target ID must be re-accepted by selecting the candidate URI before export. Re-export updates only links owned by that specification and removes its stale owned links; manual and unowned links are protected. A conflicting owner or mismatched sidecar metadata stops the export without changing the sidecar. Normalization continues to apply committed sidecar links offline and does not check IDs.
+6. Export a row marked **New** to store a separate, committed, owner-tagged approval keyed by the row's business key. It does not set `public_id`. The SEAD Change Request ingester allocates an ID only for an exported New approval in `reconcile-exact` or `reconcile-fuzzy` mode. It blocks rows without a review choice and New approvals in `lookup-only` or `lookup-extensible` mode. Existing committed ID links and non-conflicting pre-linked IDs keep their existing behavior.
 7. Deleting a specification or replacing the catalog removes only the links and New-row approvals owned by specifications that are removed. Cleanup saves the sidecar before the catalog; the two files are not updated in one transaction. If the catalog save fails after cleanup, the error reports the partial operation so you can retry.
 
 Old reconciliation catalogs are ignored with a warning; recreate their specifications and run candidate search again. Invalid or unsupported new catalogs fail rather than silently discarding their contents. The mapping sidecar is a separate file and is unaffected.
 
 ### Understand the review grid
 
-The grid shows the normalized row, its decision, and the current ID used by normalization. Additional mapped property columns vary by specification.
+The grid shows each normalized row, its review status, any selected target ID, and the current ID used by normalization. Additional mapped property columns vary by specification.
 
 | Column | Meaning |
 |---|---|
-| Search label | The configured field value sent to candidate search. It is not the row identity. |
-| Business key | The encoded key built from the entity keys. Decisions are saved against this key. |
+| Review status | Proposed, Accepted, Rejected, or New. New means the row has no mapping to an existing target. Unresolved, Needs attention, and Unreviewable identify rows that need review or cannot be reviewed. |
+| Search label | The configured field value used to find candidates. It is not the row identity. |
+| Business key | The encoded key built from the entity keys. Your review choice is saved against this key. |
 | Other mapped columns | Additional normalized values used by the reconciliation specification. |
-| Decision ID | The target ID selected in the reconciliation decision. It is not effective until exported. |
-| Decision confidence | The candidate score as a percentage, or Unknown when no score is available. Scores do not accept candidates. |
-| Decision status | Proposed, Accepted, Rejected, or New. New means the row has no mapping to an existing target. Unresolved, Needs attention, and Unreviewable identify rows that need review or cannot be reviewed. |
+| Selected target ID | The ID of the candidate selected for this row. It does not become the current ID until exported. |
+| Score | The candidate score as a percentage, or blank when no score is available. A score does not accept a candidate. |
 | Current ID | The ID currently used by normalization. Its badge shows whether it comes from the normalized row or a committed mapping, and whether a reconciliation mapping was verified. |
-| Row errors | Problems reported for this row. Resolve them before relying on its decision. |
-| Actions | Buttons for reviewing or changing the row's decision. Review appears when candidates are available. |
+| Row errors | Problems reported for this row. Resolve them before accepting a candidate or exporting a mapping. |
+| Actions | Buttons for reviewing a row or changing its review choice. Review appears when candidates are available. |
 
 ### Use the review controls
 
 - **Find Candidates** searches the normalized rows and creates or refreshes proposals. It does not accept candidates.
 - **Add Manual Link** saves a trusted link for an encoded business key and target ID. It does not check the ID against SEAD.
 - **New** records that the row has no mapping to an existing target; the ingester handles it as a new record according to its mode.
-- **Export to Mapping** checks and exports accepted candidates. It exports New decisions separately; manual and unowned links are protected.
-- **Preview** opens the row preview, where you can filter rows and export the visible rows as CSV.
-- **Status filters and row search** narrow the grid to selected decision states, errors, or matching text.
+- **Export to Mapping** checks accepted candidates against SEAD and adds valid links to the mapping sidecar. New approvals are exported separately; manual and unowned links are protected.
+- **Preview** is temporarily unavailable while the preview is updated to show the source labels and values used to find each candidate.
+- **Status filters and row search** narrow the grid to review statuses or errors, or find matching text.
 
 The row buttons apply to one business key:
 

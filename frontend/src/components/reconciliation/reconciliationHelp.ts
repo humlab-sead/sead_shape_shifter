@@ -48,11 +48,11 @@ interface ReconciliationHelpContent {
 
 export const reconciliationHelp: ReconciliationHelpContent = {
   title: 'Reconcile & Review',
-  description: 'Find candidate target records for normalized rows, review each decision, and export the results.',
+  description: 'Find candidate target records for normalized rows, review the matches, and export selected results.',
   quickTips: [
     'Find Candidates proposes matches; it does not accept a candidate for you.',
-    'The search label finds candidates. The encoded business key identifies the row and its decision.',
-    'Accepted decisions become effective after Export to Mapping. Manual links are saved directly and are not checked against SEAD.',
+    'The search label finds candidates. The encoded business key identifies the row and stores your review choice.',
+    'Accepting a candidate does not change the current ID until you use Export to Mapping. Manual links are saved directly and are not checked against SEAD.',
     'New means the row has no mapping to an existing target. The ingester handles it as a new record; ID allocation depends on its mode.',
   ],
   workflow: [
@@ -62,7 +62,7 @@ export const reconciliationHelp: ReconciliationHelpContent = {
         'Search normalized rows for possible target records. Results are proposals until you choose an action.',
     },
     {
-      label: '2. Review and decide',
+      label: '2. Review and choose',
       description:
         'Accept the correct candidate, search for another one, reject the suggestion, mark the row New, or add a manual link.',
     },
@@ -86,18 +86,18 @@ export const reconciliationHelp: ReconciliationHelpContent = {
       description: 'Additional normalized values used by the reconciliation specification; these vary by entity.',
     },
     {
-      label: 'Decision ID',
-      description: 'The target ID selected in the reconciliation decision. It is not effective until exported.',
+      label: 'Selected target ID',
+      description: 'The ID of the candidate selected for this row. It does not become the current ID until exported.',
     },
     {
-      label: 'Decision confidence',
+      label: 'Score',
       description:
         'The candidate score as a percentage, or Unknown when no score is available. It does not approve a match.',
     },
     {
-      label: 'Decision status',
+      label: 'Review status',
       description:
-        'Proposed, Accepted, Rejected, or New. New means the row has no mapping to an existing target. Unresolved, Needs attention, and Unreviewable indicate missing candidates or decisions, row errors, or a missing business key.',
+        'Proposed, Accepted, Rejected, or New. New means the row has no mapping to an existing target. Unresolved, Needs attention, and Unreviewable indicate missing candidates or review choices, row errors, or a missing business key.',
     },
     {
       label: 'Current ID',
@@ -106,7 +106,7 @@ export const reconciliationHelp: ReconciliationHelpContent = {
     },
     {
       label: 'Row errors',
-      description: 'Problems reported for this row. Resolve them before relying on its decision.',
+      description: 'Problems reported for this row. Resolve them before accepting a candidate or exporting a mapping.',
     },
     {
       label: 'Actions',
@@ -117,7 +117,7 @@ export const reconciliationHelp: ReconciliationHelpContent = {
     {
       label: 'Find Candidates',
       description:
-        'Search all normalized rows and create or refresh proposed candidates. Existing operator decisions are preserved.',
+        'Search all normalized rows and create or refresh proposed candidates. Existing review choices are preserved.',
     },
     {
       label: 'Add Manual Link',
@@ -127,15 +127,16 @@ export const reconciliationHelp: ReconciliationHelpContent = {
     {
       label: 'Export to Mapping',
       description:
-        'Check and export accepted candidates; export New decisions separately. Manual and unowned links are protected.',
+        'Check and export accepted candidates; export New approvals separately. Manual and unowned links are protected.',
     },
     {
       label: 'Preview',
-      description: 'Inspect row decisions, filter the preview, or download the visible rows as CSV.',
+      description:
+        'Temporarily unavailable while the preview is updated to show the source values used to find candidates.',
     },
     {
       label: 'Status filters and row search',
-      description: 'Filter by decision state or errors, or search the grid to find specific rows.',
+      description: 'Filter by review status or errors, or search the grid to find specific rows.',
     },
   ],
   rowActions: [
