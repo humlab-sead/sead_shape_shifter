@@ -17,6 +17,7 @@ This index covers proposals and initiative records that need attention or provid
 | [Security Hardening Follow-up](SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md) | Proposed change request | Remediate unresolved application, authorization, deployment, and verification issues, including safeguards for future generic ingester routes. |
 | [AI Project Advisor](SHAPESHIFTER_PROJECT_AI_ADVISOR/SHAPESHIFTER_PROJECT_AI_ADVISOR.md) | Feature proposal | Provide project-scoped advice grounded in project state, SEAD knowledge, and source-level investigation. |
 | [Git-Backed Project Backups](GIT_BACKED_PROJECT_BACKUP.md) | Proposed feature — draft for review | Add an opt-in per-project git repository backend that commits project source files at the operation boundary, keeping the file-copy backend as default. |
+| [Output Expectations Sidecar File](OUTPUT_EXPECTATIONS_SIDECAR/OUTPUT_EXPECTATIONS_SIDECAR.md) | Proposed change request | Move output expectation declarations from `options.output_expectations` into a fixed-name `shapeshifter.expectations.yml` project file and deprecate the options key. |
 
 ## Current Initiatives
 
