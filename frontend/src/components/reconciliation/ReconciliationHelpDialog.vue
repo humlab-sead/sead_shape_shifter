@@ -26,8 +26,8 @@
         </ol>
 
         <v-alert type="info" variant="tonal" class="mt-4">
-          An accepted decision does not change the effective ID until it is exported. Manual links are saved directly
-          and are trusted, but are not checked against SEAD.
+          Accepting a candidate does not change the current ID until you use Export to Mapping. Manual links are saved
+          directly and are trusted, but are not checked against SEAD.
         </v-alert>
 
         <v-expansion-panels variant="accordion" multiple class="mt-4">
