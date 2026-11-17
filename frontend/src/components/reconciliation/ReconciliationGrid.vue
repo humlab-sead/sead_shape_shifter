@@ -15,6 +15,7 @@
             :icon="RECONCILIATION_STATUS_PRESENTATION.proposed.icon"
             :color="RECONCILIATION_STATUS_PRESENTATION.proposed.color"
             size="small"
+            class="me-2"
             aria-hidden="true"
           />
           Proposed ({{ stats.proposed }})
@@ -31,6 +32,7 @@
             :icon="RECONCILIATION_STATUS_PRESENTATION.accepted.icon"
             :color="RECONCILIATION_STATUS_PRESENTATION.accepted.color"
             size="small"
+            class="me-2"
             aria-hidden="true"
           />
           Accepted ({{ stats.accepted }})
@@ -47,6 +49,7 @@
             :icon="RECONCILIATION_STATUS_PRESENTATION.rejected.icon"
             :color="RECONCILIATION_STATUS_PRESENTATION.rejected.color"
             size="small"
+            class="me-2"
             aria-hidden="true"
           />
           Rejected ({{ stats.rejected }})
@@ -63,6 +66,7 @@
             :icon="RECONCILIATION_STATUS_PRESENTATION.local.icon"
             :color="RECONCILIATION_STATUS_PRESENTATION.local.color"
             size="small"
+            class="me-2"
             aria-hidden="true"
           />
           New ({{ stats.localOnly }})
@@ -79,6 +83,7 @@
             :icon="RECONCILIATION_STATUS_PRESENTATION.unresolved.icon"
             :color="RECONCILIATION_STATUS_PRESENTATION.unresolved.color"
             size="small"
+            class="me-2"
             aria-hidden="true"
           />
           Unresolved ({{ stats.unresolved }})
@@ -95,6 +100,7 @@
             :icon="RECONCILIATION_STATUS_PRESENTATION.errors.icon"
             :color="RECONCILIATION_STATUS_PRESENTATION.errors.color"
             size="small"
+            class="me-2"
             aria-hidden="true"
           />
           Errors ({{ stats.errors }})
@@ -295,6 +301,9 @@ interface Props {
 interface CurrentIdSource {
   label: string
   description: string
+  icon: string
+  verificationIcon?: string
+  verificationColor?: 'success' | 'warning'
 }
 
 const props = withDefaults(defineProps<Props>(), { loading: false })
@@ -330,18 +339,21 @@ function getCurrentIdSource(link: MappingLink | undefined, mappingAvailable: boo
     return {
       label: 'Unavailable',
       description: 'The mapping sidecar could not be loaded, so the current ID cannot be confirmed.',
+      icon: 'mdi-database-off-outline',
     }
   }
   if (!link?.committed_at) {
     return {
       label: 'Normalized row',
       description: 'No committed mapping link overrides the normalized row ID.',
+      icon: 'mdi-table-row',
     }
   }
   if (link.source === 'manual') {
     return {
       label: 'Manual · not checked',
       description: 'This trusted manual link was not checked against SEAD.',
+      icon: 'mdi-pencil-outline',
     }
   }
   if (link.source === 'reconciliation') {
@@ -349,15 +361,22 @@ function getCurrentIdSource(link: MappingLink | undefined, mappingAvailable: boo
       ? {
           label: 'Reconciliation · verified',
           description: `Verified against SEAD at ${link.verified_at}.`,
+          icon: 'mdi-link-variant',
+          verificationIcon: 'mdi-check-circle-outline',
+          verificationColor: 'success',
         }
       : {
           label: 'Reconciliation · unverified',
           description: 'This reconciliation link has not been verified against SEAD.',
+          icon: 'mdi-link-variant',
+          verificationIcon: 'mdi-help-circle-outline',
+          verificationColor: 'warning',
         }
   }
   return {
     label: 'Import · not checked',
     description: 'This imported mapping was not checked against SEAD.',
+    icon: 'mdi-database-import-outline',
   }
 }
 
@@ -372,12 +391,16 @@ const gridRows = computed(() =>
     const savedRowId = props.mappingData ? row[props.mappingData.public_id] : null
     const currentId = props.mappingData ? (committedLink?.target_id ?? savedRowId) : null
     const currentIdSource = getCurrentIdSource(committedLink, Boolean(props.mappingData))
-    const hasAnyId = hasDisplayableId(row.target_id) || hasDisplayableId(currentId)
+    const hasCurrentId = hasDisplayableId(currentId)
+    const showCurrentIdSource = hasCurrentId || !props.mappingData
     return {
       ...row,
       current_id: currentId,
-      current_id_source_label: hasAnyId ? currentIdSource.label : null,
-      current_id_source_description: hasAnyId ? currentIdSource.description : null,
+      current_id_source_label: showCurrentIdSource ? currentIdSource.label : null,
+      current_id_source_description: showCurrentIdSource ? currentIdSource.description : null,
+      current_id_source_icon: showCurrentIdSource ? currentIdSource.icon : null,
+      current_id_source_verification_icon: showCurrentIdSource ? (currentIdSource.verificationIcon ?? null) : null,
+      current_id_source_verification_color: showCurrentIdSource ? (currentIdSource.verificationColor ?? null) : null,
       status_display: formatStatus(row),
       confidence_percent: row.confidence == null ? null : row.confidence * 100,
       errors_display: row.errors?.join('; ') ?? '',
@@ -395,6 +418,7 @@ const columnDefs = computed<ColDef[]>(() => {
       headerName: 'Status',
       width: 140,
       pinned: 'left',
+      filter: false,
       cellRenderer: (params: ICellRendererParams) => {
         const label = typeof params.value === 'string' ? params.value : ''
         const presentation = getReconciliationStatusPresentation(label)
@@ -404,7 +428,8 @@ const columnDefs = computed<ColDef[]>(() => {
         status.className = 'reconciliation-status-icon'
         status.setAttribute('role', 'img')
         status.setAttribute('aria-label', label)
-        status.title = label
+        const errorMessage = params.data?.errors?.join('; ')
+        status.title = label === 'Needs attention' && errorMessage ? errorMessage : label
 
         const icon = document.createElement('span')
         icon.className = `mdi ${presentation.icon} text-${presentation.color}`
@@ -451,7 +476,26 @@ const columnDefs = computed<ColDef[]>(() => {
         if (typeof source === 'string') {
           const badge = document.createElement('span')
           badge.className = 'current-id-source-badge'
-          badge.textContent = source
+          const sourceIcon = params.data?.current_id_source_icon
+          if (typeof sourceIcon === 'string') {
+            const icon = document.createElement('span')
+            icon.className = `mdi ${sourceIcon} current-id-source-icon`
+            icon.setAttribute('aria-hidden', 'true')
+            badge.append(icon)
+          }
+          const verificationIcon = params.data?.current_id_source_verification_icon
+          if (typeof verificationIcon === 'string') {
+            const icon = document.createElement('span')
+            const verificationColor = params.data?.current_id_source_verification_color
+            const colorClass = typeof verificationColor === 'string' ? ` text-${verificationColor}` : ''
+            icon.className = `mdi ${verificationIcon} current-id-source-verification-icon${colorClass}`
+            icon.setAttribute('aria-hidden', 'true')
+            badge.append(icon)
+          }
+          const label = document.createElement('span')
+          label.className = 'current-id-source-label'
+          label.textContent = source
+          badge.append(label)
           const description = params.data?.current_id_source_description
           if (typeof description === 'string') {
             badge.title = description
@@ -580,8 +624,8 @@ function getConfidenceColor(score: number): string {
 }
 
 function formatStatus(row: ReconciliationPreviewRow | undefined): string {
+  if (row?.errors?.length) return 'Needs attention'
   if (!row?.local_key_value) return 'Unreviewable'
-  if (row.errors?.length) return 'Needs attention'
   if (row.status == null || (row.status === 'proposed' && !row.candidates?.length)) return 'Unresolved'
   if (row.status === 'local-only') return 'New'
   if (row.status === 'accepted' && !row.candidate_id) return 'Accepted · re-accept candidate'
@@ -772,13 +816,26 @@ async function confirmLocalOnly() {
 }
 
 :deep(.current-id-source-badge) {
+  align-items: center;
   border: 1px solid currentColor;
   border-radius: 999px;
+  display: inline-flex;
   font-size: 10px;
+  gap: 4px;
   line-height: 1.4;
   opacity: 0.8;
   padding: 1px 6px;
   white-space: nowrap;
+}
+
+:deep(.current-id-source-icon) {
+  font-size: 16px;
+  line-height: 1;
+}
+
+:deep(.current-id-source-verification-icon) {
+  font-size: 14px;
+  line-height: 1;
 }
 
 :deep(.reconciliation-status-icon) {
