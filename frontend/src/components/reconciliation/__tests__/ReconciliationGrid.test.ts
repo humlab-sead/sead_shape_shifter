@@ -97,14 +97,15 @@ function makeRow(localKeyValue: string) {
 function mountGrid(
   submitDecision = vi.fn().mockResolvedValue(undefined),
   previewData: ReconciliationPreviewRow[] = [makeRow('A')],
-  mappingData: MappingEntityResponse | null = null
+  mappingData: MappingEntityResponse | null = null,
+  propertyMappings: Record<string, string> = {}
 ) {
   const row = previewData[0]!
   const wrapper = mount(ReconciliationGrid, {
     props: {
       entitySpec: {
         source: null,
-        property_mappings: {},
+        property_mappings: propertyMappings,
         remote: { service_type: 'site' },
         auto_accept_threshold: 0.95,
         review_threshold: 0.7,
@@ -234,6 +235,22 @@ describe('ReconciliationGrid', () => {
     expect(columnDefs[0]?.field).toBe('status_display')
     expect(columnDefs[0]?.headerName).toBe('Review status')
     expect(columnDefs[0]?.pinned).toBe('left')
+  })
+
+  it('places the search label next to mapped property columns', () => {
+    const { wrapper } = mountGrid(undefined, undefined, undefined, {
+      site_name: 'site_name',
+      site_code: 'site_code',
+    })
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as ColDef[]
+
+    expect(columnDefs.slice(0, 4).map((column) => column.field)).toEqual([
+      'status_display',
+      'local_key_value',
+      'site_name',
+      'site_code',
+    ])
   })
 
   it('renders icon row actions with accessible names and tooltips', () => {

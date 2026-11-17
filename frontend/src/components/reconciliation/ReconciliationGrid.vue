@@ -424,13 +424,13 @@ const columnDefs = computed<ColDef[]>(() => {
         return status
       },
     },
+    { field: 'local_key_value', headerName: 'Business key', pinned: 'left', width: 170 },
     {
       field: props.targetField,
       headerName: `${props.targetField.replace(/_/g, ' ')} (Search label)`,
       pinned: 'left',
       width: 200,
     },
-    { field: 'local_key_value', headerName: 'Business key', pinned: 'left', width: 170 },
   ]
 
   for (const column of new Set(Object.values(props.entitySpec.property_mappings))) {
