@@ -132,6 +132,12 @@ function rowWithoutCandidates(localKeyValue: string) {
 }
 
 describe('ReconciliationGrid', () => {
+  it('hides the preview entry point until source match context is available', () => {
+    const { wrapper } = mountGrid()
+
+    expect(wrapper.find('[data-testid="preview-reconciliation"]').exists()).toBe(false)
+  })
+
   it('submits reject and new actions with the row key and no target ID', async () => {
     const { wrapper, submitDecision } = mountGrid()
 
@@ -220,13 +226,13 @@ describe('ReconciliationGrid', () => {
     expect(wrapper.get('[data-testid="row-confidence"]').text()).toBe('')
   })
 
-  it('places Status as the first pinned column', () => {
+  it('places Review status as the first pinned column', () => {
     const { wrapper } = mountGrid()
     const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
     const columnDefs = gridProps.columnDefs as ColDef[]
 
     expect(columnDefs[0]?.field).toBe('status_display')
-    expect(columnDefs[0]?.headerName).toBe('Status')
+    expect(columnDefs[0]?.headerName).toBe('Review status')
     expect(columnDefs[0]?.pinned).toBe('left')
   })
 
@@ -307,18 +313,19 @@ describe('ReconciliationGrid', () => {
     expect(wrapper.text()).toContain('Accepted · re-accept candidate')
     const columns = wrapper.get('[data-testid="grid-columns"]').text()
     expect(columns).toContain('Current ID')
+    expect(columns).toContain('Selected target ID')
     expect(columns).not.toContain('Saved row ID')
     expect(columns).not.toContain('Effective ID')
     expect(columns).not.toContain('Effective ID source')
     expect(wrapper.get('[data-testid="current-id"][data-key="A"]').text()).toBe('101')
-    expect(wrapper.get('[data-testid="current-id-source"][data-key="A"]').text()).toBe('Reconciliation · verified')
+    expect(wrapper.get('[data-testid="current-id-source"][data-key="A"]').text()).toBe('Reconciled · verified')
     expect(wrapper.get('[data-testid="current-id"][data-key="B"]').text()).toBe('102')
-    expect(wrapper.get('[data-testid="current-id-source"][data-key="B"]').text()).toBe('Reconciliation · unverified')
+    expect(wrapper.get('[data-testid="current-id-source"][data-key="B"]').text()).toBe('Reconciled · unverified')
     expect(wrapper.get('[data-testid="current-id"][data-key="C"]').text()).toBe('103')
-    expect(wrapper.get('[data-testid="current-id-source"][data-key="C"]').text()).toBe('Manual · not checked')
+    expect(wrapper.get('[data-testid="current-id-source"][data-key="C"]').text()).toBe('Manual')
     expect(wrapper.get('[data-testid="current-id"][data-key="D"]').text()).toBe('14')
-    expect(wrapper.get('[data-testid="current-id-source"][data-key="D"]').text()).toBe('Normalized row')
-    expect(wrapper.get('[data-testid="current-id-source"][data-key="E"]').text()).toBe('Import · not checked')
+    expect(wrapper.get('[data-testid="current-id-source"][data-key="D"]').text()).toBe('Normalized')
+    expect(wrapper.get('[data-testid="current-id-source"][data-key="E"]').text()).toBe('Imported')
 
     const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
     const gridRows = gridProps.rowData as Array<Record<string, unknown>>
@@ -371,7 +378,7 @@ describe('ReconciliationGrid', () => {
     expect(cell.querySelector('.current-id-source-label')?.textContent).toBe('Unavailable')
   })
 
-  it('hides the source when Current ID is blank, even if Decision ID is set', () => {
+  it('hides the source when Current ID is blank, even if a Selected target ID is set', () => {
     const mappingData: MappingEntityResponse = {
       entity_name: 'site',
       local_key: 'site_code',

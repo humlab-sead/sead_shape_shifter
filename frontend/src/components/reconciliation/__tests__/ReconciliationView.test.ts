@@ -205,12 +205,14 @@ describe('ReconciliationView', () => {
 
     await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
     await nextTick()
-    await wrapper.get('[data-testid="reconciliation-help-button"]').trigger('click')
+    const helpButton = wrapper.get('[data-testid="reconciliation-help-button"]')
+    expect(helpButton.find('.mdi-help-circle-outline').exists()).toBe(true)
+    await helpButton.trigger('click')
     await nextTick()
 
     expect(wrapper.get('[data-testid="reconciliation-help-dialog"]').text()).toContain('Quick workflow')
     expect(wrapper.get('[data-testid="reconciliation-help-dialog"]').text()).toContain(
-      'An accepted decision does not change the effective ID until it is exported.'
+      'Accepting a candidate does not change the current ID until you use Export to Mapping.'
     )
   })
 
