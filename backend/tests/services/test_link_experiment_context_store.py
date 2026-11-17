@@ -425,7 +425,7 @@ def test_projected_merge_retains_inputs_and_copy_headroom() -> None:
     }
     output_bytes = projected_merge_bytes(**base)
 
-    projected = projected_merge_bytes(**(base | {"retained_bytes": 1_000, "input_bytes": 100}))
+    projected = projected_merge_bytes(**(base | {"retained_bytes": 1_000, "input_bytes": 100}))  # pyright: ignore[reportArgumentType]
 
     assert projected == 1_000 + 4 * 100 + output_bytes
 
@@ -523,6 +523,7 @@ def test_diagnostics_from_a_complete_trial_retain_capped_groups_and_settings() -
     assert diagnostics.unmatched_a_rows == 5
     assert diagnostics.multiply_matched_a_rows == 4
     assert diagnostics.exception_groups == groups
+    assert diagnostics.exception_groups is not None
     assert diagnostics.exception_groups.unmatched.total_count == 5
     assert len(diagnostics.exception_groups.unmatched.rows) == 2
     assert diagnostics.settings == settings

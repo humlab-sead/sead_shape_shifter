@@ -8,14 +8,14 @@
 
 The reported behavior reproduced after the merge. The CLI logged normalizer warnings but printed only issues returned by its validation workflows. In the data workflow, `DataValidationExecutor` normalized the project and passed only `normalizer.table_store` to `TableStoreDataFetchStrategy`. That strategy did not expose the normalizer's structured findings, so the orchestrator could not return them as validation results.
 
-The merge added collection of structured linker findings to backend preview and full-data validation paths, but did not change `scripts/validate_project.py`, which used a separate path. The approved fix now shares normalization-issue collection with the CLI's table-store strategy. A fresh run prints seven `ROW_COUNT_MISMATCH` rows corresponding to the seven logged join row-count changes. Empty output from `citation`, `dating`, and `site_natural_region` continues to produce `EMPTY_RESULT` rows. The JVM startup notice and SQL loader's “NOT IMPLEMENTED VALIDATION” warning remain log-only; this change does not convert arbitrary Loguru messages into validation issues.
+The merge added collection of structured linker findings to backend preview and full-data validation paths, but did not change `scripts/project/validate_project.py`, which used a separate path. The approved fix now shares normalization-issue collection with the CLI's table-store strategy. A fresh run prints seven `ROW_COUNT_MISMATCH` rows corresponding to the seven logged join row-count changes. Empty output from `citation`, `dating`, and `site_natural_region` continues to produce `EMPTY_RESULT` rows. The JVM startup notice and SQL loader's “NOT IMPLEMENTED VALIDATION” warning remain log-only; this change does not convert arbitrary Loguru messages into validation issues.
 
 ## Verified observations and reproduction
 
 Before the fix, ran the reported arguments with the repository interpreter:
 
 ```text
-.venv/bin/python scripts/validate_project.py --workflow all --log-level warning tests/test_data/projects/arbodat/shapeshifter.yml
+.venv/bin/python scripts/project/validate_project.py --workflow all --log-level warning tests/test_data/projects/arbodat/shapeshifter.yml
 ```
 
 The command exited successfully and reproduced the reported distinction: warning logs included multiple linker row-count changes, while the CSV result contained no `ROW_COUNT_MISMATCH` rows. The CSV did contain `EMPTY_RESULT` warnings for `citation`, `dating`, and `site_natural_region`, along with the other structural, data, and conformance results shown in the report.
@@ -26,13 +26,13 @@ The shell did not have a `python` executable on `PATH`; using `.venv/bin/python`
 
 | ID | Observation or test | Source | Result | Assessment |
 | --- | --- | --- | --- | --- |
-| E1 | Re-ran the reported validation command before implementing the fix | `.venv/bin/python scripts/validate_project.py --workflow all --log-level warning tests/test_data/projects/arbodat/shapeshifter.yml` | Linker warnings were logged; the CSV did not include `ROW_COUNT_MISMATCH`. Three empty-entity results were present. | Verified |
-| E2 | CLI data workflow normalizes directly, then constructs a table-store strategy | [`scripts/validate_project.py`](../../../scripts/validate_project.py#L109-L119) | The strategy receives `normalizer.table_store`, not the normalizer or its issues. The printer outputs only each workflow's `result.issues` ([lines 200–214](../../../scripts/validate_project.py#L200)). | Verified |
+| E1 | Re-ran the reported validation command before implementing the fix | `.venv/bin/python scripts/project/validate_project.py --workflow all --log-level warning tests/test_data/projects/arbodat/shapeshifter.yml` | Linker warnings were logged; the CSV did not include `ROW_COUNT_MISMATCH`. Three empty-entity results were present. | Verified |
+| E2 | CLI data workflow normalizes directly, then constructs a table-store strategy | [`scripts/project/validate_project.py`](../../../scripts/project/validate_project.py#L109-L119) | The strategy receives `normalizer.table_store`, not the normalizer or its issues. The printer outputs only each workflow's `result.issues` ([lines 200–214](../../../scripts/project/validate_project.py#L200)). | Verified |
 | E3 | Orchestrator requests strategy-specific issues, but the base implementation returns an empty list; before the fix, the table-store strategy did not override it | [`data_validation_orchestrator.py`](../../../backend/app/validators/data_validation_orchestrator.py#L57-L59), [table-store strategy](../../../backend/app/validators/data_validation_orchestrator.py#L176-L193), [issue collection](../../../backend/app/validators/data_validation_orchestrator.py#L387-L391) | The original CLI strategy provided no normalization findings. It now returns them when given the normalizer. | Verified |
 | E4 | Full-data and table-store validation share a helper that collects unresolved extra-column and linker issues | [`data_validation_orchestrator.py`](../../../backend/app/validators/data_validation_orchestrator.py#L96-L108), [full-data strategy](../../../backend/app/validators/data_validation_orchestrator.py#L167-L174) | The CLI now uses the same structured issue conversion as backend full-data validation. | Verified |
 | E5 | A row-count change is both logged and appended as a structured linker issue | [`constraints.py`](../../../src/specifications/constraints.py#L433-L449) | The issue exists before output formatting; the CLI omission is downstream of its creation. | Verified |
 | E6 | Empty DataFrames independently produce `EMPTY_RESULT` warnings | [`data_validators.py`](../../../src/validators/data_validators.py#L237-L261), invoked by [`data_validation_orchestrator.py`](../../../backend/app/validators/data_validation_orchestrator.py#L378) | This explains why some empty-result log warnings also appear in the CSV without any general log capture. | Verified |
-| E7 | The merged commit changed backend services, mappers, orchestrator, tests, and frontend validation types; it did not include `scripts/validate_project.py` | Merge `4b67c878`; fix commit `ac5694c9` | The fix added structured finding collection to other validation paths, not this CLI path. | Verified |
+| E7 | The merged commit changed backend services, mappers, orchestrator, tests, and frontend validation types; it did not include `scripts/project/validate_project.py` | Merge `4b67c878`; fix commit `ac5694c9` | The fix added structured finding collection to other validation paths, not this CLI path. | Verified |
 | E8 | Focused CLI and orchestrator tests | `.venv/bin/pytest -q tests/test_validate_project_script.py backend/tests/validators/test_data_validation_orchestrator.py` | 23 tests passed. Existing tests verify backend full-data linker findings, but this run did not test that the CLI emits those findings. | Verified |
 
 ## Timeline or causal chain
@@ -84,7 +84,7 @@ The evidence establishes the current path and its cause. It does not establish t
 
 ## Verification record
 
-- **Before fix:** `.venv/bin/python scripts/validate_project.py --workflow all --log-level warning tests/test_data/projects/arbodat/shapeshifter.yml` — exit code 0; reproduced the missing row-count results.
+- **Before fix:** `.venv/bin/python scripts/project/validate_project.py --workflow all --log-level warning tests/test_data/projects/arbodat/shapeshifter.yml` — exit code 0; reproduced the missing row-count results.
 - **After fix:** The same command exited 0 and printed seven `ROW_COUNT_MISMATCH` rows, alongside the existing three `EMPTY_RESULT` rows. Log-only notices remained outside the CSV.
 - **Attempted exact interpreter name:** `python ...` — unavailable on this shell's `PATH`; no project command ran from that attempt.
 - **Focused tests:** `.venv/bin/pytest -q tests/test_validate_project_script.py backend/tests/validators/test_data_validation_orchestrator.py` — 24 passed.
@@ -97,7 +97,7 @@ The evidence establishes the current path and its cause. It does not establish t
 
 - Merge commit `4b67c87831ba6f7b581aab76deb5777be5533f39`
 - Fix commit `ac5694c993d73fef2ed364e0539400771ba6b29b`
-- [`scripts/validate_project.py`](../../../scripts/validate_project.py)
+- [`scripts/project/validate_project.py`](../../../scripts/project/validate_project.py)
 - [`backend/app/validators/data_validation_orchestrator.py`](../../../backend/app/validators/data_validation_orchestrator.py)
 - [`backend/app/services/shapeshift_service.py`](../../../backend/app/services/shapeshift_service.py)
 - [`tests/test_validate_project_script.py`](../../../tests/test_validate_project_script.py)

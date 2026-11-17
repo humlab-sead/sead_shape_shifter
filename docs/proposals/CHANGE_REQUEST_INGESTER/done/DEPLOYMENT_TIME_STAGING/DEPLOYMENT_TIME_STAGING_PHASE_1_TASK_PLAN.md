@@ -15,13 +15,13 @@
 
 ## Repository Findings
 
-**Repository basis:** `dev` at `7839c8b0`, planned 2026-10-17. Current uncommitted proposal and phase-plan changes, plus the current `sead_standard_model.yml`, were considered and left untouched. `TARGET_MODEL_REVIEW_20261013.md` is tracked and clean, but its `analysis_entity` section predates the current model and proposal. Graphify identified `resolve_effective_identity()` callers; current source confirmed them. A representative deployed schema was not accessed during planning.
+**Repository basis:** `dev` at `7839c8b0`, planned 2026-10-17. Current uncommitted proposal and phase-plan changes, plus the current `sead_standard_model.yml`, were considered and left untouched. `TARGET_MODEL_REVIEW.md` is tracked and clean, but its `analysis_entity` section predates the current model and proposal. Graphify identified `resolve_effective_identity()` callers; current source confirmed them. A representative deployed schema was not accessed during planning.
 
 | Verified source | Finding and implementation implication |
 | --- | --- |
 | `src/target_model/effective_identity.py::resolve_effective_identity` | `aggregate_parent` implies effective `child` even for a `fact`; role defaults apply only without a parent. It resolves one entity, not a full parent chain. Extend this shared Core path for chain/root results and root identity type; do not create an entity-name list. |
 | `src/target_model/spec_validator.py::TargetModelSpecValidator._validate_aggregate_parent` | Checks missing, unknown, self-referential, and conflicting immediate parents, plus the direct parent FK. It does not detect multi-entity parent cycles or a chain ending at an unsupported root. Preserve its existing issue behavior while adding chain checks. |
-| `resources/target_models/sead_standard_model.yml`; `resources/target_models/TARGET_MODEL_REVIEW_20261013.md` | The model has `analysis_entity → dataset`, `analysis_value → analysis_entity`, `abundance_modification → abundance`, and `value_type_item → value_type`. `abundance_modification` is a child despite its `fact` role; `abundance_ident_level` is a derived bridge without `aggregate_parent`. The review still calls `analysis_entity` a tracked bridge and leaves its identity undecided. Update that review during inventory work; it has no deployed-generator results. |
+| `resources/target_models/sead_standard_model.yml`; `resources/target_models/TARGET_MODEL_REVIEW.md` | The model has `analysis_entity → dataset`, `analysis_value → analysis_entity`, `abundance_modification → abundance`, and `value_type_item → value_type`. `abundance_modification` is a child despite its `fact` role; `abundance_ident_level` is a derived bridge without `aggregate_parent`. The review still calls `analysis_entity` a tracked bridge and leaves its identity undecided. Update that review during inventory work; it has no deployed-generator results. |
 | `ingesters/sead_change_request/planning.py::plan_table`; `ingesters/sead_change_request/orchestration.py::orchestrate_identity_assignments`; `backend/app/services/ingester_runtime.py::SeadChangeRequestTargetCollisionChecker.reserve_target_id` | `public_id_generation: database_sequence` currently selects `RESERVE_DATABASE_ID`, and the runtime consumes `nextval` during preparation. `SeadChangeRequestIngester._prepare_change_request` shares this path between validation and ingestion. Keep it as current behavior in Phase 1; replacement is later work. |
 | `ingesters/sead_change_request/sql_builder.py::_add_sequence_synchronization` / `_render_sequence_synchronization` | Existing generated SQL locks SIMS target tables in sorted order with `SHARE ROW EXCLUSIVE`, then advances their sequences after explicit inserts. It does not inspect sequence cache settings or lock child tables for deployment-time allocation. Use its lock order and mode as the Phase 1 contract reference while keeping SIMS behavior intact. |
 | `ingesters/sead_change_request/sql_builder.py::InlineInsertDeployStrategy.build_artifact` / `CopyCsvDeployStrategy.build_artifact` | Both render in package order and defer constraints; neither derives an insert dependency graph or rejects cycles. Phase 1 must define an acyclic graph result that Phase 2 can use for staged insertion. |
@@ -71,14 +71,14 @@
 
 **Objective:** The MVP-relevant child/root relationships and per-row root prerequisites are recorded without waiting for unrelated target-model decisions.
 
-**Affected data and tests:** `resources/target_models/sead_standard_model.yml`, `resources/target_models/TARGET_MODEL_REVIEW_20261013.md` (tracked review needing an updated `analysis_entity` section), `tests/target_model/test_spec_files.py`.
+**Affected data and tests:** `resources/target_models/sead_standard_model.yml`, `resources/target_models/TARGET_MODEL_REVIEW.md` (tracked review needing an updated `analysis_entity` section), `tests/target_model/test_spec_files.py`.
 
 **Dependencies:** `T1.1`–`T1.3` for reproducible chain and dependency results.
 
 **Tasks**
 
 - [x] `T2.1` **Change:** Confirm ownership and document derived candidates.
-  - **Target:** `resources/target_models/TARGET_MODEL_REVIEW_20261013.md`; `resources/target_models/sead_standard_model.yml`; `tests/target_model/test_spec_files.py`.
+  - **Target:** `resources/target_models/TARGET_MODEL_REVIEW.md`; `resources/target_models/sead_standard_model.yml`; `tests/target_model/test_spec_files.py`.
   - **Current → required:** The review calls `analysis_entity` a tracked bridge and leaves its identity undecided → align it with the model's `analysis_entity → dataset` child relationship and record a derived child/root inventory.
   - **Implementation:** Record each candidate's entity, parent chain, effective root identity, target table, and `public_id`. Check analysis-value and abundance descendants, `sample_dimension → sample`, `sample_group_reference → sample_group`, and `value_type_item → value_type`. Record `abundance_modification` as a child fact and `abundance_ident_level` as a separate derived bridge. Confirm direct parent FKs, correct only proven MVP ownership mistakes in YAML, and add file-level assertions for settled cases.
   - **Constraints:** Document the row rule: an effective tracked root, including `dataset` despite its `lookup` role, must be newly inserted with its child; a reconciled root must have a resolved target ID; an existing tracked root or unresolved root blocks a new child. Phase 2 enforces this per row. Keep new `value_type` roots, the `value_type_item` role decision, and wider requiredness review separate.
@@ -90,7 +90,7 @@
 
 **Objective:** Each candidate has a recorded generator and cache disposition, plus a locking and synchronization rule checked on a disposable clone.
 
-**Affected code and documentation:** `scripts/review_staging_id_generators.py` (**NEW**), `tests/target_model/test_staging_id_generator_review.py` (**NEW**), `resources/target_models/TARGET_MODEL_REVIEW_20261013.md`.
+**Affected code and documentation:** `scripts/review_staging_id_generators.py` (**NEW**), `tests/target_model/test_staging_id_generator_review.py` (**NEW**), `resources/target_models/TARGET_MODEL_REVIEW.md`.
 
 **Dependencies:** Area 2 candidate inventory and access to a representative deployed SEAD schema with a read-only connection; a disposable clone for sequence mutation.
 
@@ -103,7 +103,7 @@
   - **Constraints:** Support only positive, noncycling sequences with `CACHE 1` and a usable default or identity behavior. Flag insert triggers for manual review because catalog metadata cannot prove whether they rewrite IDs. Do not consume sequence values or hard-code candidate names.
   - **Validation:** `V-3`, `V-4` cover both identity modes, serial IDs, cache settings, missing or ambiguous relations, missing columns/sequences, nonpositive or cycling sequences, and insert triggers.
 - [x] `T3.2` **Change:** Record generator results and verify lock and synchronization behavior.
-  - **Target:** `resources/target_models/TARGET_MODEL_REVIEW_20261013.md`.
+  - **Target:** `resources/target_models/TARGET_MODEL_REVIEW.md`.
   - **Current → required:** No deployed-schema result exists → each candidate has a recorded schema result and a checked lock/synchronization contract.
   - **Implementation:** Run the audit against a representative deployed schema. Record database/schema version or snapshot identifier, each qualified relation, generator, cache, status, and reason. Review enabled insert-trigger definitions and verify their effect on a disposable clone before declaring support. On the clone, put a supported sequence behind its table's highest ID, then confirm synchronization produces an unused ID and blocks a competing writer.
   - **Constraints:** Record that Phase 2 locks the union of child-allocation and SIMS sequence-sync tables by qualified name with `SHARE ROW EXCLUSIVE` before inspecting table maxima or changing sequences, and holds locks through insertion. The release workflow excludes concurrent writes and independent `nextval` calls; table locks alone do not serialize `nextval`. Record the `GENERATED ALWAYS` explicit-insert override and unsupported defaults/triggers as Phase 2/3 inputs. Never mutate the representative/source database.
@@ -141,7 +141,7 @@ Execution used the repository virtualenv at `/data/roger/source/sead_shape_shift
 | Insert dependency check | `src/target_model/insert_dependencies.py` (**NEW**); `tests/target_model/test_insert_dependencies.py` (**NEW**) | `T1.3` | `V-1` rejects cycles for selected inserted rows and accepts reference-only parents. |
 | Core tests | `tests/target_model/test_effective_identity.py`; `tests/target_model/test_spec_validator.py` | `T1.1`, `T1.2` | `V-1` passes. |
 | Reviewed model and file assertions | `resources/target_models/sead_standard_model.yml`; `tests/target_model/test_spec_files.py` | `T2.1` | `V-2` passes; only confirmed ownership changes are made. |
-| Ownership and schema inventory | `resources/target_models/TARGET_MODEL_REVIEW_20261013.md` | `T2.1`, `T3.2` | Derived chains, root-row rules, deployed generator/cache results, lock contract, and clone result are recorded. |
+| Ownership and schema inventory | `resources/target_models/TARGET_MODEL_REVIEW.md` | `T2.1`, `T3.2` | Derived chains, root-row rules, deployed generator/cache results, lock contract, and clone result are recorded. |
 | Schema audit and focused tests | `scripts/review_staging_id_generators.py` (**NEW**); `tests/target_model/test_staging_id_generator_review.py` (**NEW**) | `T3.1` | `V-3` and `V-4` produce supported/unsupported results without mutation. |
 
 ## Progress Tracker

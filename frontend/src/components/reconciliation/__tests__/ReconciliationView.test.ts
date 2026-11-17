@@ -54,6 +54,7 @@ const reconciliationStore = reactive({
   specifications: [
     {
       entity_name: 'site',
+      has_business_keys: true,
       target_field: 'site_code',
       source: null,
       property_mappings: {},
@@ -157,6 +158,20 @@ describe('ReconciliationView', () => {
     reconciliationStore.loading = false
     reconciliationStore.previewData = { test_project: { site: { site_code: [] } } }
     reconciliationStore.previewErrors = {}
+    reconciliationStore.specifications = [
+      {
+        entity_name: 'site',
+        has_business_keys: true,
+        target_field: 'site_code',
+        source: null,
+        property_mappings: {},
+        remote: { service_type: 'site', columns: [] },
+        auto_accept_threshold: 0.95,
+        review_threshold: 0.7,
+        mapping_count: 2,
+        property_mapping_count: 0,
+      },
+    ]
     reconciliationStore.autoReconcile = vi.fn()
     reconciliationStore.getServiceManifest = vi.fn(async () => serviceManifest)
     reconciliationStore.reconciliationConfig.entities.site.site_code.remote.service_type = 'site'
@@ -165,6 +180,7 @@ describe('ReconciliationView', () => {
     reconciliationStore.mappingErrors = {}
     reconciliationStore.mappingLoading = {}
     reconciliationStore.loadMappingData = vi.fn(async () => {})
+    reconciliationStore.loadPreviewData = vi.fn(async () => {})
     reconciliationStore.exportToMapping = vi.fn(async () => ({
       exported: 2,
       removed: 1,
@@ -184,7 +200,51 @@ describe('ReconciliationView', () => {
     expect(wrapper.get('[data-testid="yaml-editor"]').attributes('data-mode')).toBe('reconciliation')
   })
 
-  it('exports accepted links and local-only approvals with separate counts', async () => {
+  it('opens the reconciliation help dialog from the review tab', async () => {
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+    const helpButton = wrapper.get('[data-testid="reconciliation-help-button"]')
+    expect(helpButton.find('.mdi-help-circle-outline').exists()).toBe(true)
+    await helpButton.trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="reconciliation-help-dialog"]').text()).toContain('Quick workflow')
+    expect(wrapper.get('[data-testid="reconciliation-help-dialog"]').text()).toContain(
+      'Accepting a candidate does not change the current ID until you use Export to Mapping.'
+    )
+  })
+
+  it('allows dismissing the export guidance and candidate search summary', async () => {
+    reconciliationStore.autoReconcile = vi.fn().mockResolvedValue({
+      proposed: 3,
+      unmatched: 1,
+      total: 4,
+      candidates: {},
+      errors: [],
+    })
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+
+    const exportGuidance = wrapper.get('[data-testid="reconciliation-export-info"]')
+    await exportGuidance.get('button').trigger('click')
+    expect(wrapper.find('[data-testid="reconciliation-export-info"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="find-candidates-button"]').trigger('click')
+    await flushPromises()
+    const searchSummary = wrapper.get('[data-testid="matching-result"]')
+    await searchSummary.get('button').trigger('click')
+    expect(wrapper.find('[data-testid="matching-result"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="find-candidates-button"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="matching-result"]').exists()).toBe(true)
+  })
+
+  it('exports accepted links and new-row approvals with separate counts', async () => {
     const wrapper = await mountView()
 
     await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
@@ -199,8 +259,8 @@ describe('ReconciliationView', () => {
     expect(reconciliationStore.exportToMapping).toHaveBeenCalledWith('test_project', 'site', 'site_code')
     expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site')
     expect(wrapper.text()).toContain(
-      '2 link(s) exported; 1 stale link(s) removed; 1 local-only approval(s) exported; ' +
-        '2 stale local-only approval(s) removed; 1 protected link(s) skipped.'
+      '2 link(s) exported; 1 stale link(s) removed; 1 New-row approval recorded; ' +
+        '2 stale New-row approvals removed; 1 protected link(s) skipped.'
     )
   })
 
@@ -341,6 +401,25 @@ describe('ReconciliationView', () => {
       "Property mapping 'old_property' not declared for remote type 'site'."
     )
     expect(wrapper.get('[data-testid="find-candidates-button"]').attributes('disabled')).toBeDefined()
+    expect(reconciliationStore.autoReconcile).not.toHaveBeenCalled()
+  })
+
+  it('warns and avoids reconciliation requests for entities without business keys', async () => {
+    reconciliationStore.specifications[0]!.has_business_keys = false
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="matching-blocked"]').text()).toContain(
+      "Entity 'site' has no business keys configured."
+    )
+    expect(wrapper.get('[data-testid="find-candidates-button"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="manual-link-open"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="preview-error"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="mapping-error"]').exists()).toBe(false)
+    expect(reconciliationStore.loadPreviewData).not.toHaveBeenCalled()
+    expect(reconciliationStore.loadMappingData).not.toHaveBeenCalled()
     expect(reconciliationStore.autoReconcile).not.toHaveBeenCalled()
   })
 

@@ -7,18 +7,16 @@ This index covers proposals and initiative records that need attention or provid
 | Proposal | Status | Decision or scope |
 |---|---|---|
 | [Linked Art Export from Shape Shifter](LINKED_ART_EXPORT/LINKED_ART_EXPORT.md) | Proposed change request — draft for review | Evaluate SEAD-to-Linked Art output through relational transformations and a registered output dispatcher before deciding on production support. |
-| [Output Dataset Expectations](OUTPUT_DATASET_EXPECTATIONS/OUTPUT_DATASET_EXPECTATIONS.md) | Approved change request | Check row counts, distinct business keys, and expected group counts on complete transformed output. |
 | [Report Target Model Coverage Against SEAD](SEAD_TARGET_MODEL_COVERAGE_BOUNDARY.md) | Proposed change request | Let each target model declare its SEAD coverage source and measure coverage with a CLI against the pinned snapshot or live SEAD; no separate manifest. |
 | [Publish Container Images From CI To GHCR And Deploy By Pull](GHCR_IMAGE_RELEASE.md) | Proposed change request | Build images in GitHub Actions, publish to GHCR, and deploy by digest-pinned pull instead of host-side builds and release archives. |
 | [Move Existing Projects To Provider-Schema Scopes](CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md) | Proposed cutover | Inventory old project scopes, decide migrate or abandon, assign one approved pair per project, and enable projects one at a time as operational work. |
+| [Target Model Project Requirements](TARGET_MODEL_PROJECT_REQUIREMENTS/TARGET_MODEL_PROJECT_REQUIREMENTS.md) | Proposed change request — draft for review | Define when projects need target entities, links, and relationship rows, then close the remaining model gaps and the Shape Shifter support they need. |
 | [Project Folder Navigation With Breadcrumbs](FOLDER_NAVIGATION_WITH_BREADCRUMBS.md) | Proposed feature | Browse projects by their existing folder structure client-side, with breadcrumbs and URL-persisted folder state. |
 | [Improve `@value` Guidance and Preview in Column Pickers](VALUE_REFERENCE_COLUMN_UX_ENHANCEMENT/VALUE_REFERENCE_COLUMN_UX_ENHANCEMENT.md) | Proposed feature | Add best-effort reference suggestions and column previews from cached entity data without backend resolution or validation changes. |
 | [Make `@value` References Usable in Column Pickers](VALUE_REFERENCE_COLUMN_PICKERS/VALUE_REFERENCE_COLUMN_PICKERS.md) | Proposed feature | Add guided reference entry, resolved-column previews, and explicit replacement without restoring long dropdown lists. |
 | [Security Hardening Follow-up](SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md) | Proposed change request | Remediate unresolved application, authorization, deployment, and verification issues, including safeguards for future generic ingester routes. |
 | [AI Project Advisor](SHAPESHIFTER_PROJECT_AI_ADVISOR/SHAPESHIFTER_PROJECT_AI_ADVISOR.md) | Feature proposal | Provide project-scoped advice grounded in project state, SEAD knowledge, and source-level investigation. |
 | [Git-Backed Project Backups](GIT_BACKED_PROJECT_BACKUP.md) | Proposed feature — draft for review | Add an opt-in per-project git repository backend that commits project source files at the operation boundary, keeping the file-copy backend as default. |
-| [Direct Target-ID Foreign Key UX](DIRECT_TARGET_ID_FOREIGN_KEY_UX/DIRECT_TARGET_ID_FOREIGN_KEY_UX.md) | Proposed feature | Offer supported direct target-model FKs and rely on structural validation for missing output columns, with lossless value-source map round trips. |
-| [Direct Target-ID Conditional FK Conformance](DIRECT_TARGET_ID_CONDITIONAL_FK_CONFORMANCE/DIRECT_TARGET_ID_CONDITIONAL_FK_CONFORMANCE.md) | Approved change request | Omit reconciliation-pending status for valid conditional direct-ID FKs while preserving independent target requirements and ID checks. |
 
 ## Current Initiatives
 

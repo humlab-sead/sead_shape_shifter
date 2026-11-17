@@ -348,9 +348,7 @@ class LinkTroubleshooterMapper:
         """Map one already-sliced exception-row window to the browse response."""
         mapped_rows: list[LinkTroubleshootExceptionRow] = []
         for row in rows:
-            key_values: list[LinkTroubleshootKeyValue] = [
-                LinkTroubleshooterMapper._bounded_key_value(value)[0] for value in row.key_values
-            ]
+            key_values: list[LinkTroubleshootKeyValue] = [LinkTroubleshooterMapper._bounded_key_value(value)[0] for value in row.key_values]
             mapped_rows.append(
                 LinkTroubleshootExceptionRow(
                     input_position=row.input_position,

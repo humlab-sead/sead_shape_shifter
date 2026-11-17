@@ -27,6 +27,23 @@
               </div>
             </div>
 
+            <div v-if="helpContent.rowActions?.length" class="row-actions-section mt-3">
+              <div class="text-caption font-weight-medium mb-1 text-medium-emphasis">Row action icons</div>
+              <div v-for="action in helpContent.rowActions" :key="action.label" class="row-action-item">
+                <v-icon
+                  v-if="action.icon"
+                  :icon="action.icon"
+                  size="small"
+                  class="row-action-icon"
+                  aria-hidden="true"
+                />
+                <div>
+                  <div class="font-weight-medium">{{ action.label }}</div>
+                  <div class="text-caption">{{ action.description }}</div>
+                </div>
+              </div>
+            </div>
+
             <div v-if="helpContent.shortcuts && helpContent.shortcuts.length > 0" class="shortcuts-section mt-3">
               <div class="text-caption font-weight-medium mb-1 text-medium-emphasis">Shortcuts</div>
               <div v-for="(shortcut, index) in helpContent.shortcuts" :key="index" class="shortcut-item">
@@ -46,12 +63,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { reconciliationHelp, type ReconciliationHelpItem } from './reconciliation/reconciliationHelp'
 
 interface HelpContent {
   title: string
   description?: string
   tips?: string[]
   shortcuts?: Array<{ keys: string; action: string }>
+  rowActions?: ReconciliationHelpItem[]
 }
 
 interface Props {
@@ -133,6 +152,12 @@ const helpContentMap: Record<string, HelpContent> = {
       'Validate data to check actual values',
     ],
   },
+  'project-detail-reconciliation': {
+    title: reconciliationHelp.title,
+    description: reconciliationHelp.description,
+    tips: reconciliationHelp.quickTips,
+    rowActions: reconciliationHelp.rowActions.filter((action) => action.icon),
+  },
   'project-detail-data-sources': {
     title: 'Data Sources',
     description: 'Configure database connections and files.',
@@ -203,8 +228,23 @@ const helpContent = computed(() => {
 }
 
 .tips-section,
-.shortcuts-section {
+.shortcuts-section,
+.row-actions-section {
   margin-top: 0.75rem;
+}
+
+.row-action-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.row-action-icon {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
 }
 
 .tip-item {

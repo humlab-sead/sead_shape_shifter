@@ -30,6 +30,7 @@ const apiMocks = vi.hoisted(() => ({
 
 const specification = {
   entity_name: 'site',
+  has_business_keys: true,
   target_field: 'site_code',
   source: null,
   property_mappings: {},
@@ -144,7 +145,7 @@ describe('SpecificationsList', () => {
 
     expect(reconciliationStore.deleteSpecification).toHaveBeenCalledWith('test_project', 'site', 'site_code', true)
     expect(notificationMocks.success).toHaveBeenCalledWith(
-      'Specification deleted. 3 owned mapping link(s) and 2 local-only approval(s) removed.'
+      'Specification deleted. 3 owned mapping link(s) and 2 New-row approvals removed.'
     )
     expect(notificationMocks.error).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="delete-dialog"]').exists()).toBe(false)

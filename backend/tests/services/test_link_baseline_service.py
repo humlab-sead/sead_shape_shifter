@@ -1193,7 +1193,7 @@ async def test_reproduction_rejects_over_budget_inputs_before_the_merge(tmp_path
     api_project = build_api_project(large_input_cfg())
     saved = ProjectMapper.to_core(api_project)
     settings = Settings(
-        _env_file=None,
+        _env_file=None,  # pyright: ignore[reportCallIssue]
         APPLICATION_ROOT=tmp_path,
         LINK_EXPERIMENT_MAX_MEMORY_MB=1,
     )  # pyright: ignore[reportCallIssue]

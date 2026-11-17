@@ -46,8 +46,9 @@ entities:          # Entity definitions   (required)
 options:           # Global options (optional)
   translations:    # Column name translations
   data_sources:    # named data sources associated to this project
+  output_expectations:  # Expected counts checked on full-run output
   fixed_entity_types:  # Project-level fixed-entity type conventions (optional)
-  mappings:        # (Legacy) Remote entity mappings — use <project>-mapping.yml sidecar instead
+  mappings:        # (Legacy) Remote entity mappings — use shapeshifter.mapping.yml sidecar instead
 ```
 
 ---
@@ -186,7 +187,7 @@ This architecture separates concerns between:
 - **Business logic**: `keys` for entity identification in source data
 - **Global scope**: `public_id` for target system integration and FK relationships
 
-**Core link rule**: Core FK links use local `system_id` values. Their FK columns contain the referenced entity's local `system_id`, not an external ID. When an ID from the source is used for reconciliation, it can still be configured as a business key and mapped through the mapping sidecar (`<project>-mapping.yml`).
+**Core link rule**: Core FK links use local `system_id` values. Their FK columns contain the referenced entity's local `system_id`, not an external ID. When an ID from the source is used for reconciliation, it can still be configured as a business key and mapped through the mapping sidecar (`shapeshifter.mapping.yml`).
 
 The SEAD change-request ingester also supports a project-specific direct target-ID value for an eligible target-model FK. This changes only the FK value written to the change-request package; it does not create a Core link or change Core FK values.
 
@@ -397,7 +398,7 @@ entities:
 **Critical Architectural Principle**: 
 - **All relationships use local `system_id` values** - FK columns contain parent's `system_id` (1, 2, 3...), never external IDs
 - **FK column naming**: Child FK column = parent's `public_id` (avoids `system_id` collision)
-- **SEAD ID mapping**: Applied separately via the mapping sidecar (`<project>-mapping.yml`) as a decoration step
+- **SEAD ID mapping**: Applied separately via the mapping sidecar (`shapeshifter.mapping.yml`) as a decoration step
 - **Local domain integrity**: All processing happens with sequential integer references
 
 ---
@@ -2445,6 +2446,47 @@ Runtime behavior is strict only when a type is explicitly active through `column
 - Assuming conventions replace per-entity `column_types` rather than acting as defaults
 - Expecting conventions to affect non-fixed entities
 
+### Output Expectations
+
+`options.output_expectations` declares count checks for full-run entity output. These declarations are validated as project configuration before dispatcher execution or project-table ingestion, even when optional pre-run validation is disabled.
+
+During a full dispatcher run, Shape Shifter measures each configured expectation against the complete normalized output before optional foreign-key removal or column translation. A failed check is an execution validation failure: the run reports every result, writes no dispatcher output, and the CLI exits unsuccessfully. Full execution API responses include `output_expectation_results` on success and on failure; that status stays separate from optional pre-run `validation_passed`.
+
+Full project-table ingestion evaluates the same checks against the same pre-translation output and behaves the same way: it reports every result in `output_expectation_results`, ingests no tables when a check fails or when an entity is incomplete, and keeps those results on downstream ingestion failures. Declaration errors stay distinct from execution mismatches, and a passing check does not make downstream writes atomic. Validation-only requests, previews, samples, entity materialization, and partial-entity runs do not evaluate output expectations.
+
+```yaml
+options:
+  output_expectations:
+    - name: expected-site-count
+      entity: site
+      metric: row_count
+      equals: 7
+    - name: dataset-count-range
+      entity: dataset
+      metric: distinct_key_count
+      min: 10
+      max: 15
+    - name: sites-by-project
+      entity: site
+      metric: grouped_row_count
+      column: Projekt
+      groups:
+        "19_0013":
+          min: 1
+        "19_0014":
+          min: 1
+```
+
+Each expectation must have a unique, non-empty `name`, a configured `entity`, and one supported `metric`:
+
+- `row_count` counts all rows in the entity output.
+- `distinct_key_count` counts distinct combinations of the entity's configured business keys and requires at least one key.
+- `grouped_row_count` checks the count for each explicitly named value in `groups`. Its `column` must be a configured pre-translation output column; for an unnested entity, the column must survive unnesting or be generated afterward.
+
+Grouped values must be JSON scalars: strings, booleans, finite numbers, or `null`. YAML timestamps and binary values, as well as `NaN` and `Infinity`, fail structural validation. Quote date-like values when they are intended to be strings.
+
+For `row_count` and `distinct_key_count`, use exactly one of `equals`, `min`, or `max`, or use both `min` and `max` for an inclusive range. Group entries use the same comparison forms. Limits must be non-negative integers, and a range's `min` must not exceed its `max`. Unsupported metrics, fields, entities, columns, or comparison shapes fail structural validation.
+
 ### Translation Project
 
 ```yaml
@@ -2582,7 +2624,7 @@ options:
     sead: "@include: sead-options.yml"
     arbodat_lookup: "@include: arbodat-lookup-options.yml"
 
-# Mapping sidecar is auto-loaded from <project>-mapping.yml; no @include needed
+# Mapping sidecar is auto-loaded from shapeshifter.mapping.yml; no @include needed
 ```
 
 ### `@load:` Load Syntax
@@ -3905,7 +3947,7 @@ entities: dict[string, EntityConfig]
 options:
   translations: TranslationConfig
   data_sources: dict[string, DataSourceConfig]
-  mappings: dict[string, any]  # Legacy; use <project>-mapping.yml sidecar
+  mappings: dict[string, any]  # Legacy; use shapeshifter.mapping.yml sidecar
 
 # EntityConfig
 EntityConfig:

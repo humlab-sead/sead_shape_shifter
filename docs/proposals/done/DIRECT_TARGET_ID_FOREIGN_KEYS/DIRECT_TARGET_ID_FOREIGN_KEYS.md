@@ -18,7 +18,7 @@ Related documents:
 
 - [Target Model Guide](../../../../docs/TARGET_MODEL_GUIDE.md)
 - [Conditional Target Model Requirements](../CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md) — the `required_when` rule this declaration composes with
-- [Target Model Conditional FK Candidates](../../../../resources/target_models/TARGET_MODEL_CONDITIONAL_CANDIDATES.md) — candidate inventory, not a count of projects that can drop an entity
+- [Target Model Conditional FK Candidates](../../TARGET_MODEL_PROJECT_REQUIREMENTS/archive/TARGET_MODEL_CONDITIONAL_CANDIDATES.md) — candidate inventory, not a count of projects that can drop an entity
 - [Advanced FK Validation Modes](../../future/ADVANCED_FK_VALIDATION_MODES.md), [FK Null-Key Policy Model](../../future/FK_NULL_KEY_POLICY_MODEL.md) — related deferred work
 
 ## Problem

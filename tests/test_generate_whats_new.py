@@ -1,4 +1,4 @@
-"""Tests for scripts/generate_whats_new.py."""
+"""Tests for scripts/workflow/generate_whats_new.py."""
 
 import datetime as dt
 import importlib.util
@@ -10,7 +10,7 @@ from types import ModuleType, SimpleNamespace
 
 import pytest
 
-MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "generate_whats_new.py"
+MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "workflow" / "generate_whats_new.py"
 
 
 def load_generator_module() -> ModuleType:

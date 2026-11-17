@@ -799,6 +799,7 @@ class ReconciliationService:
     def replace_catalog(self, project_name: str, catalog: core.EntityResolutionCatalog) -> None:
         """Save a whole catalog and remove links owned by specifications it removes."""
         with self.project_service._get_lock(project_name):
+            self.catalog_manager.validate_catalog_business_keys(project_name, catalog)
             previous = self.catalog_manager.load_catalog(project_name)
             removed_owners = {
                 (entity_name, target_field)

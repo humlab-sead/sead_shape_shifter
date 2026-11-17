@@ -12,10 +12,12 @@ from pydantic import ValidationError as PydanticValidationError
 
 from backend.app.core.config import settings
 from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError, ValidationError
+from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
 from backend.app.models import reconciliation as dto
 from backend.app.models.project import Project
 from backend.app.services import ProjectService
+from src.model import ShapeShiftProject
 from src.reconciliation import model as core
 
 CATALOG_VERSION = "3.0"
@@ -33,6 +35,8 @@ class EntityMappingManager:
     Query and introspection operations (like schema inspection) are handled by ReconciliationService.
     """
 
+    CATALOG_FILENAME = "shapeshifter.reconciliation.yml"
+
     def __init__(self, project_service: ProjectService, config_dir: Path):
         """
         Initialize entity resolution catalog manager.
@@ -45,8 +49,12 @@ class EntityMappingManager:
         self.config_dir = Path(config_dir)
 
     def _get_default_catalog_filename(self, project_name: str) -> Path:
-        """Get path to reconciliation YAML file."""
-        return self.config_dir / project_name / f"{project_name}-reconciliation.yml"
+        """Get the default path to the reconciliation catalog YAML file.
+
+        The catalog has the fixed name ``shapeshifter.reconciliation.yml``
+        inside the project directory.
+        """
+        return self.config_dir / project_name / self.CATALOG_FILENAME
 
     def load_catalog(self, project_name: str, filename: Path | None = None) -> core.EntityResolutionCatalog:
         """
@@ -149,6 +157,11 @@ class EntityMappingManager:
             List of flattened entity mapping items (DTOs)
         """
         catalog: core.EntityResolutionCatalog = self.load_catalog(project_name)
+        if not catalog.entities:
+            return []
+
+        project: Project = self.project_service.load_project(project_name)
+        core_project: ShapeShiftProject = ProjectMapper.to_core(project, validate_mapping_sidecar=False)
         entity_mappings = []
 
         for entity_name, target_mappings in catalog.entities.items():
@@ -159,6 +172,7 @@ class EntityMappingManager:
                 entity_mappings.append(
                     dto.EntityResolutionListItem(
                         entity_name=entity_name,
+                        has_business_keys=self._has_business_keys(core_project, entity_name),
                         target_field=target_field,
                         source=mapping_dto.source,
                         property_mappings=mapping_dto.property_mappings,
@@ -171,6 +185,49 @@ class EntityMappingManager:
                 )
 
         return entity_mappings
+
+    @staticmethod
+    def _has_business_keys(project: ShapeShiftProject, entity_name: str) -> bool:
+        """Return whether an entity declares at least one non-empty business key."""
+        if not project.has_table(entity_name):
+            return False
+
+        return any(key.strip() for key in project.get_table(entity_name).safe_keys)
+
+    @staticmethod
+    def _require_business_keys(project: ShapeShiftProject, entity_name: str, operation: str) -> None:
+        """Raise an actionable validation error when an entity has no business keys."""
+        if EntityMappingManager._has_business_keys(project, entity_name):
+            return
+
+        raise ValidationError(
+            f"Entity '{entity_name}' has no business keys configured. Configure one or more 'keys' in the project "
+            f"entity before {operation}.",
+            context={"entity": entity_name},
+        )
+
+    def require_entity_business_keys(self, project_name: str, entity_name: str, operation: str = "running reconciliation") -> None:
+        """Require a project entity to declare business keys before reconciliation can use it."""
+        api_project: Project = self.project_service.load_project(project_name)
+        if entity_name not in api_project.entities:
+            raise ValidationError(
+                f"Entity '{entity_name}' does not exist in project '{project_name}'",
+                context={"entity": entity_name, "project": project_name},
+            )
+        core_project: ShapeShiftProject = ProjectMapper.to_core(api_project, validate_mapping_sidecar=False)
+        self._require_business_keys(core_project, entity_name, operation)
+
+    def validate_catalog_business_keys(self, project_name: str, catalog: core.EntityResolutionCatalog) -> None:
+        """Require every saved reconciliation specification to reference an entity with business keys."""
+        api_project: Project = self.project_service.load_project(project_name)
+        core_project: ShapeShiftProject = ProjectMapper.to_core(api_project, validate_mapping_sidecar=False)
+        for entity_name in catalog.entities:
+            if entity_name not in api_project.entities:
+                raise ValidationError(
+                    f"Entity '{entity_name}' does not exist in project '{project_name}'",
+                    context={"entity": entity_name, "project": project_name},
+                )
+            self._require_business_keys(core_project, entity_name, "saving this reconciliation catalog")
 
     def create_entity_mapping(
         self,
@@ -205,6 +262,8 @@ class EntityMappingManager:
                 f"Entity '{entity_name}' does not exist in project '{project_name}'",
                 context={"entity": entity_name, "project": project_name},
             )
+        core_project: ShapeShiftProject = ProjectMapper.to_core(project, validate_mapping_sidecar=False)
+        self._require_business_keys(core_project, entity_name, "saving this reconciliation specification")
 
         # Load registry (now returns domain model)
         catalog: core.EntityResolutionCatalog = self.load_catalog(project_name)
@@ -271,6 +330,15 @@ class EntityMappingManager:
         mapping: core.EntityResolutionSet | None = catalog.get(entity_name, target_field)
 
         assert mapping is not None  # Should never be None here since we checked existence
+
+        project: Project = self.project_service.load_project(project_name)
+        if entity_name not in project.entities:
+            raise ValidationError(
+                f"Entity '{entity_name}' does not exist in project '{project_name}'",
+                context={"entity": entity_name, "project": project_name},
+            )
+        core_project: ShapeShiftProject = ProjectMapper.to_core(project, validate_mapping_sidecar=False)
+        self._require_business_keys(core_project, entity_name, "saving this reconciliation specification")
 
         mapping.metadata = core.EntityResolutionMetadata(
             source=source,

@@ -1,18 +1,18 @@
 ---
 name: create-change-pr
-description: Commit uncommitted work to a new branch and merge it into dev through a pull request, using scripts/create_change_pr.py. Use when the user has local changes that must reach dev through review, or when a direct commit to dev would break later promotion to staging. Do not use for promotion pull requests (dev into staging or staging into main) or for reviewing pull requests.
+description: Commit uncommitted work to a new branch and merge it into dev through a pull request, using scripts/workflow/create_change_pr.py. Use when the user has local changes that must reach dev through review, or when a direct commit to dev would break later promotion to staging. Do not use for promotion pull requests (dev into staging or staging into main) or for reviewing pull requests.
 ---
 
 # Create A Change Pull Request
 
 Move uncommitted work onto a branch and merge it into `dev` through a pull
-request. The mechanical steps are in `scripts/create_change_pr.py`; this skill
+request. The mechanical steps are in `scripts/workflow/create_change_pr.py`; this skill
 covers the decisions that the script cannot make for you.
 
 ## Why A Pull Request Into Dev
 
 `docs`-level rules allow commits directly on `dev`, but
-`scripts/verify_promotion_provenance.sh` runs on every promotion pull request and
+`scripts/ci/verify_promotion_provenance.sh` runs on every promotion pull request and
 fails when a commit touching `scripts/`, `src/`, `backend/`, `frontend/`,
 `ingesters/`, `tests/`, or `.github/workflows/` reached `dev` without its own
 pull request. Unrecorded commits block `dev` into `staging`.
@@ -25,11 +25,13 @@ into `dev`, even when it looks like maintenance.
 1. Read the working tree once, then choose the paths.
 2. Pass one `--path` per file or directory that belongs to the change.
 3. Choose the commit type and subject.
-4. Run the script with `--dry-run`, read the printed plan and pull request body.
-5. Run it for real, then report the pull request number.
+4. Pass one `--closes` per issue the change resolves, when it answers an existing
+   issue.
+5. Run the script with `--dry-run`, read the printed plan and pull request body.
+6. Run it for real, then report the pull request number.
 
 ```bash
-uv run python scripts/create_change_pr.py \
+uv run python scripts/workflow/create_change_pr.py \
   --type chore \
   --scope deps \
   --subject "upgrade dev tooling and adapt code to new checks" \
@@ -88,9 +90,28 @@ exist only to satisfy the upgraded tools.
   `--validation` instead when the evidence is narrower, since the default pytest
   line claims the whole configured test path set.
 
+## Closing Issues
+
+- Pass `--closes` once per issue the change resolves: `--closes 661 --closes
+  662`. A bare number and a `#`-prefixed number both work: `695` and `#695` are
+  the same issue. Anything else, such as a full URL or `owner/repo#695`, is
+  rejected instead of being written as text GitHub ignores.
+- Repeating the same number reports it once, and the issues keep the order you
+  passed them in.
+- The script writes one `Closes #<issue>` line per issue at the end of
+  `## Summary`, and repeats the same lines in the commit message. Keep them out of
+  the release-note and upgrade-note sections, which the release generator reads.
+- **The merge does not close the issue.** GitHub closes an issue from a `Closes`
+  line only when the pull request merges into the default branch, or when a
+  commit carrying the line reaches that branch. This workflow targets `dev`, and
+  this repository's default branch is `main`, so a merged change pull request
+  leaves each named issue open with no `closingIssuesReferences` entry. After the
+  merge, close each issue yourself and name the merged pull request number in the
+  comment.
+
 ## Copilot Description
 
-`--generate-description` runs `scripts/update_pr_descriptions.py <n> --draft`
+`--generate-description` runs `scripts/workflow/update_pr_descriptions.py <n> --draft`
 followed by `--publish` after the pull request exists. It reads
 `REPO_SCRIPTS_DEFAULT_*` from the repository-root `.env` or the equivalent
 `COPILOT_PROVIDER_*` variables; the values may be quoted and may have spaces

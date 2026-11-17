@@ -4,7 +4,6 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-import jpype
 import pytest
 from dotenv import dotenv_values
 from loguru import logger
@@ -19,7 +18,6 @@ from backend.app.validators.data_validation_orchestrator import (
     TableStoreDataFetchStrategy,
 )
 from backend.app.validators.target_model_validator import TargetModelValidator
-from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.specifications.project import CompositeProjectSpecification
@@ -32,25 +30,16 @@ TARGET_MODEL_PATH: Path = TEST_DATA_DIR / "target_models" / "sead_standard_model
 PROJECTS_DIR: Path = TEST_DATA_DIR / "projects"
 
 
-@pytest.fixture(scope="module", autouse=True)
-def initialize_jvm():
-    """Initialize JVM once for all tests in this module."""
-    if not jpype.isJVMStarted():
-        init_jvm_for_ucanaccess()
-    yield
-
-
 @pytest.fixture(scope="module", name="arbodat_project")
-def _arbodat_project() -> ShapeShiftProject:
+def _arbodat_project(local_data_directory: Path) -> ShapeShiftProject:
     """Load the backend integration test project configuration once per module.
 
-    Applies data/test.env first and the local data/.env second, so a variable defined in
-    both files takes the value from data/.env. The environment is applied only for the
-    duration of the load through a temporary MonkeyPatch; directive values are resolved
-    into the returned project, so tests do not depend on the process environment.
+    Applies test.env first and the local .env second, so a variable defined in both files
+    takes the value from .env. The environment is applied only for the duration of the
+    load through a temporary MonkeyPatch; directives are resolved into the project.
     """
     with pytest.MonkeyPatch.context() as env_patch:
-        for env_file, override in (("data/test.env", False), ("data/.env", True)):
+        for env_file, override in ((local_data_directory / "test.env", False), (local_data_directory / ".env", True)):
             for name, value in dotenv_values(env_file).items():
                 if value is not None and (override or name not in os.environ):
                     env_patch.setenv(name, value)
@@ -105,7 +94,7 @@ def test_check_circular_dependencies(project: ShapeShiftProject):
 
 
 @pytest.mark.asyncio
-async def test_data_validation_orchestrator(project: ShapeShiftProject):
+async def test_data_validation_orchestrator(ucanaccess_required: None, project: ShapeShiftProject):  # pylint: disable=unused-argument
 
     expected_issues: set[str] = {
         "warning:dating:EMPTY_RESULT",
@@ -164,33 +153,43 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project(project: S
 
     # FIXME: Check old versions if test_data/projects/arbodat/shapeshifter.yml
     # Some of the dataset issue are probably resolved in old version
+
     expected_issues: list[str] = [
-        "CONDITIONAL_FK_AWAITING_RECONCILIATION;location;Conditional foreign key from 'location' to 'location_type' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
+        "UNEXPECTED_PUBLIC_ID;dataset_submission_type;Entity 'dataset_submission_type' declares public_id 'dataset_submission_type_id' but target model expects 'submission_type_id'",
         "DIRECT_FK_TARGET_CHECK_PENDING;dataset;Target ID values for 'dataset.data_type_id' will be checked against the target database during change-request validation.",
         "DIRECT_FK_TARGET_CHECK_PENDING;method;Target ID values for 'method.method_group_id' will be checked against the target database during change-request validation.",
-        "MISSING_REQUIRED_COLUMN;analysis_entity;Entity 'analysis_entity' is missing required target column 'dataset_id'",
-        "MISSING_REQUIRED_COLUMN;relative_dating;Entity 'relative_dating' is missing required target column 'analysis_entity_id'",
         "MISSING_REQUIRED_FOREIGN_KEY_TARGET;analysis_entity;Entity 'analysis_entity' is missing required foreign key target 'dataset'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;property_type;Entity 'property_type' is missing required foreign key target 'property_type_group'",
         "MISSING_REQUIRED_FOREIGN_KEY_TARGET;relative_dating;Entity 'relative_dating' is missing required foreign key target 'analysis_entity'",
+        "CONDITIONAL_FK_AWAITING_RECONCILIATION;location;Conditional foreign key from 'location' to 'location_type' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
+        "CONDITIONAL_FK_AWAITING_RECONCILIATION;method;Conditional foreign key from 'method' to 'record_type' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
+        "CONDITIONAL_FK_AWAITING_RECONCILIATION;dataset_submission;Conditional foreign key from 'dataset_submission' to 'dataset' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
+        "CONDITIONAL_FK_AWAITING_RECONCILIATION;dataset_submission;Conditional foreign key from 'dataset_submission' to 'dataset_submission_type' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
+        "CONDITIONAL_FK_AWAITING_RECONCILIATION;dataset_submission;Conditional foreign key from 'dataset_submission' to 'contact' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
+        "CONDITIONAL_FK_AWAITING_RECONCILIATION;abundance_element;Conditional foreign key from 'abundance_element' to 'record_type' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
+        "CONDITIONAL_FK_AWAITING_RECONCILIATION;taxa;Conditional foreign key from 'taxa' to 'taxa_tree_genus' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
+        "CONDITIONAL_FK_AWAITING_RECONCILIATION;taxa;Conditional foreign key from 'taxa' to 'taxa_tree_author' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
+        "MISSING_REQUIRED_COLUMN;dataset_submission_type;Entity 'dataset_submission_type' is missing required target column 'submission_type'",
+        "MISSING_REQUIRED_COLUMN;dataset_submission;Entity 'dataset_submission' is missing required target column 'contact_id'",
+        "MISSING_REQUIRED_COLUMN;analysis_entity;Entity 'analysis_entity' is missing required target column 'dataset_id'",
+        "MISSING_REQUIRED_COLUMN;property_type;Entity 'property_type' is missing required target column 'property_type_group_id'",
+        "MISSING_REQUIRED_COLUMN;relative_dating;Entity 'relative_dating' is missing required target column 'analysis_entity_id'",
+        "MISSING_INDUCED_REQUIRED_ENTITY;property_type_group;Entity 'property_type_group' is required because entity 'property_type' is present and has a required foreign key chain to 'property_type_group'",
     ]
 
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
     actual_issues: list[str] = [f"{x.code};{x.entity};{x.message}" for x in issues]
     assert sorted(actual_issues) == sorted(expected_issues)
 
-
-def test_core_conformance_current_corpus_issue_families_are_stable(project: ShapeShiftProject) -> None:
-    target_model: TargetModel = load_target_model()
-
-    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
-
     issue_summary: Counter[str | None] = Counter(issue.code for issue in issues)
 
     assert issue_summary == Counter(
         {
+            "CONDITIONAL_FK_AWAITING_RECONCILIATION": 8,
+            "MISSING_REQUIRED_COLUMN": 5,
+            "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
             "DIRECT_FK_TARGET_CHECK_PENDING": 2,
-            "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 2,
-            "MISSING_REQUIRED_COLUMN": 2,
-            "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
+            "UNEXPECTED_PUBLIC_ID": 1,
+            "MISSING_INDUCED_REQUIRED_ENTITY": 1,
         }
     )
