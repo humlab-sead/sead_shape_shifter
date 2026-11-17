@@ -2,7 +2,7 @@ import { defineComponent, h } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { createVuetify } from 'vuetify'
-import type { ColDef } from 'ag-grid-community'
+import type { ColDef, ColGroupDef } from 'ag-grid-community'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import type { MappingEntityResponse, ReconciliationCandidate, ReconciliationPreviewRow } from '@/types'
@@ -243,14 +243,30 @@ describe('ReconciliationGrid', () => {
       site_code: 'site_code',
     })
     const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
-    const columnDefs = gridProps.columnDefs as ColDef[]
+    const columnDefs = gridProps.columnDefs as Array<ColDef | ColGroupDef>
+    const mappingGroup = columnDefs.find(
+      (column): column is ColGroupDef => 'children' in column && column.headerName === 'Property mappings'
+    )
 
-    expect(columnDefs.slice(0, 4).map((column) => column.field)).toEqual([
+    expect(columnDefs.slice(0, 4).map((column) => ('field' in column ? column.field : column.headerName))).toEqual([
       'status_display',
       'local_key_value',
       'site_name',
+      'Property mappings',
+    ])
+    expect(mappingGroup?.headerName).toBe('Property mappings')
+    expect(mappingGroup?.openByDefault).toBe(false)
+    expect(mappingGroup?.children.map((column) => ('field' in column ? column.field : undefined))).toEqual([
       'site_code',
     ])
+  })
+
+  it('does not show a property mapping group when there are no mappings', () => {
+    const { wrapper } = mountGrid()
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as Array<ColDef | ColGroupDef>
+
+    expect(columnDefs.some((column) => 'children' in column)).toBe(false)
   })
 
   it('renders icon row actions with accessible names and tooltips', () => {

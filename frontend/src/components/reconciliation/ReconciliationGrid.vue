@@ -255,7 +255,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
-import type { ColDef, GridApi, GridReadyEvent, ICellRendererParams, IRowNode, RowClassParams } from 'ag-grid-community'
+import type {
+  ColDef,
+  ColGroupDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+  IRowNode,
+  RowClassParams,
+} from 'ag-grid-community'
 import type {
   DecisionUpdateRequest,
   EntityResolutionSet,
@@ -395,10 +403,10 @@ const gridRows = computed(() =>
   })
 )
 
-const columnDefs = computed<ColDef[]>(() => {
+const columnDefs = computed<(ColDef | ColGroupDef)[]>(() => {
   if (!props.entitySpec) return []
 
-  const columns: ColDef[] = [
+  const columns: (ColDef | ColGroupDef)[] = [
     {
       field: 'status_display',
       headerName: 'Review status',
@@ -433,8 +441,20 @@ const columnDefs = computed<ColDef[]>(() => {
     },
   ]
 
-  for (const column of new Set(Object.values(props.entitySpec.property_mappings))) {
-    if (column !== props.targetField) columns.push({ field: column, headerName: column.replace(/_/g, ' '), width: 150 })
+  const mappedColumns = [...new Set(Object.values(props.entitySpec.property_mappings))].filter(
+    (column) => column !== props.targetField
+  )
+  if (mappedColumns.length > 0) {
+    columns.push({
+      headerName: 'Property mappings',
+      groupId: 'property-mappings',
+      openByDefault: false,
+      children: mappedColumns.map((column) => ({
+        field: column,
+        headerName: column.replace(/_/g, ' '),
+        width: 150,
+      })),
+    })
   }
 
   columns.push(
