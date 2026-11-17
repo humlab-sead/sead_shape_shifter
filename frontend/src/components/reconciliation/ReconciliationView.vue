@@ -127,16 +127,20 @@
                     <v-icon start>mdi-auto-fix</v-icon>
                     Reconcile & Review
                   </h3>
-                  <v-btn
-                    icon="mdi-help-circle-outline"
-                    variant="text"
-                    size="small"
-                    data-testid="reconciliation-help-button"
-                    aria-label="Open Reconcile & Review help"
-                    @click="reconciliationHelpDialog = true"
-                  >
-                    <v-tooltip activator="parent" location="top">Reconcile &amp; Review help</v-tooltip>
-                  </v-btn>
+                  <v-tooltip location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <v-btn
+                        v-bind="tooltipProps"
+                        icon="mdi-help-circle-outline"
+                        variant="text"
+                        size="small"
+                        data-testid="reconciliation-help-button"
+                        aria-label="Open Reconcile & Review help"
+                        @click="reconciliationHelpDialog = true"
+                      />
+                    </template>
+                    Reconcile &amp; Review help
+                  </v-tooltip>
                 </div>
 
                 <!-- Auto-Reconcile Button -->
