@@ -70,6 +70,12 @@ override CONTAINER_DATA_DIR := $(call resolve_path,$(or $(ENV_CONTAINER_DATA_DIR
 COMPOSE_FILE := podman-compose.yml
 SCRIPTS_DIR := ./scripts
 
+# The home-directory git history snapshot has its own user timer, installed from
+# service/. The timer name and the unit directory follow the systemd user unit
+# layout the container service already uses.
+GIT_HISTORY_SERVICE := shape-shifter-git-history
+USER_UNIT_DIR := $(or $(XDG_CONFIG_HOME),$(HOME)/.config)/systemd/user
+
 # Container lifecycle actions all delegate to scripts/container.sh. The script
 # applies the same defaults when it is run directly, so keep the two lists in
 # step.
@@ -123,6 +129,8 @@ help:
 	@echo ""
 	@echo "$(GREEN)Maintenance:$(NC)"
 	@echo "  make backup              Back up data, configuration and state"
+	@echo "  make git-history         Record one home-directory git snapshot"
+	@echo "  make git-history-install Install and enable the snapshot timer"
 	@echo "  make update-env          Edit the runtime environment file"
 	@echo "  make clean               Remove the container (keep data)"
 	@echo "  make prune               Remove the container and image"
@@ -284,6 +292,36 @@ test: validate up
 .PHONY: backup
 backup:
 	@CONFIG_DIR="$(CONFIG_DIR)" DATA_DIR="$(CONTAINER_DATA_DIR)" $(SCRIPTS_DIR)/backup.sh
+
+# One git snapshot now. DRY_RUN=1 reports what would be recorded without
+# writing a commit, which is the safe way to check a new ignore file.
+.PHONY: git-history
+DRY_RUN ?= 0
+git-history:
+	@CONFIG_DIR="$(CONFIG_DIR)" DATA_DIR="$(CONTAINER_DATA_DIR)" \
+		$(SCRIPTS_DIR)/git-history.sh $(if $(filter 1 yes true,$(DRY_RUN)),--dry-run)
+
+.PHONY: git-history-install
+git-history-install:
+	@install -D -m 0644 service/$(GIT_HISTORY_SERVICE).service "$(USER_UNIT_DIR)/$(GIT_HISTORY_SERVICE).service"
+	@install -D -m 0644 service/$(GIT_HISTORY_SERVICE).timer "$(USER_UNIT_DIR)/$(GIT_HISTORY_SERVICE).timer"
+	@systemctl --user daemon-reload
+	@systemctl --user enable --now $(GIT_HISTORY_SERVICE).timer
+	@echo "$(GREEN)+ $(GIT_HISTORY_SERVICE).timer enabled$(NC)"
+
+.PHONY: git-history-disable
+git-history-disable:
+	@systemctl --user disable --now $(GIT_HISTORY_SERVICE).timer || true
+	@echo "$(GREEN)+ $(GIT_HISTORY_SERVICE).timer disabled$(NC)"
+
+.PHONY: git-history-status
+git-history-status:
+	@systemctl --user list-timers $(GIT_HISTORY_SERVICE).timer
+	@systemctl --user --no-pager status $(GIT_HISTORY_SERVICE).service || true
+
+.PHONY: git-history-logs
+git-history-logs:
+	@journalctl --user -u $(GIT_HISTORY_SERVICE).service -f
 
 .PHONY: update-env
 update-env:

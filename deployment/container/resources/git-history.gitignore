@@ -1,0 +1,47 @@
+# Tracked set for the deployment home directory history.
+#
+# The history covers deployment configuration, the deployed release files,
+# project sources and shared data. Everything the application regenerates, and
+# everything another backup mechanism already keeps, stays out, so a commit
+# always reflects a real change.
+#
+# `@DATA_DIR@` is replaced with the resolved data directory when the script
+# writes this file, so a non-default DATA_DIR still produces matching patterns.
+#
+# A run refuses to start while any path below is not ignored, so keeping this
+# list in step with the deployment is required rather than optional.
+
+# Per-host dotfiles. The ignore file itself and bashrc are kept deliberately;
+# shell history is not, because commands typed at the prompt can carry
+# credentials, and no other host dotfile belongs in project history.
+.*
+!.gitignore
+!.bashrc
+
+# Deployment archive backups, including the authorization database backups.
+backup/
+
+# The application's own per-file configuration snapshots, at the data root and
+# inside every project directory.
+@DATA_DIR@/backups/
+@DATA_DIR@/projects/*/backups/
+*.backup.*.yml
+
+# Derived output the application regenerates on demand.
+@DATA_DIR@/projects/*/materialized/
+@DATA_DIR@/projects/*/outputs/
+@DATA_DIR@/projects/archived/
+
+# Runtime noise, and the temporary and output directories the deployment mounts
+# for scratch space.
+@DATA_DIR@/logs/
+@DATA_DIR@/tmp/
+@DATA_DIR@/output/
+
+# The binary authorization database. The live policy is provisioned separately
+# and already has its own archives under backup/.
+@DATA_DIR@/state/*.sqlite3
+
+# Archives, and in-progress writes from the atomic-write paths.
+**/*.tar.gz
+*.tmp

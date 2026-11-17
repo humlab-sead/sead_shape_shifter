@@ -94,8 +94,42 @@ HOST_PORT=8013 make up
 | `make validate`          | Validate Podman, the compose file, `~/config` and `~/container-data` |
 | `make test`              | Build, start and check the endpoints                |
 | `make backup`            | Back up data, configuration and state               |
+| `make git-history`       | Record one git snapshot of the home directory       |
+| `make git-history-install` | Install and enable the snapshot timer             |
 
 Run `make help` for the complete list.
+
+## Git History Snapshots
+
+The deployment home directory can be a local git repository that records
+configuration, the deployed release files, project sources and shared data.
+A systemd user timer runs `scripts/git-history.sh` every 15 minutes after the
+previous run finishes.
+
+```bash
+make git-history DRY_RUN=1   # report what would be recorded, write nothing
+make git-history             # record one snapshot now
+make git-history-install     # install and enable the timer
+make git-history-status      # next run and last result
+make git-history-logs        # follow the journal
+```
+
+One run creates at most one commit per project directory, one commit for
+`~/config`, `~/container`, `~/container-data/shared` and
+`~/container-data/state`, and one commit for everything else. Paths without
+changes are skipped, so an idle run writes nothing. Each commit records the
+operation, the recorded scope, a run id, the host and the user.
+
+What stays out of history: the application's own `backups/` snapshots, derived
+`materialized/` and `outputs/` directories, `archived/` project zips, logs and
+temporary files, and the binary authorization database. The run refuses to
+record while any of those paths is still not ignored, so a mistake in
+`.gitignore` fails loudly instead of adding thousands of files.
+
+The repository is local only. `~/config` holds deployment credentials, so a
+configured git remote stops the run unless `GIT_HISTORY_ALLOW_REMOTE=1` is set.
+This history complements `make backup`: the archive keeps a dated full copy, the
+git repository keeps the change history and per-file recovery.
 
 ## Configuration
 
