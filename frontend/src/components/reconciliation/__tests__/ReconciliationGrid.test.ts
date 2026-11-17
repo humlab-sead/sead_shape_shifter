@@ -286,6 +286,13 @@ describe('ReconciliationGrid', () => {
           committed_at: '2026-10-30T00:00:00Z',
           created_by: 'user',
         },
+        E: {
+          target_id: 105,
+          source: 'import',
+          created_at: '2026-10-30T00:00:00Z',
+          committed_at: '2026-10-30T00:00:00Z',
+          created_by: 'import',
+        },
       },
     }
     const rows = [
@@ -293,6 +300,7 @@ describe('ReconciliationGrid', () => {
       { ...makeRow('B'), site_id: 12 },
       { ...makeRow('C'), site_id: 13 },
       { ...makeRow('D'), site_id: 14, status: 'accepted' as const },
+      { ...makeRow('E'), site_id: 15 },
     ]
     const { wrapper } = mountGrid(vi.fn(), rows, mappingData)
 
@@ -310,9 +318,60 @@ describe('ReconciliationGrid', () => {
     expect(wrapper.get('[data-testid="current-id-source"][data-key="C"]').text()).toBe('Manual · not checked')
     expect(wrapper.get('[data-testid="current-id"][data-key="D"]').text()).toBe('14')
     expect(wrapper.get('[data-testid="current-id-source"][data-key="D"]').text()).toBe('Normalized row')
+    expect(wrapper.get('[data-testid="current-id-source"][data-key="E"]').text()).toBe('Import · not checked')
+
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const gridRows = gridProps.rowData as Array<Record<string, unknown>>
+    const columnDefs = gridProps.columnDefs as ColDef[]
+    const currentIdColumn = columnDefs.find((column) => column.field === 'current_id')
+    const renderer = currentIdColumn?.cellRenderer
+    if (typeof renderer !== 'function') throw new Error('Current ID column renderer is unavailable')
+
+    const renderSourceCell = (localKey: string): HTMLElement => {
+      const rowData = gridRows.find((row) => row.local_key_value === localKey)
+      if (!rowData) throw new Error(`Grid row ${localKey} is unavailable`)
+      return renderer({ value: rowData.current_id, data: rowData } as Parameters<typeof renderer>[0]) as HTMLElement
+    }
+
+    const verifiedCell = renderSourceCell('A')
+    expect(verifiedCell.querySelector('.current-id-source-icon.mdi-link-variant')).not.toBeNull()
+    expect(
+      verifiedCell.querySelector('.current-id-source-verification-icon.mdi-check-circle-outline.text-success')
+    ).not.toBeNull()
+
+    const unverifiedCell = renderSourceCell('B')
+    expect(unverifiedCell.querySelector('.current-id-source-icon.mdi-link-variant')).not.toBeNull()
+    expect(
+      unverifiedCell.querySelector('.current-id-source-verification-icon.mdi-help-circle-outline.text-warning')
+    ).not.toBeNull()
+
+    const manualCell = renderSourceCell('C')
+    expect(manualCell.querySelector('.current-id-source-icon.mdi-pencil-outline')).not.toBeNull()
+    expect(manualCell.querySelector('.current-id-source-verification-icon')).toBeNull()
+    expect(renderSourceCell('D').querySelector('.current-id-source-icon.mdi-table-row')).not.toBeNull()
+
+    const importedCell = renderSourceCell('E')
+    expect(importedCell.querySelector('.current-id-source-icon.mdi-database-import-outline')).not.toBeNull()
+    expect(importedCell.querySelector('.current-id-source-verification-icon')).toBeNull()
   })
 
-  it('leaves Current ID blank when no mapped ID exists', () => {
+  it('shows the unavailable source icon when mapping data cannot be loaded', () => {
+    const { wrapper } = mountGrid()
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const rowData = (gridProps.rowData as Array<Record<string, unknown>>)[0]
+    const columnDefs = gridProps.columnDefs as ColDef[]
+    const currentIdColumn = columnDefs.find((column) => column.field === 'current_id')
+    const renderer = currentIdColumn?.cellRenderer
+    if (typeof renderer !== 'function') throw new Error('Current ID column renderer is unavailable')
+
+    const cell = renderer({ value: rowData?.current_id, data: rowData } as Parameters<
+      typeof renderer
+    >[0]) as HTMLElement
+    expect(cell.querySelector('.current-id-source-icon.mdi-database-off-outline')).not.toBeNull()
+    expect(cell.querySelector('.current-id-source-label')?.textContent).toBe('Unavailable')
+  })
+
+  it('hides the source when Current ID is blank, even if Decision ID is set', () => {
     const mappingData: MappingEntityResponse = {
       entity_name: 'site',
       local_key: 'site_code',
@@ -320,7 +379,7 @@ describe('ReconciliationGrid', () => {
       entity_type: 'primary',
       links: {},
     }
-    const { wrapper } = mountGrid(vi.fn(), [makeRow('A')], mappingData)
+    const { wrapper } = mountGrid(vi.fn(), [{ ...makeRow('A'), target_id: 42 }], mappingData)
 
     expect(wrapper.get('[data-testid="current-id"][data-key="A"]').text()).toBe('')
     expect(wrapper.get('[data-testid="current-id-source"][data-key="A"]').text()).toBe('')
@@ -391,18 +450,34 @@ describe('ReconciliationGrid', () => {
       expect(cell.textContent).toBe('')
       expect(cell.querySelector(`.mdi.${status.icon}.text-${status.color}`)).not.toBeNull()
     }
+
+    const errorCell = renderer({
+      value: 'Needs attention',
+      data: { errors: ['Missing business key'] },
+    } as Parameters<typeof renderer>[0]) as HTMLElement
+    expect(errorCell.title).toBe('Missing business key')
+    expect(errorCell.getAttribute('aria-label')).toBe('Needs attention')
   })
 
   it('displays unresolved rows and row-specific errors separately', () => {
     const keylessRow = { site_name: 'Missing key', status: null, errors: ['Missing business key'], candidates: [] }
-    const rows = [rowWithoutCandidates('A'), keylessRow, { ...makeRow('B'), errors: ['Invalid target value'] }]
+    const unreviewableRow = { site_name: 'No key or error', status: null, candidates: [] }
+    const rows = [
+      rowWithoutCandidates('A'),
+      keylessRow,
+      unreviewableRow,
+      { ...makeRow('B'), errors: ['Invalid target value'] },
+    ]
     const { wrapper } = mountGrid(vi.fn(), rows)
 
-    expect(wrapper.get('[data-testid="status-filter-unresolved"]').attributes('aria-label')).toBe('Unresolved (2)')
+    expect(wrapper.get('[data-testid="status-filter-unresolved"]').attributes('aria-label')).toBe('Unresolved (3)')
     expect(wrapper.get('[data-testid="status-filter-errors"]').attributes('aria-label')).toBe('Errors (2)')
-    expect(wrapper.findAll('[data-testid="row-status"]').map((status) => status.text())).toContain('Unresolved')
-    expect(wrapper.findAll('[data-testid="row-status"]').map((status) => status.text())).toContain('Unreviewable')
-    expect(wrapper.findAll('[data-testid="row-status"]').map((status) => status.text())).toContain('Needs attention')
+    expect(wrapper.findAll('[data-testid="row-status"]').map((status) => status.text())).toEqual([
+      'Needs attention',
+      'Unreviewable',
+      'Needs attention',
+      'Unresolved',
+    ])
     expect(wrapper.findAll('[data-testid="row-errors"]').map((error) => error.text())).toContain('Invalid target value')
   })
 
