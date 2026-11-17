@@ -9,7 +9,8 @@
       </v-card-title>
 
       <v-card-subtitle class="py-3">
-        Preview of row decisions. Accepted decisions are not applied to output until a mapping link is committed.
+        Preview of reconciliation results. Accepting a candidate does not change the current ID until its mapping link
+        is exported.
       </v-card-subtitle>
 
       <v-divider />
@@ -18,7 +19,7 @@
       <v-toolbar density="comfortable" color="transparent" flat>
         <v-switch
           v-model="showOnlyMatched"
-          label="Show only accepted decisions"
+          label="Show only accepted rows"
           density="compact"
           hide-details
           color="primary"
@@ -60,10 +61,10 @@
               <th v-for="column in displayColumns" :key="column" class="text-left">
                 {{ formatColumnName(column) }}
               </th>
-              <th class="text-left">Decision ID</th>
-              <th class="text-left">Selected Candidate</th>
-              <th class="text-left">Decision Confidence</th>
-              <th class="text-left">Decision Status</th>
+              <th class="text-left">Selected target ID</th>
+              <th class="text-left">Candidate</th>
+              <th class="text-left">Score</th>
+              <th class="text-left">Status</th>
               <th class="text-left">Row Errors</th>
             </tr>
           </thead>
