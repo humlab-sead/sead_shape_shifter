@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.app.authorization.dependencies import require_project
 from backend.app.authorization.models import Action, AuthorizedResource
@@ -50,6 +50,16 @@ def _to_entity_response(entity_name: str, entity_mapping: EntityMapping) -> api.
         entity_type=entity_mapping.entity_type.value,
         description=entity_mapping.description,
         links={key: _to_link_response(link) for key, link in entity_mapping.links.items()},
+        local_only_approvals={
+            key: api.MappingLocalOnlyApprovalResponse(
+                owner=api.MappingLinkOwner(
+                    entity_name=approval.owner.entity_name,
+                    target_field=approval.owner.target_field,
+                ),
+                committed_at=approval.committed_at,
+            )
+            for key, approval in entity_mapping.local_only_approvals.items()
+        },
     )
 
 
@@ -143,6 +153,33 @@ async def put_mapping_link(
         local_key=entity_mapping.local_key,
         public_id=entity_mapping.public_id,
         link=_to_link_response(link),
+    )
+
+
+@router.delete("/projects/{project_name}/mapping/{entity_name}/entry", response_model=api.MappingEntryDeleteResponse)
+@handle_endpoint_errors
+async def delete_mapping_entry(
+    project_name: str,  # pylint: disable=unused-argument
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+    local_key_value: str = Query(..., min_length=1),
+    target_field: str = Query(..., min_length=1),
+    confirm_protected: bool = Query(False),
+    service: MappingService = Depends(get_mapping_service),
+) -> api.MappingEntryDeleteResponse:
+    """Delete mapping links and local-only approvals for one encoded key."""
+    deleted_link, deleted_approval = service.delete_entry(
+        authorized_project.resource.locator,
+        entity_name,
+        local_key_value,
+        target_field,
+        confirm_protected,
+    )
+    return api.MappingEntryDeleteResponse(
+        entity_name=entity_name,
+        local_key_value=local_key_value,
+        deleted_link=deleted_link,
+        deleted_local_only_approval=deleted_approval,
     )
 
 

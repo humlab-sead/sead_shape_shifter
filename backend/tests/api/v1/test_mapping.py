@@ -97,6 +97,31 @@ class TestMappingApi:
         assert body["local_key"] == "site_code"
         assert body["public_id"] == "site_id"
         assert body["links"] == {}
+        assert body["local_only_approvals"] == {}
+
+    async def test_get_entity_mapping_returns_local_only_approval(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client)
+        _write_mapping_sidecar(tmp_path)
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        sidecar["entities"]["site"]["local_only_approvals"] = {
+            "A": {
+                "owner": {"entity_name": "site", "target_field": "site_code"},
+                "committed_at": "2026-06-15T00:00:00Z",
+            }
+        }
+        sidecar_path.write_text(yaml.safe_dump(sidecar, sort_keys=False), encoding="utf-8")
+
+        response = await authorized_client.get("/api/v1/projects/test_project/mapping/site")
+
+        assert response.status_code == 200, response.text
+        assert response.json()["local_only_approvals"] == {
+            "A": {
+                "owner": {"entity_name": "site", "target_field": "site_code"},
+                "committed_at": "2026-06-15T00:00:00Z",
+            }
+        }
 
     async def test_get_entity_mapping_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -258,6 +283,86 @@ class TestMappingApi:
         with open(tmp_path / "test_project" / "shapeshifter.mapping.yml", "r", encoding="utf-8") as handle:
             sidecar = yaml.safe_load(handle)
         assert sidecar["entities"]["site"]["links"] == {}
+
+    async def test_delete_mapping_entry_removes_owned_link_and_approval_for_one_key(
+        self, tmp_path: Path, monkeypatch, authorized_client
+    ) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client)
+        _write_mapping_sidecar(tmp_path)
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        sidecar["entities"]["site"]["links"]["A"].update(
+            {
+                "source": "reconciliation",
+                "owner": {"entity_name": "site", "target_field": "site_code"},
+            }
+        )
+        sidecar["entities"]["site"]["links"]["B"] = {
+            "target_id": 20,
+            "source": "manual",
+            "created_at": "2026-06-15T00:00:00Z",
+            "committed_at": "2026-06-15T00:00:00Z",
+            "created_by": "user",
+        }
+        sidecar["entities"]["site"]["local_only_approvals"] = {
+            "A": {
+                "owner": {"entity_name": "site", "target_field": "site_code"},
+                "committed_at": "2026-06-15T00:00:00Z",
+            }
+        }
+        sidecar_path.write_text(yaml.safe_dump(sidecar, sort_keys=False), encoding="utf-8")
+
+        response = await authorized_client.delete(
+            "/api/v1/projects/test_project/mapping/site/entry",
+            params={"local_key_value": "A", "target_field": "site_code"},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json() == {
+            "entity_name": "site",
+            "local_key_value": "A",
+            "deleted_link": True,
+            "deleted_local_only_approval": True,
+        }
+        saved = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        assert "A" not in saved["entities"]["site"]["links"]
+        assert saved["entities"]["site"]["links"]["B"]["target_id"] == 20
+        assert saved["entities"]["site"]["local_only_approvals"] == {}
+
+    async def test_delete_protected_mapping_entry_requires_confirmation(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client)
+        _write_mapping_sidecar(tmp_path)
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        sidecar["entities"]["site"]["local_only_approvals"] = {
+            "A": {
+                "owner": {"entity_name": "site", "target_field": "other_field"},
+                "committed_at": "2026-06-15T00:00:00Z",
+            }
+        }
+        sidecar_path.write_text(yaml.safe_dump(sidecar, sort_keys=False), encoding="utf-8")
+        original_sidecar = sidecar_path.read_bytes()
+
+        blocked = await authorized_client.delete(
+            "/api/v1/projects/test_project/mapping/site/entry",
+            params={"local_key_value": "A", "target_field": "site_code"},
+        )
+
+        assert blocked.status_code == 409, blocked.text
+        assert "requires confirmation" in blocked.json()["detail"]["message"]
+        assert sidecar_path.read_bytes() == original_sidecar
+
+        confirmed = await authorized_client.delete(
+            "/api/v1/projects/test_project/mapping/site/entry",
+            params={"local_key_value": "A", "target_field": "site_code", "confirm_protected": "true"},
+        )
+
+        assert confirmed.status_code == 200, confirmed.text
+        saved = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        assert saved["entities"]["site"]["links"] == {}
+        assert saved["entities"]["site"]["local_only_approvals"] == {}
 
     async def test_delete_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)

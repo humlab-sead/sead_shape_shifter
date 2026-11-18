@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from backend.app.exceptions import ResourceNotFoundError, ValidationError
+from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError, ValidationError
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.project import Project
@@ -143,3 +143,53 @@ class MappingService:
                 self._project_path(api_project, project_name),
                 expected_version=snapshot.content_version,
             )
+
+    def delete_entry(
+        self,
+        project_name: str,
+        entity_name: str,
+        local_key_value: str,
+        target_field: str,
+        confirm_protected: bool = False,
+    ) -> tuple[bool, bool]:
+        """Delete the link and local-only approval for one key, if present."""
+        with self.project_service._get_lock(project_name):
+            api_project, _table, snapshot = self._load_project_table_and_snapshot(project_name, entity_name)
+            entity_mapping = self.manager.get_entity(snapshot.catalog, entity_name)
+            link = entity_mapping.links.get(local_key_value) if entity_mapping else None
+            approval = entity_mapping.local_only_approvals.get(local_key_value) if entity_mapping else None
+            if link is None and approval is None:
+                raise ResourceNotFoundError(
+                    message=f"No mapping entry found for key {local_key_value!r} in entity '{entity_name}'",
+                    resource_type="mapping-entry",
+                    resource_id=f"{entity_name}:{local_key_value}",
+                )
+
+            protected_entries: list[str] = []
+            if link is not None and (
+                link.source != LinkSource.RECONCILIATION
+                or link.owner is None
+                or link.owner.entity_name != entity_name
+                or link.owner.target_field != target_field
+            ):
+                protected_entries.append(f"{link.source.value} mapping link")
+            if approval is not None and (approval.owner.entity_name != entity_name or approval.owner.target_field != target_field):
+                protected_entries.append(f"New approval owned by {approval.owner.entity_name}.{approval.owner.target_field}")
+            if protected_entries and not confirm_protected:
+                raise ResourceConflictError(
+                    f"Deleting key {local_key_value!r} requires confirmation for protected entries: " f"{', '.join(protected_entries)}",
+                    resource_type="mapping-entry",
+                    resource_id=f"{entity_name}:{local_key_value}",
+                )
+
+            deleted_link = link is not None
+            deleted_approval = approval is not None
+            if entity_mapping is not None:
+                entity_mapping.links.pop(local_key_value, None)
+                entity_mapping.local_only_approvals.pop(local_key_value, None)
+            self.manager.save(
+                snapshot.catalog,
+                self._project_path(api_project, project_name),
+                expected_version=snapshot.content_version,
+            )
+            return deleted_link, deleted_approval
