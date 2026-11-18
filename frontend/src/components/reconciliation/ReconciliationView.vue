@@ -381,7 +381,13 @@
             later export may recreate it.
           </p>
           <v-alert v-if="removeSidecarProtected" type="warning" variant="tonal" class="mb-3">
-            This sidecar entry is manual, imported, or owned by another specification. Confirm its direct deletion.
+            <template v-if="removeSidecarProtectionStatusKnown">
+              This sidecar entry is protected under the server's deletion rules. Confirm its direct deletion.
+            </template>
+            <template v-else>
+              Protection status has not loaded for this target. Confirm direct deletion; the server will still enforce
+              its rules.
+            </template>
           </v-alert>
           <v-checkbox
             v-if="removeSidecarProtected"
@@ -608,14 +614,14 @@ const removeLocalOnlyApproval = computed<MappingLocalOnlyApproval | undefined>((
 
 const removeSidecarExists = computed(() => Boolean(removeSidecarLink.value || removeLocalOnlyApproval.value))
 
+const removeSidecarProtectionStatusKnown = computed(() =>
+  Boolean(selectedTarget.value && entityMappingData.value?.protection_target_field === selectedTarget.value)
+)
+
 const removeSidecarProtected = computed(() => {
-  const link = removeSidecarLink.value
-  const ownerMatches = (owner: { entity_name: string; target_field: string } | null | undefined) =>
-    owner?.entity_name === selectedEntity.value && owner.target_field === selectedTarget.value
-  const protectedLink = Boolean(link && (link.source !== 'reconciliation' || !ownerMatches(link.owner)))
-  const approval = removeLocalOnlyApproval.value
-  const protectedApproval = Boolean(approval && !ownerMatches(approval.owner))
-  return protectedLink || protectedApproval
+  if (!removeSidecarExists.value) return false
+  if (!removeSidecarProtectionStatusKnown.value) return true
+  return Boolean(removeSidecarLink.value?.protected || removeLocalOnlyApproval.value?.protected)
 })
 
 // Methods
@@ -699,7 +705,7 @@ async function handleExportToMapping() {
       `${result.skipped_manual} protected link(s) skipped.`
 
     try {
-      await reconciliationStore.loadMappingData(props.projectName, entityName)
+      await reconciliationStore.loadMappingData(props.projectName, entityName, targetField)
     } catch (refreshError) {
       resultMessage.value =
         `${summary} Export succeeded, but mapping status could not be refreshed: ` +
@@ -799,7 +805,7 @@ async function removeSavedEntry(action: SavedEntryRemoval) {
       refreshes.push(reconciliationStore.loadEntityResolutionCatalog(props.projectName))
       refreshes.push(reconciliationStore.loadPreviewData(props.projectName, entityName, targetField))
     }
-    if (sidecarDeleted) refreshes.push(reconciliationStore.loadMappingData(props.projectName, entityName))
+    if (sidecarDeleted) refreshes.push(reconciliationStore.loadMappingData(props.projectName, entityName, targetField))
     if (refreshes.length) {
       const results = await Promise.allSettled(refreshes)
       if (results.some((result) => result.status === 'rejected')) {
@@ -847,7 +853,8 @@ async function saveManualLink() {
       selectedEntity.value,
       key,
       targetId,
-      manualNotes.value.trim() || undefined
+      manualNotes.value.trim() || undefined,
+      selectedTarget.value ?? undefined
     )
     manualLinkDialog.value = false
     resultMessage.value = `Manual link saved for key ${key}; target ID ${targetId} is effective after normalization.`
@@ -1001,11 +1008,11 @@ watch(
 )
 
 watch(
-  [() => props.projectName, selectedEntity, selectedEntityHasBusinessKeys],
-  async ([projectName, entityName, hasBusinessKeys]) => {
+  [() => props.projectName, selectedEntity, selectedTarget, selectedEntityHasBusinessKeys],
+  async ([projectName, entityName, targetField, hasBusinessKeys]) => {
     if (!projectName || !entityName || !hasBusinessKeys) return
     try {
-      await reconciliationStore.loadMappingData(projectName, entityName)
+      await reconciliationStore.loadMappingData(projectName, entityName, targetField ?? undefined)
     } catch (e) {
       console.error('[ReconciliationView] Failed to load mapping sidecar:', e)
     }

@@ -25,7 +25,7 @@ def get_mapping_service() -> MappingService:
     return MappingService(get_project_service())
 
 
-def _to_link_response(link: Link) -> api.MappingLinkResponse:
+def _to_link_response(link: Link, protected: bool | None = None) -> api.MappingLinkResponse:
     """Convert a domain mapping link to API response shape."""
     return api.MappingLinkResponse(
         target_id=link.target_id,
@@ -38,10 +38,15 @@ def _to_link_response(link: Link) -> api.MappingLinkResponse:
         notes=link.notes,
         created_by=link.created_by,
         reviewed_by=link.reviewed_by,
+        protected=protected,
     )
 
 
-def _to_entity_response(entity_name: str, entity_mapping: EntityMapping) -> api.MappingEntityResponse:
+def _to_entity_response(
+    entity_name: str,
+    entity_mapping: EntityMapping,
+    target_field: str | None = None,
+) -> api.MappingEntityResponse:
     """Convert a domain entity mapping to API response shape."""
     return api.MappingEntityResponse(
         entity_name=entity_name,
@@ -49,7 +54,15 @@ def _to_entity_response(entity_name: str, entity_mapping: EntityMapping) -> api.
         public_id=entity_mapping.public_id,
         entity_type=entity_mapping.entity_type.value,
         description=entity_mapping.description,
-        links={key: _to_link_response(link) for key, link in entity_mapping.links.items()},
+        links={
+            key: _to_link_response(
+                link,
+                protected=(
+                    bool(MappingService.protected_entry_reasons(entity_name, target_field, link=link)) if target_field is not None else None
+                ),
+            )
+            for key, link in entity_mapping.links.items()
+        },
         local_only_approvals={
             key: api.MappingLocalOnlyApprovalResponse(
                 owner=api.MappingLinkOwner(
@@ -57,9 +70,15 @@ def _to_entity_response(entity_name: str, entity_mapping: EntityMapping) -> api.
                     target_field=approval.owner.target_field,
                 ),
                 committed_at=approval.committed_at,
+                protected=(
+                    bool(MappingService.protected_entry_reasons(entity_name, target_field, approval=approval))
+                    if target_field is not None
+                    else None
+                ),
             )
             for key, approval in entity_mapping.local_only_approvals.items()
         },
+        protection_target_field=target_field,
     )
 
 
@@ -101,11 +120,12 @@ async def get_entity_mapping(
     project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    target_field: str | None = Query(default=None, min_length=1),
     service: MappingService = Depends(get_mapping_service),
 ) -> api.MappingEntityResponse:
     """Return all mapping links and sidecar metadata for one entity."""
     entity_mapping = service.get_entity_mapping(authorized_project.resource.locator, entity_name)
-    return _to_entity_response(entity_name, entity_mapping)
+    return _to_entity_response(entity_name, entity_mapping, target_field)
 
 
 @router.get("/projects/{project_name}/mapping/{entity_name}/{local_key_value:path}", response_model=api.MappingLinkRecordResponse)
@@ -156,7 +176,7 @@ async def put_mapping_link(
     )
 
 
-@router.delete("/projects/{project_name}/mapping/{entity_name}/entry", response_model=api.MappingEntryDeleteResponse)
+@router.delete("/projects/{project_name}/mapping/{entity_name}", response_model=api.MappingEntryDeleteResponse)
 @handle_endpoint_errors
 async def delete_mapping_entry(
     project_name: str,  # pylint: disable=unused-argument

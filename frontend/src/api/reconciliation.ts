@@ -173,10 +173,15 @@ export const reconciliationServiceApi = {
   /**
    * Load mapping sidecar links for one entity.
    */
-  getEntityMapping: async (projectName: string, entityName: string): Promise<MappingEntityResponse> => {
+  getEntityMapping: async (
+    projectName: string,
+    entityName: string,
+    targetField?: string
+  ): Promise<MappingEntityResponse> => {
     return apiRequest<MappingEntityResponse>({
       method: 'GET',
       url: `/projects/${projectName}/mapping/${entityName}`,
+      ...(targetField ? { params: { target_field: targetField } } : {}),
     })
   },
 
@@ -192,7 +197,7 @@ export const reconciliationServiceApi = {
   ): Promise<MappingEntryDeleteResponse> => {
     return apiRequest<MappingEntryDeleteResponse>({
       method: 'DELETE',
-      url: `/projects/${projectName}/mapping/${entityName}/entry`,
+      url: `/projects/${projectName}/mapping/${entityName}`,
       params: {
         local_key_value: localKeyValue,
         target_field: targetField,

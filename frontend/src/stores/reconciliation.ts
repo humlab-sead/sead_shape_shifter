@@ -322,7 +322,11 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function loadMappingData(projectName: string, entityName: string): Promise<MappingEntityResponse> {
+  async function loadMappingData(
+    projectName: string,
+    entityName: string,
+    targetField?: string
+  ): Promise<MappingEntityResponse> {
     const requestKey = JSON.stringify([projectName, entityName])
     const requestVersion = (mappingRequestVersions.get(requestKey) ?? 0) + 1
     mappingRequestVersions.set(requestKey, requestVersion)
@@ -333,7 +337,9 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     mappingErrors.value = { ...mappingErrors.value, [projectName]: projectErrors }
 
     try {
-      const result = await reconciliationServiceApi.getEntityMapping(projectName, entityName)
+      const result = targetField
+        ? await reconciliationServiceApi.getEntityMapping(projectName, entityName, targetField)
+        : await reconciliationServiceApi.getEntityMapping(projectName, entityName)
       if (mappingRequestVersions.get(requestKey) === requestVersion) {
         const projectMappings = mappingData.value[projectName] ?? {}
         mappingData.value = { ...mappingData.value, [projectName]: { ...projectMappings, [entityName]: result } }
@@ -385,7 +391,8 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     entityName: string,
     localKeyValue: string,
     targetId: number,
-    notes?: string
+    notes?: string,
+    targetField?: string
   ) {
     try {
       const result = await reconciliationServiceApi.putManualMapping(projectName, entityName, localKeyValue, {
@@ -393,7 +400,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
         notes,
       })
       try {
-        await loadMappingData(projectName, entityName)
+        await loadMappingData(projectName, entityName, targetField)
       } catch (e: unknown) {
         throw new Error(
           `Manual link was saved, but its sidecar could not be reloaded: ${getErrorMessage(e, 'request failed')}`
