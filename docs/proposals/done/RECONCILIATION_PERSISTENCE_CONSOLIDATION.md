@@ -173,7 +173,7 @@ mapping_record = {"local_key": "system_id", ...}  # <- Bad, allows reuse
   2. System copies links to mapping sidecar with reconciliation provenance.
   3. Normalization uses sidecar links per precedence rules.
 
-**Implementation Note**: Draft/committed states, review UI, status model changes, audit logging, and rollback are deferred to [docs/proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md](../RECONCILIATION_FUTURE_IMPROVEMENTS.md).
+**Implementation Note**: Draft/committed states, review UI, status model changes, audit logging, and rollback are deferred to [docs/proposals/onhold/RECONCILIATION_FUTURE_IMPROVEMENTS.md](../onhold/RECONCILIATION_FUTURE_IMPROVEMENTS.md).
 
 ---
 
@@ -708,7 +708,7 @@ Your proposal addresses a real data-loss gap in the materialization workflow. Th
 3. ✅ Validate remote_key and local_key at config load time (REQ #3, #4).
 4. ✅ Extract user edits from materialized entities and persist to mapping (REQ #6).
 5. ✅ Keep reconciliation workflow in this proposal to explicit export only.
-6. ⚠️ Defer advanced reconciliation lifecycle features to [docs/proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md](../RECONCILIATION_FUTURE_IMPROVEMENTS.md).
+6. ⚠️ Defer advanced reconciliation lifecycle features to [docs/proposals/onhold/RECONCILIATION_FUTURE_IMPROVEMENTS.md](../onhold/RECONCILIATION_FUTURE_IMPROVEMENTS.md).
 
 **Note**: Since reconciliation workflows and project-specific mappings have not been used in production projects yet, there is **no backward compatibility requirement**. The sidecar file is a fresh start, and `options.mapping` is out of scope for this design.
 

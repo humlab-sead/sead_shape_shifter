@@ -52,7 +52,6 @@ These proposals are deferred or not yet approved. See each document for its deta
 | [Server-Owned Resource Identifiers](future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md) | Resolve generated resources through server-owned records rather than client paths. |
 | [Target Model Ecosystem Enhancements](future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md) | Consider future target-model tooling and distribution improvements. |
 | [Unified File-Backed Entity Type](future/UNIFIED_FILE_BACKED_ENTITY_TYPE.md) | Replace separate file entity types with a unified type and format option. |
-| [Reconciliation Future Improvements](RECONCILIATION_FUTURE_IMPROVEMENTS.md) | Placeholder for deferred reconciliation workflow improvements; scope is not yet defined. |
 
 ## On Hold
 
@@ -60,5 +59,6 @@ These proposals are deferred or not yet approved. See each document for its deta
 |---|---|---|
 | [Raw Source Data Explorer](onhold/RAW_SOURCE_DATA_EXPLORER_PROPOSAL.md) | On hold; proposed product and technical direction | Investigate raw source data before mapping and transformation. |
 | [Auto-Fix](onhold/AUTO_FIX.md) | Provisional feature; UI hidden | The backend retains a limited set of confirmation-based validation fixes. |
+| [Reconciliation Future Improvements](onhold/RECONCILIATION_FUTURE_IMPROVEMENTS.md) | On hold; deferred items do not yet have a finalized scope or delivery decision. | Track reconciliation lifecycle improvements beyond explicit export-to-mapping. |
 
 Other paused implementation and migration plans are available in [onhold/](onhold/). Completed or decided proposal records are available in [done/](done/).
