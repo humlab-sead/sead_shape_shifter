@@ -305,6 +305,7 @@ const props = withDefaults(defineProps<Props>(), { loading: false })
 
 const emit = defineEmits<{
   'manual-link': [row: ReconciliationPreviewRow]
+  'remove-saved-entry': [row: ReconciliationPreviewRow]
 }>()
 
 const gridApi = ref<GridApi | null>(null)
@@ -541,6 +542,15 @@ const columnDefs = computed<(ColDef | ColGroupDef)[]>(() => {
         buttons.push(
           `<button type="button" class="manual-link-btn action-icon-btn" data-local-key="${encodedKey}" data-action="manual-link" aria-label="Add a manual link for this row" data-tooltip="Add a manual link for this row" ${!key ? 'disabled' : ''}><span class="mdi ${RECONCILIATION_ACTION_ICONS.manualLink} row-action-icon" aria-hidden="true"></span></button>`
         )
+        const hasSavedDecision = row.status != null
+        const hasSidecarEntry = Boolean(
+          key && (props.mappingData?.links[key] || props.mappingData?.local_only_approvals?.[key])
+        )
+        if (hasSavedDecision || hasSidecarEntry) {
+          buttons.push(
+            `<button type="button" class="remove-saved-entry-btn action-icon-btn" data-local-key="${encodedKey}" data-action="remove-saved-entry" aria-label="Clear this row's saved decision or sidecar mapping" data-tooltip="Clear this row's saved decision or sidecar mapping" ${disabled ? 'disabled' : ''}><span class="mdi mdi-delete-outline row-action-icon" aria-hidden="true"></span></button>`
+          )
+        }
         if (row.candidates?.length) {
           buttons.push(
             `<button class="candidate-btn" data-local-key="${encodedKey}" data-action="review" ${disabled ? 'disabled' : ''}>Review (${row.candidates.length})</button>`
@@ -770,6 +780,9 @@ function handleGridClick(event: MouseEvent) {
       break
     case 'manual-link':
       emit('manual-link', row)
+      break
+    case 'remove-saved-entry':
+      emit('remove-saved-entry', row)
       break
   }
 }

@@ -15,6 +15,7 @@ import type {
   MappingEntityResponse,
   MappingLinkRecordResponse,
   MappingLinkUpsertRequest,
+  MappingEntryDeleteResponse,
   ReconciliationCandidate,
   ReconciliationPreviewRow,
 } from '@/types/reconciliation'
@@ -172,10 +173,36 @@ export const reconciliationServiceApi = {
   /**
    * Load mapping sidecar links for one entity.
    */
-  getEntityMapping: async (projectName: string, entityName: string): Promise<MappingEntityResponse> => {
+  getEntityMapping: async (
+    projectName: string,
+    entityName: string,
+    targetField?: string
+  ): Promise<MappingEntityResponse> => {
     return apiRequest<MappingEntityResponse>({
       method: 'GET',
       url: `/projects/${projectName}/mapping/${entityName}`,
+      ...(targetField ? { params: { target_field: targetField } } : {}),
+    })
+  },
+
+  /**
+   * Delete mapping links and local-only approvals for one encoded key.
+   */
+  deleteMappingEntry: async (
+    projectName: string,
+    entityName: string,
+    localKeyValue: string,
+    targetField: string,
+    confirmProtected: boolean
+  ): Promise<MappingEntryDeleteResponse> => {
+    return apiRequest<MappingEntryDeleteResponse>({
+      method: 'DELETE',
+      url: `/projects/${projectName}/mapping/${entityName}`,
+      params: {
+        local_key_value: localKeyValue,
+        target_field: targetField,
+        confirm_protected: confirmProtected,
+      },
     })
   },
 

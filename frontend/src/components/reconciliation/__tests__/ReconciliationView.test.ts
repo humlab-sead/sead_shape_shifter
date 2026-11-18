@@ -5,6 +5,7 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { nextTick, reactive, toRefs } from 'vue'
 import type { ExportToMappingOutcome } from '@/types'
+import type { MappingEntityResponse } from '@/types/reconciliation'
 
 import ReconciliationView from '../ReconciliationView.vue'
 
@@ -48,7 +49,7 @@ const reconciliationStore = reactive({
   reconcilableEntities: ['site'],
   previewData: { test_project: { site: { site_code: [] as any[] } } },
   previewErrors: {},
-  mappingData: { test_project: { site: null } },
+  mappingData: { test_project: { site: null as MappingEntityResponse | null } },
   mappingErrors: {},
   mappingLoading: {},
   specifications: [
@@ -80,6 +81,8 @@ const reconciliationStore = reactive({
   loadSpecifications: vi.fn(async () => {}),
   loadPreviewData: vi.fn(async () => {}),
   loadMappingData: vi.fn(async () => {}),
+  deleteReviewDecision: vi.fn(async () => {}),
+  deleteMappingEntry: vi.fn(async () => ({ deleted_link: true, deleted_local_only_approval: false })),
   putManualMapping: vi.fn(async () => ({})),
   saveEntityResolutionCatalogRaw: vi.fn(async () => {}),
   exportToMapping: vi.fn(async () => ({
@@ -119,7 +122,11 @@ async function mountView() {
     global: {
       plugins: [vuetify],
       stubs: {
-        ReconciliationGrid: { template: '<div data-testid="reconciliation-grid" />' },
+        ReconciliationGrid: {
+          props: ['previewData'],
+          template:
+            '<button data-testid="open-remove-saved-entry" @click="$emit(\'remove-saved-entry\', previewData[0])">Remove saved row data</button>',
+        },
         SpecificationsList: {
           template:
             "<button data-testid=\"open-reconcile\" @click=\"$emit('reconcile', 'site', 'site_code')\">Open</button>",
@@ -181,6 +188,12 @@ describe('ReconciliationView', () => {
     reconciliationStore.mappingLoading = {}
     reconciliationStore.loadMappingData = vi.fn(async () => {})
     reconciliationStore.loadPreviewData = vi.fn(async () => {})
+    reconciliationStore.loadEntityResolutionCatalog = vi.fn(async () => {})
+    reconciliationStore.deleteReviewDecision = vi.fn(async () => {})
+    reconciliationStore.deleteMappingEntry = vi.fn(async () => ({
+      deleted_link: true,
+      deleted_local_only_approval: false,
+    }))
     reconciliationStore.exportToMapping = vi.fn(async () => ({
       exported: 2,
       removed: 1,
@@ -257,7 +270,7 @@ describe('ReconciliationView', () => {
 
     expect(exportButton.attributes('disabled')).toBeUndefined()
     expect(reconciliationStore.exportToMapping).toHaveBeenCalledWith('test_project', 'site', 'site_code')
-    expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site')
+    expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site', 'site_code')
     expect(wrapper.text()).toContain(
       '2 link(s) exported; 1 stale link(s) removed; 1 New-row approval recorded; ' +
         '2 stale New-row approvals removed; 1 protected link(s) skipped.'
@@ -344,8 +357,166 @@ describe('ReconciliationView', () => {
     await wrapper.get('[data-testid="manual-link-submit"]').trigger('click')
     await flushPromises()
 
-    expect(reconciliationStore.putManualMapping).toHaveBeenCalledWith('test_project', 'site', 'A/B', 12, undefined)
+    expect(reconciliationStore.putManualMapping).toHaveBeenCalledWith(
+      'test_project',
+      'site',
+      'A/B',
+      12,
+      undefined,
+      'site_code'
+    )
     expect(wrapper.text()).toContain('Manual link saved')
+  })
+
+  it('shows the saved records and clears only the selected review decision', async () => {
+    reconciliationStore.previewData = {
+      test_project: {
+        site: {
+          site_code: [
+            {
+              local_key_value: 'A',
+              site_code: 'Same',
+              status: 'accepted',
+              target_id: 101,
+              candidate_id: 'https://w3id.org/sead/id/site/101',
+            },
+          ],
+        },
+      },
+    }
+    reconciliationStore.mappingData = {
+      test_project: {
+        site: {
+          entity_name: 'site',
+          local_key: 'site_code',
+          public_id: 'site_id',
+          entity_type: 'primary',
+          protection_target_field: 'site_code',
+          links: {
+            A: {
+              target_id: 101,
+              source: 'reconciliation',
+              created_at: '2026-10-30T00:00:00Z',
+              committed_at: '2026-10-30T00:00:00Z',
+              owner: { entity_name: 'site', target_field: 'site_code' },
+              created_by: 'reconciliation',
+              protected: false,
+            },
+          },
+          local_only_approvals: {},
+        },
+      },
+    }
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await wrapper.get('[data-testid="open-remove-saved-entry"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="remove-decision-details"]').text()).toContain('accepted')
+    expect(wrapper.get('[data-testid="remove-decision-details"]').text()).toContain('Target ID 101')
+    expect(wrapper.get('[data-testid="remove-sidecar-details"]').text()).toContain('source reconciliation')
+    expect(wrapper.get('[data-testid="remove-sidecar-details"]').text()).toContain('site.site_code')
+    expect(wrapper.get('[data-testid="delete-sidecar-entry"]').attributes('disabled')).toBeUndefined()
+
+    await wrapper.get('[data-testid="clear-review-decision"]').trigger('click')
+    await flushPromises()
+
+    expect(reconciliationStore.deleteReviewDecision).toHaveBeenCalledWith('test_project', 'site', 'site_code', 'A')
+    expect(reconciliationStore.deleteMappingEntry).not.toHaveBeenCalled()
+    expect(reconciliationStore.loadPreviewData).toHaveBeenCalledWith('test_project', 'site', 'site_code')
+    expect(wrapper.text()).toContain('Review decision cleared; sidecar mapping unchanged.')
+  })
+
+  it('requires explicit confirmation before deleting a protected sidecar entry', async () => {
+    reconciliationStore.previewData = {
+      test_project: {
+        site: { site_code: [{ local_key_value: 'A', site_code: 'Same', status: 'accepted', target_id: 101 }] },
+      },
+    }
+    reconciliationStore.mappingData = {
+      test_project: {
+        site: {
+          entity_name: 'site',
+          local_key: 'site_code',
+          public_id: 'site_id',
+          entity_type: 'primary',
+          protection_target_field: 'site_code',
+          links: {
+            A: {
+              target_id: 99,
+              source: 'manual',
+              created_at: '2026-10-30T00:00:00Z',
+              committed_at: '2026-10-30T00:00:00Z',
+              created_by: 'user',
+              protected: true,
+            },
+          },
+          local_only_approvals: {},
+        },
+      },
+    }
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await wrapper.get('[data-testid="open-remove-saved-entry"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="delete-sidecar-entry"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('[data-testid="confirm-protected-sidecar"] input[type="checkbox"]').setValue(true)
+    await nextTick()
+    expect(wrapper.get('[data-testid="delete-sidecar-entry"]').attributes('disabled')).toBeUndefined()
+
+    await wrapper.get('[data-testid="delete-sidecar-entry"]').trigger('click')
+    await flushPromises()
+
+    expect(reconciliationStore.deleteMappingEntry).toHaveBeenCalledWith('test_project', 'site', 'A', 'site_code', true)
+    expect(reconciliationStore.deleteReviewDecision).not.toHaveBeenCalled()
+    expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site', 'site_code')
+  })
+
+  it('reports partial failure when Clear both removes only the decision', async () => {
+    reconciliationStore.previewData = {
+      test_project: {
+        site: { site_code: [{ local_key_value: 'A', site_code: 'Same', status: 'accepted', target_id: 101 }] },
+      },
+    }
+    reconciliationStore.mappingData = {
+      test_project: {
+        site: {
+          entity_name: 'site',
+          local_key: 'site_code',
+          public_id: 'site_id',
+          entity_type: 'primary',
+          protection_target_field: 'site_code',
+          links: {
+            A: {
+              target_id: 101,
+              source: 'reconciliation',
+              created_at: '2026-10-30T00:00:00Z',
+              committed_at: '2026-10-30T00:00:00Z',
+              owner: { entity_name: 'site', target_field: 'site_code' },
+              created_by: 'reconciliation',
+              protected: false,
+            },
+          },
+          local_only_approvals: {},
+        },
+      },
+    }
+    reconciliationStore.deleteMappingEntry = vi.fn().mockRejectedValue(new Error('Sidecar changed'))
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await wrapper.get('[data-testid="open-remove-saved-entry"]').trigger('click')
+    await nextTick()
+    await wrapper.get('[data-testid="clear-both-entries"]').trigger('click')
+    await flushPromises()
+
+    expect(reconciliationStore.deleteReviewDecision).toHaveBeenCalledWith('test_project', 'site', 'site_code', 'A')
+    expect(reconciliationStore.deleteMappingEntry).toHaveBeenCalledWith('test_project', 'site', 'A', 'site_code', false)
+    expect(wrapper.text()).toContain('Review decision cleared; sidecar mapping remains.')
+    expect(wrapper.text()).toContain('Sidecar mapping remains: Sidecar changed')
   })
 
   it('shows a preview load failure instead of treating it as an empty result', async () => {
