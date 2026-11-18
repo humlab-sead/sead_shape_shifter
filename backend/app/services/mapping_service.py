@@ -12,7 +12,7 @@ from backend.app.services.project_service import ProjectService
 from src.model import ShapeShiftProject, TableConfig
 from src.reconciliation.fixed_entity_mapping_changes import default_local_key
 from src.reconciliation.mapping_manager import MappingManager, MappingSnapshot
-from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource, MappingCatalog
+from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource, LocalOnlyApproval, MappingCatalog
 
 
 class MappingService:
@@ -144,6 +144,27 @@ class MappingService:
                 expected_version=snapshot.content_version,
             )
 
+    @staticmethod
+    def protected_entry_reasons(
+        entity_name: str,
+        target_field: str,
+        *,
+        link: Link | None = None,
+        approval: LocalOnlyApproval | None = None,
+    ) -> list[str]:
+        """Return why an entry requires confirmation before deletion."""
+        reasons: list[str] = []
+        if link is not None and (
+            link.source != LinkSource.RECONCILIATION
+            or link.owner is None
+            or link.owner.entity_name != entity_name
+            or link.owner.target_field != target_field
+        ):
+            reasons.append(f"{link.source.value} mapping link")
+        if approval is not None and (approval.owner.entity_name != entity_name or approval.owner.target_field != target_field):
+            reasons.append(f"New approval owned by {approval.owner.entity_name}.{approval.owner.target_field}")
+        return reasons
+
     def delete_entry(
         self,
         project_name: str,
@@ -165,16 +186,7 @@ class MappingService:
                     resource_id=f"{entity_name}:{local_key_value}",
                 )
 
-            protected_entries: list[str] = []
-            if link is not None and (
-                link.source != LinkSource.RECONCILIATION
-                or link.owner is None
-                or link.owner.entity_name != entity_name
-                or link.owner.target_field != target_field
-            ):
-                protected_entries.append(f"{link.source.value} mapping link")
-            if approval is not None and (approval.owner.entity_name != entity_name or approval.owner.target_field != target_field):
-                protected_entries.append(f"New approval owned by {approval.owner.entity_name}.{approval.owner.target_field}")
+            protected_entries = self.protected_entry_reasons(entity_name, target_field, link=link, approval=approval)
             if protected_entries and not confirm_protected:
                 raise ResourceConflictError(
                     f"Deleting key {local_key_value!r} requires confirmation for protected entries: " f"{', '.join(protected_entries)}",

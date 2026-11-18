@@ -141,6 +141,7 @@ export interface MappingLink {
   notes?: string | null
   created_by: string
   reviewed_by?: string | null
+  protected?: boolean | null
 }
 
 export interface MappingLinkOwner {
@@ -156,11 +157,13 @@ export interface MappingEntityResponse {
   description?: string | null
   links: Record<string, MappingLink>
   local_only_approvals?: Record<string, MappingLocalOnlyApproval>
+  protection_target_field?: string | null
 }
 
 export interface MappingLocalOnlyApproval {
   owner: MappingLinkOwner
   committed_at?: string | null
+  protected?: boolean | null
 }
 
 export interface MappingLinkRecordResponse {

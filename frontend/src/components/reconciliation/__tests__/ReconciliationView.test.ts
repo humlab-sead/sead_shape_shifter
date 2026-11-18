@@ -270,7 +270,7 @@ describe('ReconciliationView', () => {
 
     expect(exportButton.attributes('disabled')).toBeUndefined()
     expect(reconciliationStore.exportToMapping).toHaveBeenCalledWith('test_project', 'site', 'site_code')
-    expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site')
+    expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site', 'site_code')
     expect(wrapper.text()).toContain(
       '2 link(s) exported; 1 stale link(s) removed; 1 New-row approval recorded; ' +
         '2 stale New-row approvals removed; 1 protected link(s) skipped.'
@@ -357,7 +357,14 @@ describe('ReconciliationView', () => {
     await wrapper.get('[data-testid="manual-link-submit"]').trigger('click')
     await flushPromises()
 
-    expect(reconciliationStore.putManualMapping).toHaveBeenCalledWith('test_project', 'site', 'A/B', 12, undefined)
+    expect(reconciliationStore.putManualMapping).toHaveBeenCalledWith(
+      'test_project',
+      'site',
+      'A/B',
+      12,
+      undefined,
+      'site_code'
+    )
     expect(wrapper.text()).toContain('Manual link saved')
   })
 
@@ -384,6 +391,7 @@ describe('ReconciliationView', () => {
           local_key: 'site_code',
           public_id: 'site_id',
           entity_type: 'primary',
+          protection_target_field: 'site_code',
           links: {
             A: {
               target_id: 101,
@@ -392,6 +400,7 @@ describe('ReconciliationView', () => {
               committed_at: '2026-10-30T00:00:00Z',
               owner: { entity_name: 'site', target_field: 'site_code' },
               created_by: 'reconciliation',
+              protected: false,
             },
           },
           local_only_approvals: {},
@@ -432,6 +441,7 @@ describe('ReconciliationView', () => {
           local_key: 'site_code',
           public_id: 'site_id',
           entity_type: 'primary',
+          protection_target_field: 'site_code',
           links: {
             A: {
               target_id: 99,
@@ -439,6 +449,7 @@ describe('ReconciliationView', () => {
               created_at: '2026-10-30T00:00:00Z',
               committed_at: '2026-10-30T00:00:00Z',
               created_by: 'user',
+              protected: true,
             },
           },
           local_only_approvals: {},
@@ -461,7 +472,7 @@ describe('ReconciliationView', () => {
 
     expect(reconciliationStore.deleteMappingEntry).toHaveBeenCalledWith('test_project', 'site', 'A', 'site_code', true)
     expect(reconciliationStore.deleteReviewDecision).not.toHaveBeenCalled()
-    expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site')
+    expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site', 'site_code')
   })
 
   it('reports partial failure when Clear both removes only the decision', async () => {
@@ -477,6 +488,7 @@ describe('ReconciliationView', () => {
           local_key: 'site_code',
           public_id: 'site_id',
           entity_type: 'primary',
+          protection_target_field: 'site_code',
           links: {
             A: {
               target_id: 101,
@@ -485,6 +497,7 @@ describe('ReconciliationView', () => {
               committed_at: '2026-10-30T00:00:00Z',
               owner: { entity_name: 'site', target_field: 'site_code' },
               created_by: 'reconciliation',
+              protected: false,
             },
           },
           local_only_approvals: {},

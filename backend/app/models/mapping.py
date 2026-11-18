@@ -33,6 +33,7 @@ class MappingLinkResponse(BaseModel):
     notes: str | None = None
     created_by: str
     reviewed_by: str | None = None
+    protected: bool | None = None
 
 
 class MappingLocalOnlyApprovalResponse(BaseModel):
@@ -40,6 +41,7 @@ class MappingLocalOnlyApprovalResponse(BaseModel):
 
     owner: MappingLinkOwner
     committed_at: datetime | None = None
+    protected: bool | None = None
 
 
 class MappingEntityResponse(BaseModel):
@@ -52,6 +54,7 @@ class MappingEntityResponse(BaseModel):
     description: str | None = None
     links: dict[str, MappingLinkResponse] = Field(default_factory=dict)
     local_only_approvals: dict[str, MappingLocalOnlyApprovalResponse] = Field(default_factory=dict)
+    protection_target_field: str | None = None
 
 
 class MappingLinkRecordResponse(BaseModel):
