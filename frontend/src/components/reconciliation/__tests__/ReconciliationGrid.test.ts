@@ -2,7 +2,7 @@ import { defineComponent, h } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { createVuetify } from 'vuetify'
-import type { ColDef } from 'ag-grid-community'
+import type { ColDef, ColGroupDef } from 'ag-grid-community'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import type { MappingEntityResponse, ReconciliationCandidate, ReconciliationPreviewRow } from '@/types'
@@ -27,6 +27,7 @@ vi.mock('ag-grid-vue3', () => ({
           <button :data-local-key="row.local_key_value" data-action="search" aria-label="Search for another candidate"><span class="mdi mdi-magnify" aria-hidden="true"></span></button>
           <button :data-local-key="row.local_key_value" data-action="local-only" aria-label="Mark this row as New"><span class="mdi mdi-plus-circle-outline" aria-hidden="true"></span></button>
           <button :data-local-key="row.local_key_value" data-action="manual-link" aria-label="Add a manual link for this row"><span class="mdi mdi-link-variant" aria-hidden="true"></span></button>
+          <button :data-local-key="row.local_key_value" data-action="remove-saved-entry" aria-label="Clear this row's saved decision or sidecar mapping"><span class="mdi mdi-delete-outline" aria-hidden="true"></span></button>
         </div>
       </div>
     `,
@@ -97,14 +98,15 @@ function makeRow(localKeyValue: string) {
 function mountGrid(
   submitDecision = vi.fn().mockResolvedValue(undefined),
   previewData: ReconciliationPreviewRow[] = [makeRow('A')],
-  mappingData: MappingEntityResponse | null = null
+  mappingData: MappingEntityResponse | null = null,
+  propertyMappings: Record<string, string> = {}
 ) {
   const row = previewData[0]!
   const wrapper = mount(ReconciliationGrid, {
     props: {
       entitySpec: {
         source: null,
-        property_mappings: {},
+        property_mappings: propertyMappings,
         remote: { service_type: 'site' },
         auto_accept_threshold: 0.95,
         review_threshold: 0.7,
@@ -212,6 +214,28 @@ describe('ReconciliationGrid', () => {
     expect(html.indexOf('data-action="review"')).toBeGreaterThan(html.indexOf('data-action="manual-link"'))
   })
 
+  it('emits the selected row when its saved decision or sidecar entry is requested for removal', async () => {
+    const { wrapper, row } = mountGrid()
+
+    await wrapper.get('button[data-action="remove-saved-entry"]').trigger('click')
+
+    const emittedRow = wrapper.emitted('remove-saved-entry')?.[0]?.[0] as ReconciliationPreviewRow
+    expect(emittedRow.local_key_value).toBe(row.local_key_value)
+    expect(emittedRow.status).toBe(row.status)
+  })
+
+  it('does not render a removal action when the row has no saved decision or sidecar entry', () => {
+    const { wrapper } = mountGrid(vi.fn(), [{ ...makeRow('A'), status: null }])
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as ColDef[]
+    const actionsColumn = columnDefs.find((column) => column.field === 'candidates')
+    const renderer = actionsColumn?.cellRenderer
+    if (typeof renderer !== 'function') throw new Error('Actions column renderer is unavailable')
+
+    const html = String(renderer({ data: { ...makeRow('A'), status: null } } as Parameters<typeof renderer>[0]))
+    expect(html).not.toContain('data-action="remove-saved-entry"')
+  })
+
   it('shows confidence as Score and leaves missing values empty', () => {
     const { wrapper } = mountGrid()
     const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
@@ -234,6 +258,38 @@ describe('ReconciliationGrid', () => {
     expect(columnDefs[0]?.field).toBe('status_display')
     expect(columnDefs[0]?.headerName).toBe('Review status')
     expect(columnDefs[0]?.pinned).toBe('left')
+  })
+
+  it('places the search label next to mapped property columns', () => {
+    const { wrapper } = mountGrid(undefined, undefined, undefined, {
+      site_name: 'site_name',
+      site_code: 'site_code',
+    })
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as Array<ColDef | ColGroupDef>
+    const mappingGroup = columnDefs.find(
+      (column): column is ColGroupDef => 'children' in column && column.headerName === 'Property mappings'
+    )
+
+    expect(columnDefs.slice(0, 4).map((column) => ('field' in column ? column.field : column.headerName))).toEqual([
+      'status_display',
+      'local_key_value',
+      'site_name',
+      'Property mappings',
+    ])
+    expect(mappingGroup?.headerName).toBe('Property mappings')
+    expect(mappingGroup?.openByDefault).toBe(false)
+    expect(mappingGroup?.children.map((column) => ('field' in column ? column.field : undefined))).toEqual([
+      'site_code',
+    ])
+  })
+
+  it('does not show a property mapping group when there are no mappings', () => {
+    const { wrapper } = mountGrid()
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as Array<ColDef | ColGroupDef>
+
+    expect(columnDefs.some((column) => 'children' in column)).toBe(false)
   })
 
   it('renders icon row actions with accessible names and tooltips', () => {

@@ -141,6 +141,7 @@ export interface MappingLink {
   notes?: string | null
   created_by: string
   reviewed_by?: string | null
+  protected?: boolean | null
 }
 
 export interface MappingLinkOwner {
@@ -155,6 +156,14 @@ export interface MappingEntityResponse {
   entity_type: string
   description?: string | null
   links: Record<string, MappingLink>
+  local_only_approvals?: Record<string, MappingLocalOnlyApproval>
+  protection_target_field?: string | null
+}
+
+export interface MappingLocalOnlyApproval {
+  owner: MappingLinkOwner
+  committed_at?: string | null
+  protected?: boolean | null
 }
 
 export interface MappingLinkRecordResponse {
@@ -168,6 +177,13 @@ export interface MappingLinkRecordResponse {
 export interface MappingLinkUpsertRequest {
   target_id: number
   notes?: string
+}
+
+export interface MappingEntryDeleteResponse {
+  entity_name: string
+  local_key_value: string
+  deleted_link: boolean
+  deleted_local_only_approval: boolean
 }
 
 // Specification management types

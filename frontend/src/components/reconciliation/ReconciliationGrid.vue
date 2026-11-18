@@ -255,7 +255,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
-import type { ColDef, GridApi, GridReadyEvent, ICellRendererParams, IRowNode, RowClassParams } from 'ag-grid-community'
+import type {
+  ColDef,
+  ColGroupDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+  IRowNode,
+  RowClassParams,
+} from 'ag-grid-community'
 import type {
   DecisionUpdateRequest,
   EntityResolutionSet,
@@ -297,6 +305,7 @@ const props = withDefaults(defineProps<Props>(), { loading: false })
 
 const emit = defineEmits<{
   'manual-link': [row: ReconciliationPreviewRow]
+  'remove-saved-entry': [row: ReconciliationPreviewRow]
 }>()
 
 const gridApi = ref<GridApi | null>(null)
@@ -395,10 +404,10 @@ const gridRows = computed(() =>
   })
 )
 
-const columnDefs = computed<ColDef[]>(() => {
+const columnDefs = computed<(ColDef | ColGroupDef)[]>(() => {
   if (!props.entitySpec) return []
 
-  const columns: ColDef[] = [
+  const columns: (ColDef | ColGroupDef)[] = [
     {
       field: 'status_display',
       headerName: 'Review status',
@@ -424,17 +433,29 @@ const columnDefs = computed<ColDef[]>(() => {
         return status
       },
     },
+    { field: 'local_key_value', headerName: 'Business key', pinned: 'left', width: 170 },
     {
       field: props.targetField,
       headerName: `${props.targetField.replace(/_/g, ' ')} (Search label)`,
       pinned: 'left',
       width: 200,
     },
-    { field: 'local_key_value', headerName: 'Business key', pinned: 'left', width: 170 },
   ]
 
-  for (const column of new Set(Object.values(props.entitySpec.property_mappings))) {
-    if (column !== props.targetField) columns.push({ field: column, headerName: column.replace(/_/g, ' '), width: 150 })
+  const mappedColumns = [...new Set(Object.values(props.entitySpec.property_mappings))].filter(
+    (column) => column !== props.targetField
+  )
+  if (mappedColumns.length > 0) {
+    columns.push({
+      headerName: 'Property mappings',
+      groupId: 'property-mappings',
+      openByDefault: false,
+      children: mappedColumns.map((column) => ({
+        field: column,
+        headerName: column.replace(/_/g, ' '),
+        width: 150,
+      })),
+    })
   }
 
   columns.push(
@@ -521,6 +542,15 @@ const columnDefs = computed<ColDef[]>(() => {
         buttons.push(
           `<button type="button" class="manual-link-btn action-icon-btn" data-local-key="${encodedKey}" data-action="manual-link" aria-label="Add a manual link for this row" data-tooltip="Add a manual link for this row" ${!key ? 'disabled' : ''}><span class="mdi ${RECONCILIATION_ACTION_ICONS.manualLink} row-action-icon" aria-hidden="true"></span></button>`
         )
+        const hasSavedDecision = row.status != null
+        const hasSidecarEntry = Boolean(
+          key && (props.mappingData?.links[key] || props.mappingData?.local_only_approvals?.[key])
+        )
+        if (hasSavedDecision || hasSidecarEntry) {
+          buttons.push(
+            `<button type="button" class="remove-saved-entry-btn action-icon-btn" data-local-key="${encodedKey}" data-action="remove-saved-entry" aria-label="Clear this row's saved decision or sidecar mapping" data-tooltip="Clear this row's saved decision or sidecar mapping" ${disabled ? 'disabled' : ''}><span class="mdi mdi-delete-outline row-action-icon" aria-hidden="true"></span></button>`
+          )
+        }
         if (row.candidates?.length) {
           buttons.push(
             `<button class="candidate-btn" data-local-key="${encodedKey}" data-action="review" ${disabled ? 'disabled' : ''}>Review (${row.candidates.length})</button>`
@@ -750,6 +780,9 @@ function handleGridClick(event: MouseEvent) {
       break
     case 'manual-link':
       emit('manual-link', row)
+      break
+    case 'remove-saved-entry':
+      emit('remove-saved-entry', row)
       break
   }
 }
