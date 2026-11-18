@@ -43,7 +43,7 @@ These results verify individual components, not the end-to-end identity outcome.
 ## Key References
 
 - [Reconciliation Persistence Consolidation](../../done/RECONCILIATION_PERSISTENCE_CONSOLIDATION.md) records the two-store and export design; its header status is historical and should not be used alone as current completion evidence.
-- [Reconciliation Future Improvements](../../RECONCILIATION_FUTURE_IMPROVEMENTS.md) defers lifecycle and export-key alignment; the latter is required for the proposed MVP, while full audit and rollback can remain deferred.
+- [Reconciliation Future Improvements](../../onhold/RECONCILIATION_FUTURE_IMPROVEMENTS.md) defers lifecycle and export-key alignment; the latter is required for the proposed MVP, while full audit and rollback can remain deferred.
 - [Assessment source map](../../../investigations/reconciliation-feature-status/findings.md) contains the starter inventory.
 
 ## Next Actions
