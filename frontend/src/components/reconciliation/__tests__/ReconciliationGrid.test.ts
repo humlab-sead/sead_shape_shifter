@@ -27,6 +27,7 @@ vi.mock('ag-grid-vue3', () => ({
           <button :data-local-key="row.local_key_value" data-action="search" aria-label="Search for another candidate"><span class="mdi mdi-magnify" aria-hidden="true"></span></button>
           <button :data-local-key="row.local_key_value" data-action="local-only" aria-label="Mark this row as New"><span class="mdi mdi-plus-circle-outline" aria-hidden="true"></span></button>
           <button :data-local-key="row.local_key_value" data-action="manual-link" aria-label="Add a manual link for this row"><span class="mdi mdi-link-variant" aria-hidden="true"></span></button>
+          <button :data-local-key="row.local_key_value" data-action="remove-saved-entry" aria-label="Clear this row's saved decision or sidecar mapping"><span class="mdi mdi-delete-outline" aria-hidden="true"></span></button>
         </div>
       </div>
     `,
@@ -211,6 +212,28 @@ describe('ReconciliationGrid', () => {
 
     const html = String(renderer({ data: makeRow('A') } as Parameters<typeof renderer>[0]))
     expect(html.indexOf('data-action="review"')).toBeGreaterThan(html.indexOf('data-action="manual-link"'))
+  })
+
+  it('emits the selected row when its saved decision or sidecar entry is requested for removal', async () => {
+    const { wrapper, row } = mountGrid()
+
+    await wrapper.get('button[data-action="remove-saved-entry"]').trigger('click')
+
+    const emittedRow = wrapper.emitted('remove-saved-entry')?.[0]?.[0] as ReconciliationPreviewRow
+    expect(emittedRow.local_key_value).toBe(row.local_key_value)
+    expect(emittedRow.status).toBe(row.status)
+  })
+
+  it('does not render a removal action when the row has no saved decision or sidecar entry', () => {
+    const { wrapper } = mountGrid(vi.fn(), [{ ...makeRow('A'), status: null }])
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
+    const columnDefs = gridProps.columnDefs as ColDef[]
+    const actionsColumn = columnDefs.find((column) => column.field === 'candidates')
+    const renderer = actionsColumn?.cellRenderer
+    if (typeof renderer !== 'function') throw new Error('Actions column renderer is unavailable')
+
+    const html = String(renderer({ data: { ...makeRow('A'), status: null } } as Parameters<typeof renderer>[0]))
+    expect(html).not.toContain('data-action="remove-saved-entry"')
   })
 
   it('shows confidence as Score and leaves missing values empty', () => {

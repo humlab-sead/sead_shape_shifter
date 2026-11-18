@@ -16,6 +16,7 @@ import type {
   EntityResolutionCatalogUpdateRequest,
   DecisionUpdateRequest,
   MappingEntityResponse,
+  MappingEntryDeleteResponse,
 } from '@/types/reconciliation'
 import { apiClient } from '@/api/client'
 import { reconciliationSpecApi, reconciliationServiceApi } from '@/api/reconciliation'
@@ -244,6 +245,20 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
+  async function deleteReviewDecision(
+    projectName: string,
+    entityName: string,
+    targetField: string,
+    localKeyValue: string
+  ) {
+    try {
+      return await reconciliationServiceApi.deleteDecision(projectName, entityName, targetField, localKeyValue)
+    } catch (e: any) {
+      error.value = getErrorMessage(e, 'Failed to clear review decision')
+      throw e
+    }
+  }
+
   async function suggestEntities(
     projectName: string,
     entityName: string,
@@ -341,6 +356,27 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
           [projectName]: { ...(mappingLoading.value[projectName] ?? {}), [entityName]: false },
         }
       }
+    }
+  }
+
+  async function deleteMappingEntry(
+    projectName: string,
+    entityName: string,
+    localKeyValue: string,
+    targetField: string,
+    confirmProtected: boolean
+  ): Promise<MappingEntryDeleteResponse> {
+    try {
+      return await reconciliationServiceApi.deleteMappingEntry(
+        projectName,
+        entityName,
+        localKeyValue,
+        targetField,
+        confirmProtected
+      )
+    } catch (e: any) {
+      error.value = getErrorMessage(e, 'Failed to delete mapping sidecar entry')
+      throw e
     }
   }
 
@@ -583,6 +619,8 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     autoReconcileAsync,
     updateMapping,
     deleteMapping,
+    deleteReviewDecision,
+    deleteMappingEntry,
     suggestEntities,
     loadPreviewData,
     loadMappingData,
