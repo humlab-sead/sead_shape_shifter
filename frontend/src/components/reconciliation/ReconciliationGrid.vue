@@ -450,11 +450,14 @@ const columnDefs = computed<(ColDef | ColGroupDef)[]>(() => {
       headerName: 'Property mappings',
       groupId: 'property-mappings',
       openByDefault: false,
-      children: mappedColumns.map((column) => ({
-        field: column,
-        headerName: column.replace(/_/g, ' '),
-        width: 150,
-      })),
+      children: mappedColumns.map(
+        (column, index): ColDef => ({
+          field: column,
+          headerName: column.replace(/_/g, ' '),
+          width: 150,
+          columnGroupShow: index === 0 ? undefined : 'open',
+        })
+      ),
     })
   }
 
