@@ -2,9 +2,13 @@
 
 **Status:** Working backlog, not yet approved for implementation
 
-**Last updated:** 2026-11-17
+**Last updated:** 2026-11-18
 
 **Scope:** The human review workflow in the Reconciliation view, and the matching options that workflow depends on.
+
+## Reconciliation ID flow
+
+See [RECONCILIATION_DIAGRAMS.md](./RECONCILIATION_DIAGRAMS.md) for separate sequence diagrams of candidate search, review decisions, export, manual links, targeted removal (R32), and normalization.
 
 Each item below is intended for its own GitHub issue. The `Tracking issue` line gives a suggested title; replace `TBD` with the number when the issue is created. Where one item unblocks another, the dependency is listed and the issue should reference it. R19 and R20 also need issues in the Authority Service repository for their service changes. R29 needs a companion service issue only if interactive-search fixtures demonstrate a retrieval gap.
 
@@ -765,6 +769,34 @@ R21 provides the persistent pane; R26–R31 add search-specific behaviour. R6 re
 
 ---
 
+## Group G — Targeted removal
+
+### R32. Clear a review decision, a sidecar mapping, or both
+
+**Tracking issue:** [#759](https://github.com/humlab-sead/sead_shape_shifter/issues/759) — "Reconciliation: clear a decision or delete its sidecar mapping by key" (labels: `reconciliation`, `frontend`, `backend`, `ux`)
+
+**Problem.** Removing an incorrect decision from the reconciliation catalog and removing a link or New approval from the mapping sidecar are different operations. Undo (R4) only restores a recent decision in the current session; it does not remove a sidecar entry. Reviewers need a deliberate way to remove either saved record, or both, for one row without deleting other mappings.
+
+**Change.**
+
+- Offer separately labelled `Clear decision`, `Delete sidecar mapping`, and `Clear both` actions for the selected project, entity, target field, and encoded business key. Show the matching catalog decision and sidecar link or local-only approval before confirmation; disable actions whose target does not exist.
+
+- Use the existing per-key decision and link deletion operations where applicable. Add per-key removal for sidecar local-only approvals and any coordination needed for `Clear both`. Never use the specification-wide delete or remove unrelated keys.
+
+- State which file each action changes. Clearing only the decision leaves an exported sidecar entry in place; deleting only the sidecar entry leaves the decision in place, so a later export may recreate it. Do not silently delete a trusted manual or other protected link as part of clearing a decision; require an explicit sidecar-delete choice and confirmation for such links.
+
+- Report partial failures without claiming both records were cleared. Refresh the row and outstanding-change state (R9 when available) after a successful operation.
+
+**Acceptance criteria.**
+
+- For a key with both a saved decision and an exported link or New approval, each single-target action removes only its selected record; `Clear both` removes both after confirmation.
+
+- A manual or protected link is never removed by `Clear decision` alone, and any direct deletion of it requires explicit confirmation.
+
+- A missing target disables its action; a failed or partial deletion shows which record remains, and other keys and specifications are unchanged.
+
+---
+
 ## Summary
 
 | Item | Area | Effort | Priority | Depends on |
@@ -800,6 +832,7 @@ R21 provides the persistent pane; R26–R31 add search-specific behaviour. R6 re
 | R29 Independent text search with optional context | frontend, backend; authority service if needed | L | Early | — |
 | R30 Decisions without prior batch matching | backend | M | Early | — |
 | R31 Remember and reuse search terms | frontend | M | Next | R26 |
+| R32 Clear decision and/or sidecar entry by key | frontend, backend | M | Next | — |
 
 ## Suggested order
 
@@ -811,7 +844,7 @@ R21 provides the persistent pane; R26–R31 add search-specific behaviour. R6 re
 
 4. Enable deliberate batch decisions: R16, R17, then R18. Add R22 after R13 and before encouraging reuse of old decisions.
 
-5. Fit R6, R7, R10, R23, and R25 around the workflow they support. Reuse the search picker and skip behaviour rather than building parallel implementations. Make R11 opportunistic.
+5. Fit R6, R7, R10, R23, R25, and R32 around the workflow they support. Reuse the search picker and skip behaviour rather than building parallel implementations. Make R11 opportunistic.
 
 6. Improve automatic matching through R19 and R20 after representative failed-search fixtures show what needs to change. Decide wildcard syntax separately from partial matching; manual expanded or translated query text is already supported by the earlier search-first work.
 
