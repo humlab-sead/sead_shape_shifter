@@ -264,6 +264,7 @@ describe('ReconciliationGrid', () => {
     const { wrapper } = mountGrid(undefined, undefined, undefined, {
       site_name: 'site_name',
       site_code: 'site_code',
+      site_type: 'site_type',
     })
     const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as Record<string, unknown>
     const columnDefs = gridProps.columnDefs as Array<ColDef | ColGroupDef>
@@ -281,7 +282,10 @@ describe('ReconciliationGrid', () => {
     expect(mappingGroup?.openByDefault).toBe(false)
     expect(mappingGroup?.children.map((column) => ('field' in column ? column.field : undefined))).toEqual([
       'site_code',
+      'site_type',
     ])
+    expect(mappingGroup?.children[0]?.columnGroupShow).toBeUndefined()
+    expect(mappingGroup?.children[1]?.columnGroupShow).toBe('open')
   })
 
   it('does not show a property mapping group when there are no mappings', () => {
