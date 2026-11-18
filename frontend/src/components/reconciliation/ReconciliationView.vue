@@ -259,6 +259,7 @@
                 :target-field="selectedTarget"
                 :submit-decision="handleUpdateMapping"
                 @manual-link="openManualLinkDialog"
+                @remove-saved-entry="openRemoveSavedEntryDialog"
               />
 
               <!-- Loading State - Preview Requested -->
@@ -339,6 +340,107 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog v-model="removeSavedEntryDialog" max-width="680">
+      <v-card>
+        <v-card-title>Remove saved row data</v-card-title>
+        <v-card-subtitle v-if="removeSavedEntryRow">
+          {{ selectedEntity }}.{{ selectedTarget }} · Key: {{ removeSavedEntryRow.local_key_value }}
+        </v-card-subtitle>
+        <v-card-text v-if="removeSavedEntryRow">
+          <div class="mb-3" data-testid="remove-decision-details">
+            <strong>Reconciliation catalog (`shapeshifter.reconciliation.yml`)</strong>
+            <div v-if="removeDecisionExists">
+              {{ removeSavedEntryRow.status
+              }}<span v-if="removeSavedEntryRow.target_id"> · Target ID {{ removeSavedEntryRow.target_id }}</span>
+              <span v-if="removeSavedEntryRow.candidate_id"> · {{ removeSavedEntryRow.candidate_id }}</span>
+            </div>
+            <div v-else>No decision is saved for this key.</div>
+          </div>
+          <div class="mb-3" data-testid="remove-sidecar-details">
+            <strong>Mapping sidecar (`shapeshifter.mapping.yml`)</strong>
+            <div v-if="removeSidecarLink">
+              Link: target ID {{ removeSidecarLink.target_id ?? 'none' }}, source {{ removeSidecarLink.source }}, owner
+              {{
+                removeSidecarLink.owner
+                  ? `${removeSidecarLink.owner.entity_name}.${removeSidecarLink.owner.target_field}`
+                  : 'none'
+              }}
+            </div>
+            <div v-if="removeLocalOnlyApproval">
+              New approval owned by {{ removeLocalOnlyApproval.owner.entity_name }}.{{
+                removeLocalOnlyApproval.owner.target_field
+              }}
+              <span v-if="removeLocalOnlyApproval.committed_at">
+                · committed {{ removeLocalOnlyApproval.committed_at }}</span
+              >
+            </div>
+            <div v-if="!removeSidecarExists">No sidecar entry is saved for this key.</div>
+          </div>
+          <p class="text-body-2 mb-3">
+            Clearing a decision leaves the sidecar unchanged. Deleting a sidecar entry leaves the decision unchanged; a
+            later export may recreate it.
+          </p>
+          <v-alert v-if="removeSidecarProtected" type="warning" variant="tonal" class="mb-3">
+            <template v-if="removeSidecarProtectionStatusKnown">
+              This sidecar entry is protected under the server's deletion rules. Confirm its direct deletion.
+            </template>
+            <template v-else>
+              Protection status has not loaded for this target. Confirm direct deletion; the server will still enforce
+              its rules.
+            </template>
+          </v-alert>
+          <v-checkbox
+            v-if="removeSidecarProtected"
+            v-model="confirmProtectedSidecarDeletion"
+            data-testid="confirm-protected-sidecar"
+            density="compact"
+            hide-details
+            label="Confirm deletion of the protected sidecar entry"
+          />
+        </v-card-text>
+        <v-card-actions class="flex-wrap">
+          <v-btn variant="text" :disabled="removingSavedEntry" @click="removeSavedEntryDialog = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn
+            data-testid="clear-review-decision"
+            variant="tonal"
+            :disabled="removingSavedEntry || !removeDecisionExists"
+            :loading="removingSavedEntry"
+            @click="removeSavedEntry('decision')"
+          >
+            Clear decision
+          </v-btn>
+          <v-btn
+            data-testid="delete-sidecar-entry"
+            variant="tonal"
+            color="warning"
+            :disabled="
+              removingSavedEntry || !removeSidecarExists || (removeSidecarProtected && !confirmProtectedSidecarDeletion)
+            "
+            :loading="removingSavedEntry"
+            @click="removeSavedEntry('sidecar')"
+          >
+            Delete sidecar mapping
+          </v-btn>
+          <v-btn
+            data-testid="clear-both-entries"
+            variant="tonal"
+            color="error"
+            :disabled="
+              removingSavedEntry ||
+              !removeDecisionExists ||
+              !removeSidecarExists ||
+              (removeSidecarProtected && !confirmProtectedSidecarDeletion)
+            "
+            :loading="removingSavedEntry"
+            @click="removeSavedEntry('both')"
+          >
+            Clear both
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Result Snackbar -->
     <v-snackbar v-model="showResultSnackbar" :color="resultColor" timeout="5000">
       {{ resultMessage }}
@@ -361,6 +463,8 @@ import type {
   AutoReconcileResult,
   DecisionUpdateRequest,
   MappingEntityResponse,
+  MappingLink,
+  MappingLocalOnlyApproval,
   ReconciliationManifestResult,
   ReconciliationPreviewRow,
 } from '@/types/reconciliation'
@@ -411,6 +515,10 @@ const manualNotes = ref('')
 const manualLinkError = ref<string | null>(null)
 const savingManualLink = ref(false)
 const previewLoadingKey = ref<string | null>(null)
+const removeSavedEntryDialog = ref(false)
+const removeSavedEntryRow = ref<ReconciliationPreviewRow | null>(null)
+const confirmProtectedSidecarDeletion = ref(false)
+const removingSavedEntry = ref(false)
 
 // YAML Editor state
 const yamlContent = ref('')
@@ -490,6 +598,30 @@ const mappingError = computed(() => {
 const mappingIsLoading = computed(() => {
   if (!selectedEntity.value) return false
   return mappingLoading.value[props.projectName]?.[selectedEntity.value] ?? false
+})
+
+const removeDecisionExists = computed(() => removeSavedEntryRow.value?.status != null)
+
+const removeSidecarLink = computed<MappingLink | undefined>(() => {
+  const key = removeSavedEntryRow.value?.local_key_value
+  return key ? entityMappingData.value?.links[key] : undefined
+})
+
+const removeLocalOnlyApproval = computed<MappingLocalOnlyApproval | undefined>(() => {
+  const key = removeSavedEntryRow.value?.local_key_value
+  return key ? entityMappingData.value?.local_only_approvals?.[key] : undefined
+})
+
+const removeSidecarExists = computed(() => Boolean(removeSidecarLink.value || removeLocalOnlyApproval.value))
+
+const removeSidecarProtectionStatusKnown = computed(() =>
+  Boolean(selectedTarget.value && entityMappingData.value?.protection_target_field === selectedTarget.value)
+)
+
+const removeSidecarProtected = computed(() => {
+  if (!removeSidecarExists.value) return false
+  if (!removeSidecarProtectionStatusKnown.value) return true
+  return Boolean(removeSidecarLink.value?.protected || removeLocalOnlyApproval.value?.protected)
 })
 
 // Methods
@@ -573,7 +705,7 @@ async function handleExportToMapping() {
       `${result.skipped_manual} protected link(s) skipped.`
 
     try {
-      await reconciliationStore.loadMappingData(props.projectName, entityName)
+      await reconciliationStore.loadMappingData(props.projectName, entityName, targetField)
     } catch (refreshError) {
       resultMessage.value =
         `${summary} Export succeeded, but mapping status could not be refreshed: ` +
@@ -618,6 +750,80 @@ function openManualLinkDialog(row?: ReconciliationPreviewRow) {
   manualLinkDialog.value = true
 }
 
+function openRemoveSavedEntryDialog(row: ReconciliationPreviewRow) {
+  removeSavedEntryRow.value = row
+  confirmProtectedSidecarDeletion.value = false
+  removeSavedEntryDialog.value = true
+}
+
+type SavedEntryRemoval = 'decision' | 'sidecar' | 'both'
+
+async function removeSavedEntry(action: SavedEntryRemoval) {
+  const row = removeSavedEntryRow.value
+  const entityName = selectedEntity.value
+  const targetField = selectedTarget.value
+  const key = row?.local_key_value
+  if (!row || !entityName || !targetField || !key || removingSavedEntry.value) return
+
+  const removeDecision = action === 'decision' || action === 'both'
+  const removeSidecar = action === 'sidecar' || action === 'both'
+  if (removeDecision && !removeDecisionExists.value) return
+  if (removeSidecar && !removeSidecarExists.value) return
+  if (removeSidecar && removeSidecarProtected.value && !confirmProtectedSidecarDeletion.value) return
+
+  removingSavedEntry.value = true
+  const failures: string[] = []
+  let decisionDeleted = false
+  let sidecarDeleted = false
+  try {
+    if (removeDecision) {
+      try {
+        await reconciliationStore.deleteReviewDecision(props.projectName, entityName, targetField, key)
+        decisionDeleted = true
+      } catch (error) {
+        failures.push(`Decision remains: ${getApiErrorMessage(error, 'the decision could not be cleared')}`)
+      }
+    }
+    if (removeSidecar) {
+      try {
+        const result = await reconciliationStore.deleteMappingEntry(
+          props.projectName,
+          entityName,
+          key,
+          targetField,
+          confirmProtectedSidecarDeletion.value
+        )
+        sidecarDeleted = result.deleted_link || result.deleted_local_only_approval
+        if (!sidecarDeleted) failures.push('Sidecar mapping remains: no entry was deleted.')
+      } catch (error) {
+        failures.push(`Sidecar mapping remains: ${getApiErrorMessage(error, 'the entry could not be deleted')}`)
+      }
+    }
+
+    const refreshes: Promise<unknown>[] = []
+    if (decisionDeleted) {
+      refreshes.push(reconciliationStore.loadEntityResolutionCatalog(props.projectName))
+      refreshes.push(reconciliationStore.loadPreviewData(props.projectName, entityName, targetField))
+    }
+    if (sidecarDeleted) refreshes.push(reconciliationStore.loadMappingData(props.projectName, entityName, targetField))
+    if (refreshes.length) {
+      const results = await Promise.allSettled(refreshes)
+      if (results.some((result) => result.status === 'rejected')) {
+        failures.push('Saved changes were made, but the row could not be fully refreshed.')
+      }
+    }
+
+    const decisionResult = removeDecision ? (decisionDeleted ? 'cleared' : 'remains') : 'unchanged'
+    const sidecarResult = removeSidecar ? (sidecarDeleted ? 'deleted' : 'remains') : 'unchanged'
+    resultMessage.value = `Review decision ${decisionResult}; sidecar mapping ${sidecarResult}.${failures.length ? ` ${failures.join(' ')}` : ''}`
+    resultColor.value = failures.length ? 'warning' : 'success'
+    showResultSnackbar.value = true
+    removeSavedEntryDialog.value = false
+  } finally {
+    removingSavedEntry.value = false
+  }
+}
+
 async function saveManualLink() {
   if (!selectedEntity.value) {
     manualLinkError.value = 'Select an entity before adding a manual link.'
@@ -647,7 +853,8 @@ async function saveManualLink() {
       selectedEntity.value,
       key,
       targetId,
-      manualNotes.value.trim() || undefined
+      manualNotes.value.trim() || undefined,
+      selectedTarget.value ?? undefined
     )
     manualLinkDialog.value = false
     resultMessage.value = `Manual link saved for key ${key}; target ID ${targetId} is effective after normalization.`
@@ -801,11 +1008,11 @@ watch(
 )
 
 watch(
-  [() => props.projectName, selectedEntity, selectedEntityHasBusinessKeys],
-  async ([projectName, entityName, hasBusinessKeys]) => {
+  [() => props.projectName, selectedEntity, selectedTarget, selectedEntityHasBusinessKeys],
+  async ([projectName, entityName, targetField, hasBusinessKeys]) => {
     if (!projectName || !entityName || !hasBusinessKeys) return
     try {
-      await reconciliationStore.loadMappingData(projectName, entityName)
+      await reconciliationStore.loadMappingData(projectName, entityName, targetField ?? undefined)
     } catch (e) {
       console.error('[ReconciliationView] Failed to load mapping sidecar:', e)
     }
