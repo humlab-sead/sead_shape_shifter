@@ -18,6 +18,7 @@ This index covers proposals and initiative records that need attention or provid
 | [AI Project Advisor](SHAPESHIFTER_PROJECT_AI_ADVISOR/SHAPESHIFTER_PROJECT_AI_ADVISOR.md) | Feature proposal | Provide project-scoped advice grounded in project state, SEAD knowledge, and source-level investigation. |
 | [Git-Backed Project Backups](GIT_BACKED_PROJECT_BACKUP.md) | Proposed feature — draft for review | Add an opt-in per-project git repository backend that commits project source files at the operation boundary, keeping the file-copy backend as default. |
 | [Output Expectations Sidecar File](OUTPUT_EXPECTATIONS_SIDECAR/OUTPUT_EXPECTATIONS_SIDECAR.md) | Proposed change request | Move output expectation declarations from `options.output_expectations` into a fixed-name `shapeshifter.expectations.yml` project file and deprecate the options key. |
+| [Search and Browse Target Records During Reconciliation](RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) | Proposed feature — draft for review | Add a persistent Search/Browse workspace for explicit reconciliation decisions, backed by read-only Authority Service lookup and browsing. |
 
 ## Current Initiatives
 
