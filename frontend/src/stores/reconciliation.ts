@@ -16,6 +16,7 @@ import type {
   EntityResolutionCatalogUpdateRequest,
   DecisionUpdateRequest,
   MappingEntityResponse,
+  MappingEntryDeleteResponse,
 } from '@/types/reconciliation'
 import { apiClient } from '@/api/client'
 import { reconciliationSpecApi, reconciliationServiceApi } from '@/api/reconciliation'
@@ -244,6 +245,20 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
+  async function deleteReviewDecision(
+    projectName: string,
+    entityName: string,
+    targetField: string,
+    localKeyValue: string
+  ) {
+    try {
+      return await reconciliationServiceApi.deleteDecision(projectName, entityName, targetField, localKeyValue)
+    } catch (e: any) {
+      error.value = getErrorMessage(e, 'Failed to clear review decision')
+      throw e
+    }
+  }
+
   async function suggestEntities(
     projectName: string,
     entityName: string,
@@ -307,7 +322,11 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function loadMappingData(projectName: string, entityName: string): Promise<MappingEntityResponse> {
+  async function loadMappingData(
+    projectName: string,
+    entityName: string,
+    targetField?: string
+  ): Promise<MappingEntityResponse> {
     const requestKey = JSON.stringify([projectName, entityName])
     const requestVersion = (mappingRequestVersions.get(requestKey) ?? 0) + 1
     mappingRequestVersions.set(requestKey, requestVersion)
@@ -318,7 +337,9 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     mappingErrors.value = { ...mappingErrors.value, [projectName]: projectErrors }
 
     try {
-      const result = await reconciliationServiceApi.getEntityMapping(projectName, entityName)
+      const result = targetField
+        ? await reconciliationServiceApi.getEntityMapping(projectName, entityName, targetField)
+        : await reconciliationServiceApi.getEntityMapping(projectName, entityName)
       if (mappingRequestVersions.get(requestKey) === requestVersion) {
         const projectMappings = mappingData.value[projectName] ?? {}
         mappingData.value = { ...mappingData.value, [projectName]: { ...projectMappings, [entityName]: result } }
@@ -344,12 +365,34 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
+  async function deleteMappingEntry(
+    projectName: string,
+    entityName: string,
+    localKeyValue: string,
+    targetField: string,
+    confirmProtected: boolean
+  ): Promise<MappingEntryDeleteResponse> {
+    try {
+      return await reconciliationServiceApi.deleteMappingEntry(
+        projectName,
+        entityName,
+        localKeyValue,
+        targetField,
+        confirmProtected
+      )
+    } catch (e: any) {
+      error.value = getErrorMessage(e, 'Failed to delete mapping sidecar entry')
+      throw e
+    }
+  }
+
   async function putManualMapping(
     projectName: string,
     entityName: string,
     localKeyValue: string,
     targetId: number,
-    notes?: string
+    notes?: string,
+    targetField?: string
   ) {
     try {
       const result = await reconciliationServiceApi.putManualMapping(projectName, entityName, localKeyValue, {
@@ -357,7 +400,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
         notes,
       })
       try {
-        await loadMappingData(projectName, entityName)
+        await loadMappingData(projectName, entityName, targetField)
       } catch (e: unknown) {
         throw new Error(
           `Manual link was saved, but its sidecar could not be reloaded: ${getErrorMessage(e, 'request failed')}`
@@ -583,6 +626,8 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     autoReconcileAsync,
     updateMapping,
     deleteMapping,
+    deleteReviewDecision,
+    deleteMappingEntry,
     suggestEntities,
     loadPreviewData,
     loadMappingData,

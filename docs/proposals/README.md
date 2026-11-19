@@ -17,6 +17,8 @@ This index covers proposals and initiative records that need attention or provid
 | [Security Hardening Follow-up](SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md) | Proposed change request | Remediate unresolved application, authorization, deployment, and verification issues, including safeguards for future generic ingester routes. |
 | [AI Project Advisor](SHAPESHIFTER_PROJECT_AI_ADVISOR/SHAPESHIFTER_PROJECT_AI_ADVISOR.md) | Feature proposal | Provide project-scoped advice grounded in project state, SEAD knowledge, and source-level investigation. |
 | [Git-Backed Project Backups](GIT_BACKED_PROJECT_BACKUP.md) | Proposed feature — draft for review | Add an opt-in per-project git repository backend that commits project source files at the operation boundary, keeping the file-copy backend as default. |
+| [Output Expectations Sidecar File](OUTPUT_EXPECTATIONS_SIDECAR/OUTPUT_EXPECTATIONS_SIDECAR.md) | Proposed change request | Move output expectation declarations from `options.output_expectations` into a fixed-name `shapeshifter.expectations.yml` project file and deprecate the options key. |
+| [Search and Browse Target Records During Reconciliation](RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) | Proposed feature — draft for review | Add a persistent Search/Browse workspace for explicit reconciliation decisions, backed by read-only Authority Service lookup and browsing. |
 
 ## Current Initiatives
 
@@ -50,7 +52,6 @@ These proposals are deferred or not yet approved. See each document for its deta
 | [Server-Owned Resource Identifiers](future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md) | Resolve generated resources through server-owned records rather than client paths. |
 | [Target Model Ecosystem Enhancements](future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md) | Consider future target-model tooling and distribution improvements. |
 | [Unified File-Backed Entity Type](future/UNIFIED_FILE_BACKED_ENTITY_TYPE.md) | Replace separate file entity types with a unified type and format option. |
-| [Reconciliation Future Improvements](RECONCILIATION_FUTURE_IMPROVEMENTS.md) | Placeholder for deferred reconciliation workflow improvements; scope is not yet defined. |
 
 ## On Hold
 
@@ -58,5 +59,6 @@ These proposals are deferred or not yet approved. See each document for its deta
 |---|---|---|
 | [Raw Source Data Explorer](onhold/RAW_SOURCE_DATA_EXPLORER_PROPOSAL.md) | On hold; proposed product and technical direction | Investigate raw source data before mapping and transformation. |
 | [Auto-Fix](onhold/AUTO_FIX.md) | Provisional feature; UI hidden | The backend retains a limited set of confirmation-based validation fixes. |
+| [Reconciliation Future Improvements](onhold/RECONCILIATION_FUTURE_IMPROVEMENTS.md) | On hold; deferred items do not yet have a finalized scope or delivery decision. | Track reconciliation lifecycle improvements beyond explicit export-to-mapping. |
 
 Other paused implementation and migration plans are available in [onhold/](onhold/). Completed or decided proposal records are available in [done/](done/).

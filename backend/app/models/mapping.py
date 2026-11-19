@@ -33,6 +33,15 @@ class MappingLinkResponse(BaseModel):
     notes: str | None = None
     created_by: str
     reviewed_by: str | None = None
+    protected: bool | None = None
+
+
+class MappingLocalOnlyApprovalResponse(BaseModel):
+    """API representation of an approval to allocate a target ID for a local row."""
+
+    owner: MappingLinkOwner
+    committed_at: datetime | None = None
+    protected: bool | None = None
 
 
 class MappingEntityResponse(BaseModel):
@@ -44,6 +53,8 @@ class MappingEntityResponse(BaseModel):
     entity_type: str
     description: str | None = None
     links: dict[str, MappingLinkResponse] = Field(default_factory=dict)
+    local_only_approvals: dict[str, MappingLocalOnlyApprovalResponse] = Field(default_factory=dict)
+    protection_target_field: str | None = None
 
 
 class MappingLinkRecordResponse(BaseModel):
@@ -62,3 +73,12 @@ class MappingDeleteResponse(BaseModel):
     entity_name: str
     local_key_value: str
     deleted: bool
+
+
+class MappingEntryDeleteResponse(BaseModel):
+    """API response for deleting mapping entries for one local key."""
+
+    entity_name: str
+    local_key_value: str
+    deleted_link: bool
+    deleted_local_only_approval: bool
