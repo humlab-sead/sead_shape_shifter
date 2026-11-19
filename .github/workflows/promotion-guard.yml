@@ -5,6 +5,10 @@ name: Promotion Guard
 # record and no authored release note, because the release-note generator reads
 # merged pull requests only. `dev` stays open for maintenance commits, so this
 # guard runs at the promotion gate, which the repository ruleset protects.
+#
+# Commits already reachable from `main` are outside the range. The release bot
+# pushes the release commit there, the ruleset allows that, and `main` merges
+# back into `dev`, so those commits need no pull request of their own.
 
 on:
   pull_request:
@@ -42,6 +46,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
+          # `origin/main` is a second base because the release bot pushes the
+          # release commit straight to main and main merges back into dev. Those
+          # commits already passed the strictest gate and carry no pull request.
           bash scripts/ci/verify_promotion_provenance.sh \
             --base "${{ github.event.pull_request.base.sha }}" \
+            --base origin/main \
             --head "${{ github.event.pull_request.head.sha }}"
