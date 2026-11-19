@@ -48,7 +48,7 @@ Shape Shifter can export a resolved ID and apply it during normalization when th
 - Live verification during normalization, or any change to normalization's offline behavior.
 - Migrating legacy reconciliation catalogs or links; no project uses them.
 - Checking SIMS lifecycle state from reconciliation, or adopting existing SEAD rows into SIMS. SIMS enforces its own rules when a change request binds an ID.
-- Audit history, multi-reviewer approval, or rollback; see [Reconciliation Future Improvements](../../RECONCILIATION_FUTURE_IMPROVEMENTS.md).
+- Audit history, multi-reviewer approval, or rollback; see [Reconciliation Future Improvements](../../onhold/RECONCILIATION_FUTURE_IMPROVEMENTS.md).
 - Changing the three-tier identity model, Core foreign keys, or the Extract → Filter → Link → Unnest → Translate → Store order.
 - Replacing the fixed-entity mapping synchronization.
 

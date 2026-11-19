@@ -262,19 +262,19 @@ flowchart LR
 </tr>
 <tr>
   <td>1</td>
-  <td><code>SubsetService</code><br><small style="color:var(--muted)">src/extract.py</small></td>
+  <td><code>BaseExtraColumnStrategy</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
-  <td><code>create_profiled_normalizer()</code><br><small style="color:var(--muted)">scripts/dev/profile_normalization.py</small><br><code>normalize()</code><br><small style="color:var(--muted)">src/normalizer.py</small><br><code>normalizer.py</code><br><small style="color:var(--muted)">src/normalizer.py</small><br>+2 more</td>
-  <td><code>__init__()</code><br><small style="color:var(--muted)">src/extract.py</small><br><code>_check_if_missing_requested_columns()</code><br><small style="color:var(--muted)">src/extract.py</small><br><code>_get_source_identity_aliases()</code><br><small style="color:var(--muted)">src/extract.py</small><br>+6 more</td>
-  <td>SubsetService node in src/extract.py.</td>
+  <td>External entry / no inbound edge</td>
+  <td><code>dependencies()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>source_column()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td>BaseExtraColumnStrategy node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>2</td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>ColumnCopyStrategy</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
-  <td><code>_build_fk_validator()</code><br><small style="color:var(--muted)">src/transforms/link.py</small><br><code>_find_entity_dependents()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>_get_source_candidates()</code><br><small style="color:var(--muted)">src/column_availability.py</small><br>+101 more</td>
-  <td><code>__init__()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>add_public_id_column()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>add_system_id_column()</code><br><small style="color:var(--muted)">src/model.py</small><br>+62 more</td>
-  <td>Reads, resolves, or persists project configuration.</td>
+  <td>External entry / no inbound edge</td>
+  <td><code>apply()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>dependencies()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>matches()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br>+1 more</td>
+  <td>ColumnCopyStrategy node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>3</td>
@@ -352,9 +352,9 @@ flowchart LR
   <td>12</td>
   <td><code>.branches()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>ExtraColumnStrategyRegistry</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.branches() node in src/model.py.</td>
+  <td>.instances() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>13</td>
@@ -362,127 +362,127 @@ flowchart LR
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.check_column_names() node in src/model.py.</td>
+  <td>.registered_class_hook() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>14</td>
   <td><code>.check_functional_dependency()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><code>dotget()</code><br><small style="color:var(--muted)">src/utility.py</small></td>
-  <td>Builds dependency relationships and graph data.</td>
+  <td><code>collect_source_dependencies()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>evaluate_extra_columns()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>ExtraColumnEvaluator</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br>+2 more</td>
+  <td><code>EvaluationContext</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td>._make_context() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>15</td>
   <td><code>.columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><code>unique()</code><br><small style="color:var(--muted)">src/utility.py</small></td>
-  <td>.columns() node in src/model.py.</td>
+  <td><code>SubsetService</code><br><small style="color:var(--muted)">src/extract.py</small></td>
+  <td><code>ExtraColumnEvaluator</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td>.__init__() node in src/extract.py.</td>
 </tr>
 <tr>
   <td>16</td>
   <td><code>.data_source()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>BaseExtraColumnStrategy</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.data_source() node in src/model.py.</td>
+  <td>.dependencies() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>17</td>
   <td><code>.depends_on()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>BaseExtraColumnStrategy</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.depends_on() node in src/model.py.</td>
+  <td>.source_column() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>18</td>
   <td><code>.drop_duplicates()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.drop_duplicates() node in src/model.py.</td>
+  <td><code>ColumnCopyStrategy</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td><code>source_column()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td>.apply() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>19</td>
   <td><code>.drop_empty_rows()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.drop_empty_rows() node in src/model.py.</td>
+  <td><code>ColumnCopyStrategy</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td><code>source_column()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td>.dependencies() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>20</td>
   <td><code>.extra_column_names()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.extra_column_names() node in src/model.py.</td>
+  <td><code>ColumnCopyStrategy</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td><code>source_column()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td>.matches() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>21</td>
   <td><code>.extra_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.extra_columns() node in src/model.py.</td>
+  <td><code>apply()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>ColumnCopyStrategy</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>dependencies()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br>+1 more</td>
+  <td><code>resolve_column()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td>.source_column() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>22</td>
   <td><code>.extra_fk_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>ConstantStrategy</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.extra_fk_columns() node in src/model.py.</td>
+  <td>.apply() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>23</td>
   <td><code>.filters()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>ConstantStrategy</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.filters() node in src/model.py.</td>
+  <td>.matches() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>24</td>
   <td><code>.fk_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>apply()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>apply()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>EvaluationContext</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.fk_columns() node in src/model.py.</td>
+  <td>.require_columns() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>25</td>
   <td><code>.foreign_key_value_sources()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>collect_source_dependencies()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>EvaluationContext</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>source_column()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.foreign_key_value_sources() node in src/model.py.</td>
+  <td>.resolve_column() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>26</td>
   <td><code>.foreign_keys()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><code>ForeignKeyConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>.foreign_keys() node in src/model.py.</td>
+  <td><code>ExtraColumnEvaluator</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>get_subset2()</code><br><small style="color:var(--muted)">src/extract.py</small></td>
+  <td><code>_make_context()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>dependencies()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>resolve_column()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br>+1 more</td>
+  <td>.collect_source_dependencies() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>27</td>
   <td><code>.has_append()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.has_append() node in src/model.py.</td>
+  <td><code>_evaluate_deferred_extra_columns()</code><br><small style="color:var(--muted)">src/normalizer.py</small><br><code>_process_entity()</code><br><small style="color:var(--muted)">src/normalizer.py</small><br><code>ExtraColumnEvaluator</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br>+1 more</td>
+  <td><code>_make_context()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>apply()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>select_strategy()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td>.evaluate_extra_columns() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>28</td>
   <td><code>.identity_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.identity_columns() node in src/model.py.</td>
+  <td><code>_extra_column_depends_on_pending_unnest()</code><br><small style="color:var(--muted)">src/specifications/foreign_key.py</small><br><code>_process_entity()</code><br><small style="color:var(--muted)">src/normalizer.py</small><br><code>ExtraColumnEvaluator</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td><code>_make_context()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>dependencies()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small><br><code>select_strategy()</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td>.get_unresolved_extra_columns() node in src/transforms/extra_columns.py.</td>
 </tr>
 <tr>
   <td>29</td>
@@ -496,9 +496,9 @@ flowchart LR
   <td>30</td>
   <td><code>.keys()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.keys() node in src/model.py.</td>
+  <td><code>ExtraColumnEvaluator</code><br><small style="color:var(--muted)">src/transforms/extra_columns.py</small></td>
+  <td><code>FormulaEngine</code><br><small style="color:var(--muted)">src/transforms/dsl.py</small></td>
+  <td>.__init__() node in src/transforms/extra_columns.py.</td>
 </tr>
 </table>
 
@@ -507,9 +507,9 @@ flowchart LR
     <h4>Key Files</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>src/transforms/dsl.py</code></td><td>124 nodes</td></tr>
-<tr><td><code>src/model.py</code></td><td>103 nodes</td></tr>
-<tr><td><code>src/transforms/extra_columns.py</code></td><td>90 nodes</td></tr>
+      <tr><td><code>src/transforms/dsl.py</code></td><td>139 nodes</td></tr>
+<tr><td><code>src/transforms/extra_columns.py</code></td><td>91 nodes</td></tr>
+<tr><td><code>app/services/dependency_service.py</code></td><td>46 nodes</td></tr>
 <tr><td><code>docs/sead/06_indexes.sql</code></td><td>46 nodes</td></tr>
 <tr><td><code>app/services/dependency_service.py</code></td><td>43 nodes</td></tr>
 <tr><td><code>src/normalizer.py</code></td><td>31 nodes</td></tr>
@@ -1030,6 +1030,14 @@ flowchart LR
   <td><code>data_sources.py</code><br><small style="color:var(--muted)">v1/endpoints/data_sources.py</small><br><code>file_manager.py</code><br><small style="color:var(--muted)">services/project/file_manager.py</small><br><code>FileManager</code><br><small style="color:var(--muted)">services/project/file_manager.py</small><br>+8 more</td>
   <td><code>serialize_timestamp()</code><br><small style="color:var(--muted)">app/models/project.py</small></td>
   <td>ProjectFileInfo node in app/models/project.py.</td>
+</tr>
+<tr>
+  <td>8</td>
+  <td><code>ResourceConflictError</code><br><small style="color:var(--muted)">backend/app/exceptions.py</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td><code>_export_to_mapping_locked()</code><br><small style="color:var(--muted)">services/reconciliation/service.py</small><br><code>_prepare_export_to_mapping_locked()</code><br><small style="color:var(--muted)">services/reconciliation/service.py</small><br><code>_raise_export_changed_conflict()</code><br><small style="color:var(--muted)">services/reconciliation/service.py</small><br>+33 more</td>
+  <td><code>__init__()</code><br><small style="color:var(--muted)">backend/app/exceptions.py</small><br><code>create_entity_has_dependents()</code><br><small style="color:var(--muted)">backend/app/exceptions.py</small></td>
+  <td>ResourceConflictError node in backend/app/exceptions.py.</td>
 </tr>
 <tr>
   <td>9</td>
@@ -1585,10 +1593,6 @@ flowchart LR
         src_process_state_processstate_get_next_entity_t_49c29a76("get_next_entity_to_process()<br/><small>src/process_state.py</small>")
         src_process_state_processstate_get_unmet_depende_45442a61("get_unmet_dependencies()<br/><small>src/process_state.py</small>")
         src_process_state_processstate_mark_incomplete_a6a46f44("mark_incomplete()<br/><small>src/process_state.py</small>")
-        src_process_state_processstate_get_all_unmet_dep_d0622502("get_all_unmet_dependencies()<br/><small>src/process_state.py</small>")
-        src_process_state_processstate_log_unmet_depende_ee52fe55("log_unmet_dependencies()<br/><small>src/process_state.py</small>")
-        src_process_state_processstate_processed_entitie_86eda27a("processed_entities()<br/><small>src/process_state.py</small>")
-        src_process_state_processstate_unprocessed_entit_c3939090("unprocessed_entities()<br/><small>src/process_state.py</small>")
     end
     subgraph cli_skills_app_middleware_proxy_auth_py_a7407b32["app/middleware/proxy_auth.py"]
         backend_app_middleware_proxy_auth_proxyauthentic_41c1a8be("ProxyAuthenticationMiddleware<br/><small>app/middleware/proxy_auth.py</small>")
@@ -1907,7 +1911,13 @@ flowchart LR
     <h4>Key Files</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>scripts/dev/spinup_disposable_postgres.py</code></td><td>24 nodes</td></tr>
+      <tr><td><code>app/scripts/authorization.py</code></td><td>43 nodes</td></tr>
+<tr><td><code>src/dispatch.py</code></td><td>39 nodes</td></tr>
+<tr><td><code>app/models/reconciliation.py</code></td><td>32 nodes</td></tr>
+<tr><td><code>app/services/integrity_troubleshooter_context_store.py</code></td><td>32 nodes</td></tr>
+<tr><td><code>app/services/link_experiment_context_store.py</code></td><td>24 nodes</td></tr>
+<tr><td><code>scripts/dev/spinup_disposable_postgres.py</code></td><td>24 nodes</td></tr>
+<tr><td><code>app/validators/data_validation_orchestrator.py</code></td><td>22 nodes</td></tr>
 <tr><td><code>docs/ai/semantic-rules-agent.md</code></td><td>22 nodes</td></tr>
 <tr><td><code>docs/other/AI_AGENT_SETUP.md</code></td><td>21 nodes</td></tr>
 <tr><td><code>TODO.md</code></td><td>20 nodes</td></tr>
@@ -2711,27 +2721,27 @@ flowchart LR
 </tr>
 <tr>
   <td>1</td>
-  <td><code>ForeignKeyConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>ConditionalForeignKeyConformanceValidator</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
-  <td><code>_build_fk_validator()</code><br><small style="color:var(--muted)">src/transforms/link.py</small><br><code>_is_lookup_fk_enrichment()</code><br><small style="color:var(--muted)">src/transforms/link.py</small><br><code>_resolve_saved_foreign_key()</code><br><small style="color:var(--muted)">src/transforms/link_resolution.py</small><br>+32 more</td>
-  <td><code>__init__()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>constraints()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>defer_dependency()</code><br><small style="color:var(--muted)">src/model.py</small><br>+12 more</td>
-  <td>Reads, resolves, or persists project configuration.</td>
+  <td>External entry / no inbound edge</td>
+  <td><code>get_default_severity()</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small><br><code>ShapeShiftProject</code><br><small style="color:var(--muted)">src/model.py</small><br><code>TargetModel</code><br><small style="color:var(--muted)">src/target_model/models.py</small><br>+1 more</td>
+  <td>ConditionalForeignKeyConformanceValidator node in src/target_model/conformance.py.</td>
 </tr>
 <tr>
   <td>2</td>
-  <td><code>ForeignKeyConstraints</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>ConformanceIssue</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
-  <td><code>constraints()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>constraints.py</code><br><small style="color:var(--muted)">src/specifications/constraints.py</small><br><code>ConstraintValidator</code><br><small style="color:var(--muted)">src/specifications/constraints.py</small><br>+2 more</td>
-  <td><code>__init__()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>allow_null_keys()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>allow_null_keys_is_explicit()</code><br><small style="color:var(--muted)">src/model.py</small><br>+11 more</td>
-  <td>ForeignKeyConstraints node in src/model.py.</td>
+  <td><code>__init__.py</code><br><small style="color:var(--muted)">src/target_model/__init__.py</small><br><code>project_ingester_service.py</code><br><small style="color:var(--muted)">app/services/project_ingester_service.py</small><br><code>ProjectIngesterService</code><br><small style="color:var(--muted)">app/services/project_ingester_service.py</small><br>+18 more</td>
+  <td><code>__post_init__()</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small></td>
+  <td>ConformanceIssue node in src/target_model/conformance.py.</td>
 </tr>
 <tr>
   <td>3</td>
-  <td><code>ForeignKeyMergeSetup</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>ConformanceValidator</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
-  <td><code>ForeignKeyLinker</code><br><small style="color:var(--muted)">src/transforms/link.py</small><br><code>generate_link_setup()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>link.py</code><br><small style="color:var(--muted)">src/transforms/link.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>ForeignKeyMergeSetup node in src/model.py.</td>
+  <td>External entry / no inbound edge</td>
+  <td><code>get_default_severity()</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small><br><code>ShapeShiftProject</code><br><small style="color:var(--muted)">src/model.py</small><br><code>TargetModel</code><br><small style="color:var(--muted)">src/target_model/models.py</small><br>+1 more</td>
+  <td>ConformanceValidator node in src/target_model/conformance.py.</td>
 </tr>
 <tr>
   <td>4</td>
@@ -2777,9 +2787,9 @@ flowchart LR
   <td>9</td>
   <td><code>ForeignKeyLinker</code><br><small style="color:var(--muted)">src/transforms/link.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
-  <td><code>__init__()</code><br><small style="color:var(--muted)">src/normalizer.py</small><br><code>_link()</code><br><small style="color:var(--muted)">app/services/link_baseline_service.py</small><br><code>link_baseline_service.py</code><br><small style="color:var(--muted)">app/services/link_baseline_service.py</small><br>+6 more</td>
-  <td><code>__init__()</code><br><small style="color:var(--muted)">src/transforms/link.py</small><br><code>_resolve_link_opts()</code><br><small style="color:var(--muted)">src/transforms/link.py</small><br><code>DeferredLinkingTracker</code><br><small style="color:var(--muted)">src/process_state.py</small><br>+9 more</td>
-  <td>ForeignKeyLinker node in src/transforms/link.py.</td>
+  <td>External entry / no inbound edge</td>
+  <td><code>EntitySpec</code><br><small style="color:var(--muted)">src/target_model/models.py</small><br><code>guard()</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small><br><code>ShapeShiftProject</code><br><small style="color:var(--muted)">src/model.py</small><br>+4 more</td>
+  <td>EntityConformanceValidator node in src/target_model/conformance.py.</td>
 </tr>
 <tr>
   <td>10</td>
@@ -2881,73 +2891,73 @@ flowchart LR
   <td>22</td>
   <td><code>.allow_row_decrease()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>ForeignKeyConstraints</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>preparation failure result()</code><br><small style="color:var(--muted)">app/services/validation_service.py</small><br><code>ShapeShiftProject</code><br><small style="color:var(--muted)">src/model.py</small><br><code>target model error()</code><br><small style="color:var(--muted)">app/services/validation_service.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.allow_row_decrease() node in src/model.py.</td>
+  <td>.entities() node in src/model.py.</td>
 </tr>
 <tr>
   <td>23</td>
   <td><code>.allow_unmatched_left()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>ForeignKeyConstraints</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.allow_unmatched_left() node in src/model.py.</td>
+  <td><code>ShapeShiftProject</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td>.tables() node in src/model.py.</td>
 </tr>
 <tr>
   <td>24</td>
   <td><code>.allow_unmatched_right()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>ForeignKeyConstraints</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.allow_unmatched_right() node in src/model.py.</td>
+  <td><code>aware column availability()</code><br><small style="color:var(--muted)">v1/endpoints/columns.py</small><br><code>StageAwareColumnService</code><br><small style="color:var(--muted)">app/services/stage_aware_column_service.py</small></td>
+  <td><code>get_table()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>has_table()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>load_project()</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br>+2 more</td>
+  <td>.get_column_availability() node in app/services/stage_aware_column_service.py.</td>
 </tr>
 <tr>
   <td>25</td>
   <td><code>.cardinality()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>ForeignKeyConstraints</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.cardinality() node in src/model.py.</td>
+  <td><code>compute_status()</code><br><small style="color:var(--muted)">app/services/task_service.py</small><br><code>TaskService</code><br><small style="color:var(--muted)">app/services/task_service.py</small></td>
+  <td><code>_determine_priority()</code><br><small style="color:var(--muted)">app/services/task_service.py</small><br><code>get_project_version()</code><br><small style="color:var(--muted)">app/services/shapeshift_service.py</small><br><code>get_table()</code><br><small style="color:var(--muted)">src/model.py</small><br>+2 more</td>
+  <td>._compute_entity_status() node in app/services/task_service.py.</td>
 </tr>
 <tr>
   <td>26</td>
   <td><code>.has_constraints()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>ForeignKeyConstraints</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>get_default_severity()</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small><br><code>NoOrphanFactsConformanceValidator</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small><br><code>validate_global()</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.has_constraints() node in src/model.py.</td>
+  <td>.get_constraint() node in src/target_model/conformance.py.</td>
 </tr>
 <tr>
   <td>27</td>
   <td><code>.is_empty()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>ForeignKeyConstraints</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>ConditionalForeignKeyConformanceValidator</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.is_empty() node in src/model.py.</td>
+  <td>.get_default_severity() node in src/target_model/conformance.py.</td>
 </tr>
 <tr>
   <td>28</td>
   <td><code>.null_keys_equal()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>ForeignKeyConstraints</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>ConformanceValidator</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small><br><code>resolve_rule_severity()</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small><br><code>validate()</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.null_keys_equal() node in src/model.py.</td>
+  <td>.get_default_severity() node in src/target_model/conformance.py.</td>
 </tr>
 <tr>
   <td>29</td>
   <td><code>.null_keys_equal_is_explicit()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>ForeignKeyConstraints</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>DirectForeignKeyPendingCheckValidator</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.null_keys_equal_is_explicit() node in src/model.py.</td>
+  <td>.get_default_severity() node in src/target_model/conformance.py.</td>
 </tr>
 <tr>
   <td>30</td>
   <td><code>.require_unique_left()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>ForeignKeyConstraints</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.require_unique_left() node in src/model.py.</td>
+  <td><code>NoOrphanFactsConformanceValidator</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small></td>
+  <td><code>get_constraint()</code><br><small style="color:var(--muted)">src/target_model/conformance.py</small></td>
+  <td>.get_default_severity() node in src/target_model/conformance.py.</td>
 </tr>
 </table>
 
@@ -3293,6 +3303,38 @@ flowchart LR
   <td><code>FileLoader</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small></td>
   <td>No direct outbound edge</td>
   <td>Verifies imports, entry points, or version behavior.</td>
+</tr>
+<tr>
+  <td>27</td>
+  <td><code>handleCreateNewNode()</code><br><small style="color:var(--muted)">src/views/ProjectDetailView.vue</small></td>
+  <td><span class="tag tag-hook">UI</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>handleCreateNewNode() node in src/views/ProjectDetailView.vue.</td>
+</tr>
+<tr>
+  <td>28</td>
+  <td><code>handleCreateTodoEntity()</code><br><small style="color:var(--muted)">src/views/ProjectDetailView.vue</small></td>
+  <td><span class="tag tag-hook">UI</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>handleCreateTodoEntity() node in src/views/ProjectDetailView.vue.</td>
+</tr>
+<tr>
+  <td>29</td>
+  <td><code>handleDataSourcesUpdated()</code><br><small style="color:var(--muted)">src/views/ProjectDetailView.vue</small></td>
+  <td><span class="tag tag-hook">UI</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>handleRefresh()</code><br><small style="color:var(--muted)">src/views/ProjectDetailView.vue</small></td>
+  <td>handleDataSourcesUpdated() node in src/views/ProjectDetailView.vue.</td>
+</tr>
+<tr>
+  <td>30</td>
+  <td><code>handleDecreaseNodeLabelFontSize()</code><br><small style="color:var(--muted)">src/views/ProjectDetailView.vue</small></td>
+  <td><span class="tag tag-hook">UI</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>clampNodeLabelFontSize()</code><br><small style="color:var(--muted)">src/views/ProjectDetailView.vue</small></td>
+  <td>handleDecreaseNodeLabelFontSize() node in src/views/ProjectDetailView.vue.</td>
 </tr>
 </table>
 
@@ -3681,6 +3723,7 @@ flowchart LR
     frontend_src_components_entities_entityformdialo_15ef82f8("currentDirectTargetEntityName()<br/><small>components/entities/EntityFormDialog.vue</small>")
     frontend_src_components_entities_entityformdialo_8e855408("resetDirectForeignKeyState()<br/><small>components/entities/EntityFormDialog.vue</small>")
     frontend_src_components_entities_entityformdialo_dfddfd68("persistDialogSize()<br/><small>components/entities/EntityFormDialog.vue</small>")
+    frontend_src_components_entities_entityformdialo_3acd7956("refreshPreview()<br/><small>components/entities/EntityFormDialog.vue</small>")
     frontend_src_components_entities_entityformdialo_d18d43d8("updateResponsiveDialogMode()<br/><small>components/entities/EntityFormDialog.vue</small>")
     frontend_src_components_entities_entityformdialo_d1996ca6("preservedValueSourceEntries<br/><small>components/entities/EntityFormDialog.vue</small>")
     frontend_src_components_entities_entityformdialo_5117214b("describePreservedValueSource()<br/><small>components/entities/EntityFormDialog.vue</small>")
@@ -3688,11 +3731,13 @@ flowchart LR
     frontend_src_components_entities_entityformdialo_26f962f2("isMergedPreviewNullFillCell()<br/><small>components/entities/EntityFormDialog.vue</small>")
     frontend_src_components_entities_entityformdialo_66c646a6 -->|calls| frontend_src_components_entities_entityformdialo_659fbda1
     frontend_src_components_entities_entityformdialo_7aa14b8b -->|calls| frontend_src_components_entities_entityformdialo_ea230aad
+    frontend_src_components_entities_entityformdialo_e4cd459e -->|calls| frontend_src_components_entities_entityformdialo_fde69c3b
     frontend_src_components_entities_entityformdialo_a9ac05c8 -->|calls| frontend_src_components_entities_entityformdialo_66c646a6
     frontend_src_components_entities_entityformdialo_6a77c88e -->|calls| frontend_src_components_entities_entityformdialo_15ef82f8
     frontend_src_components_entities_entityformdialo_6a77c88e -->|calls| frontend_src_components_entities_entityformdialo_8e855408
     frontend_src_components_entities_entityformdialo_42c666a2 -->|calls| frontend_src_components_entities_entityformdialo_66c646a6
     frontend_src_components_entities_entityformdialo_42c666a2 -->|calls| frontend_src_components_entities_entityformdialo_dfddfd68
+    frontend_src_components_entities_entityformdialo_fde69c3b -->|calls| frontend_src_components_entities_entityformdialo_3acd7956
     frontend_src_components_entities_entityformdialo_d18d43d8 -->|calls| frontend_src_components_entities_entityformdialo_66c646a6
     frontend_src_components_entities_entityformdialo_c11eee4e -->|calls| frontend_src_components_entities_entityformdialo_15ef82f8
     frontend_src_components_entities_entityformdialo_d1996ca6 -->|calls| frontend_src_components_entities_entityformdialo_5117214b
@@ -3712,6 +3757,7 @@ flowchart LR
     class frontend_src_components_entities_entityformdialo_15ef82f8 ui;
     class frontend_src_components_entities_entityformdialo_8e855408 ui;
     class frontend_src_components_entities_entityformdialo_dfddfd68 ui;
+    class frontend_src_components_entities_entityformdialo_3acd7956 ui;
     class frontend_src_components_entities_entityformdialo_d18d43d8 ui;
     class frontend_src_components_entities_entityformdialo_d1996ca6 ui;
     class frontend_src_components_entities_entityformdialo_5117214b ui;
@@ -5389,6 +5435,7 @@ flowchart LR
 <tr><td><code>resources/reconciliation_policies/datesradio.policy.yml</code></td><td>120 nodes</td></tr>
 <tr><td><code>CHANGELOG.md</code></td><td>115 nodes</td></tr>
 <tr><td><code>resources/reconciliation_policies/datesperiod.policy.yml</code></td><td>113 nodes</td></tr>
+<tr><td><code>docs/USER_GUIDE.md</code></td><td>111 nodes</td></tr>
 <tr><td><code>resources/reconciliation_policies/species.policy.yml</code></td><td>105 nodes</td></tr>
 <tr><td><code>resources/reconciliation_policies/fossil.policy.yml</code></td><td>100 nodes</td></tr>
     </table>

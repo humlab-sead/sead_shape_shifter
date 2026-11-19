@@ -32,7 +32,8 @@ syncs manual links to the sidecar.
 state while exporting, and error feedback.
  - Docs: USER_GUIDE.md, DESIGN.md, CONFIGURATION_GUIDE.md, and the reconciliation setup guide
 updated to describe the sidecar; the consolidation proposal and task plans added under
-docs/proposals/done/, with deferred lifecycle work tracked in RECONCILIATION_FUTURE_IMPROVEMENTS.md.
+docs/proposals/done/, with deferred lifecycle work tracked in
+docs/proposals/onhold/RECONCILIATION_FUTURE_IMPROVEMENTS.md.
 
 The PR also carries auxiliary changes not part of the feature: conversion of backend tests to a
 client pytest fixture, pre-commit/pytest/Makefile tweaks, and AI-assistant tooling files (graphify
