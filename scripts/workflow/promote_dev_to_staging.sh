@@ -4,6 +4,7 @@ set -euo pipefail
 readonly repository="humlab-sead/sead_shape_shifter"
 readonly source_branch="dev"
 readonly target_branch="staging"
+readonly released_branch="main"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
 repository_root="$(cd -- "${script_dir}/../.." && pwd)"
@@ -85,8 +86,13 @@ verify_provenance() {
   token="$(gh auth token)" || die "Could not read the GitHub CLI authentication token."
   [[ -n "$token" ]] || die "GitHub CLI returned an empty authentication token."
 
+  # Release commits are pushed straight to main by the release bot and then
+  # arrive on dev when main merges back, so they have no pull request of their
+  # own. Excluding main keeps them out of the range without weakening the check
+  # for changes introduced on dev.
   GH_TOKEN="$token" "$provenance_script" \
     --base "origin/${target_branch}" \
+    --base "origin/${released_branch}" \
     --head "origin/${source_branch}"
 }
 
