@@ -4,16 +4,18 @@
 # their own pull request rather than pushed straight to the source branch.
 #
 # Usage:
-#   scripts/ci/verify_promotion_provenance.sh --base <ref> [--head <ref>]
+#   scripts/ci/verify_promotion_provenance.sh --base <ref> [--base <ref>]... [--head <ref>]
 #
 # Run locally before opening a promotion pull request, for example:
 #   GH_TOKEN=$(gh auth token) scripts/ci/verify_promotion_provenance.sh \
-#       --base origin/staging --head origin/dev
+#       --base origin/staging --base origin/main --head origin/dev
 #
 # How commits are classified:
 #
 #   * The script walks the first-parent chain from the head commit back to the
-#     base commit. That chain is the branch's own history.
+#     base commits. That chain is the branch's own history. A commit reachable
+#     from any base commit is outside the range, so a check can name more than
+#     one branch.
 #   * A merge commit whose subject is `Merge pull request #<n>` arrived through
 #     a pull request, so it passes and the commits it merges are not inspected
 #     individually.
@@ -24,6 +26,11 @@
 # Historical commits are not re-reported: a promotion compares the target branch
 # tip with the source branch tip, so commits already on the target are outside
 # the range.
+#
+# The release bot pushes the release commit straight to `main`, and `main` then
+# merges back into `dev`. A dev-to-staging promotion therefore passes
+# `--base origin/main` as well, because those commits already passed the
+# strictest gate instead of arriving through their own pull request.
 #
 # Exit codes: 0 pass, 1 provenance violations, 2 usage or GitHub API failure.
 
@@ -40,11 +47,13 @@ usage() {
 Verify that commits touching code paths in a promotion carry pull request provenance.
 
 Usage:
-  verify_promotion_provenance.sh --base <ref> [--head <ref>]
+  verify_promotion_provenance.sh --base <ref> [--base <ref>]... [--head <ref>]
   verify_promotion_provenance.sh --check-local-commit
 
 Options:
-  --base <ref>   Commit or branch the promotion targets. Required.
+  --base <ref>   Commit or branch the promotion targets. Required. Repeat the
+                 option to exclude commits that already reached another
+                 branch, such as origin/main for a dev-to-staging promotion.
   --head <ref>   Commit or branch the promotion introduces. Defaults to HEAD.
   --check-local-commit  Check staged paths against the local branch policy.
   -h, --help     Print this help.
@@ -140,7 +149,7 @@ check_local_commit() {
   return 1
 }
 
-base_ref=""
+base_refs=()
 head_ref="HEAD"
 local_commit_mode=false
 
@@ -148,7 +157,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --base)
       [[ $# -ge 2 && -n "$2" ]] || die "--base requires a value"
-      base_ref="$2"
+      base_refs+=("$2")
       shift 2
       ;;
     --head)
@@ -176,7 +185,7 @@ IFS=':' read -r -a protected_prefixes <<< "${PROTECTED_PATHS:-${DEFAULT_PROTECTE
 [[ ${#protected_prefixes[@]} -gt 0 ]] || die "PROTECTED_PATHS is empty"
 
 if [[ "$local_commit_mode" == true ]]; then
-  [[ -z "$base_ref" ]] || die "--base cannot be used with --check-local-commit"
+  [[ ${#base_refs[@]} -eq 0 ]] || die "--base cannot be used with --check-local-commit"
   if check_local_commit; then
     exit 0
   else
@@ -184,16 +193,20 @@ if [[ "$local_commit_mode" == true ]]; then
   fi
 fi
 
-[[ -n "$base_ref" ]] || {
+[[ ${#base_refs[@]} -gt 0 ]] || {
   usage >&2
   die "--base is required"
 }
 
 command -v gh >/dev/null || die "the GitHub CLI (gh) is required"
 
-if ! git rev-parse --verify --quiet "${base_ref}^{commit}" >/dev/null; then
-  die "unknown base ref: ${base_ref}"
-fi
+base_display=""
+for base_ref in "${base_refs[@]}"; do
+  if ! git rev-parse --verify --quiet "${base_ref}^{commit}" >/dev/null; then
+    die "unknown base ref: ${base_ref}"
+  fi
+  base_display+="${base_display:+, }${base_ref}"
+done
 if ! git rev-parse --verify --quiet "${head_ref}^{commit}" >/dev/null; then
   die "unknown head ref: ${head_ref}"
 fi
@@ -203,10 +216,15 @@ if [[ -z "$repository" ]]; then
   repository="$(gh repo view --json nameWithOwner --jq '.nameWithOwner')" || die "cannot determine repository; set GITHUB_REPOSITORY"
 fi
 
-mapfile -t chain < <(git rev-list --first-parent "${base_ref}..${head_ref}")
+rev_list_arguments=(--first-parent "${head_ref}")
+for base_ref in "${base_refs[@]}"; do
+  rev_list_arguments+=("^${base_ref}")
+done
+
+mapfile -t chain < <(git rev-list "${rev_list_arguments[@]}")
 
 if [[ ${#chain[@]} -eq 0 ]]; then
-  note "No commits between ${base_ref} and ${head_ref}; nothing to verify."
+  note "No commits between ${base_display} and ${head_ref}; nothing to verify."
   exit 0
 fi
 
