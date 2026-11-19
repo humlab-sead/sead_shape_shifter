@@ -1,0 +1,14 @@
+interface:
+  display_name: Write Natural Technical Prose
+  short_description: Natural wording with exact technical meaning
+  default_prompt: Use $write-natural-technical-prose to revise this technical explanation
+    for a human reader.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
