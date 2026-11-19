@@ -774,7 +774,7 @@ Fails a promotion when code changes were pushed straight to the source branch in
 ```bash
 # Check a dev into staging promotion before opening the pull request
 GH_TOKEN=$(gh auth token) scripts/ci/verify_promotion_provenance.sh \
-  --base origin/staging --head origin/dev
+  --base origin/staging --base origin/main --head origin/dev
 
 # Check one explicit range
 scripts/ci/verify_promotion_provenance.sh --base 7a90e566 --head f4c8a177
@@ -782,10 +782,15 @@ scripts/ci/verify_promotion_provenance.sh --base 7a90e566 --head f4c8a177
 
 ### What It Does
 
-- Walks the first-parent chain from `--head` back to `--base`. That chain is the source branch's own history.
+- Walks the first-parent chain from `--head` back to the base commits. That chain is the source branch's own history.
+- Accepts `--base` more than once. A commit reachable from any base is outside the range, so a check can name several branches.
 - Passes merge commits whose subject is `Merge pull request #<n>`, and does not inspect the commits they merge.
 - Treats every other commit on the chain as a squash merge, rebase merge, or direct push. It passes when GitHub associates the commit with a pull request whose base branch is not `staging` or `main`. Promotion pull requests are ignored, because merging a promotion associates it with every commit it carries.
 - Reports each failing commit, its subject, and the protected paths it changes. Writes a Markdown summary to `GITHUB_STEP_SUMMARY` when that variable is set.
+
+### Why `main` Is a Second Base
+
+The release bot pushes the release commit (`chore(release): <version> [skip ci]`) straight to `main`, which the repository ruleset allows for that bot only. `main` then merges back into `dev`. A dev into staging promotion therefore names `origin/main` as a second base: those commits already passed the strictest gate and cannot carry a pull request of their own. Without it, every promotion after a release reports the release commits as missing provenance.
 
 ### Protected Paths
 
