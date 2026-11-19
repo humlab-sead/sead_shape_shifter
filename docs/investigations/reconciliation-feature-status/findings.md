@@ -38,7 +38,7 @@ Results in the reconciliation catalog are not applied during normalization until
 | [Persistence Consolidation task plans](../../proposals/done/RECONCILIATION_PERSISTENCE_CONSOLIDATION_TASK_PLANS.md) | Detailed acceptance criteria and implementation breakdown for the sidecar, normalization, materialization sync, APIs, and export. | Status markers conflict: the file says “Planning,” while many tasks are checked and other progress summaries remain unchecked. Do not use its checkboxes alone as the current status. |
 | [Materialized Entity Mapping Sync](../../proposals/done/MATERIALIZED_ENTITY_MAPPING_SYNC/MATERIALIZED_ENTITY_MAPPING_SYNC.md) | Follow-up for fixed-row and materialized-entity changes that synchronize mapping sidecar links. | Says implemented, with phases 1–4 passed and merged in [PR #562](https://github.com/humlab-sead/sead_shape_shifter/pull/562). It identifies the process-local project lock as a remaining limitation for writes from independent processes. |
 | [Conditional Target Model Requirements](../../proposals/done/CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md) | Target-model requirements that depend on reconciliation selecting rows for insertion. | Adjacent to reconciliation execution; useful when assessing validation and change-request generation, rather than the reconciliation UI or match lifecycle. |
-| [Reconciliation Future Improvements](../../proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md) | Draft/committed states, reviewer decisions, audit history, rollback, and translating reconciliation values to sidecar local keys. | Explicitly a placeholder with no finalized scope. |
+| [Reconciliation Future Improvements](../../proposals/onhold/RECONCILIATION_FUTURE_IMPROVEMENTS.md) | Draft/committed states, reviewer decisions, audit history, rollback, and translating reconciliation values to sidecar local keys. | On hold; deferred items do not yet have a finalized scope or delivery decision. |
 | [Reconciliation guide](../../other/RECONCILIATION_GUIDE.md) | User workflow, configuration, review, and export context. | Supporting documentation; compare operational details with the newer proposals and code. |
 
 ## GitHub Issues and Pull Request
@@ -122,5 +122,5 @@ The export route is in `backend/app/api/v1/endpoints/reconciliation.py`. It call
 
 1. Read the [Materialized Entity Mapping Sync proposal](../../proposals/done/MATERIALIZED_ENTITY_MAPPING_SYNC/MATERIALIZED_ENTITY_MAPPING_SYNC.md) and PR #562 for the newest synchronization work.
 2. Compare the [Persistence Consolidation proposal](../../proposals/done/RECONCILIATION_PERSISTENCE_CONSOLIDATION.md), its task plans, and issue #465 for the sidecar and export design.
-3. Read the [future improvements placeholder](../../proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md) and open issue #617 for unscoped or newly requested work.
+3. Read the [future improvements placeholder](../../proposals/onhold/RECONCILIATION_FUTURE_IMPROVEMENTS.md) and open issue #617 for unscoped or newly requested work.
 4. Trace the code paths above and use their focused tests to check the implementation claims.
