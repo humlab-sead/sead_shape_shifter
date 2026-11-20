@@ -141,6 +141,22 @@
                 </template>
               </v-tooltip>
 
+              <v-tooltip :text="reviewTooltip(item)" location="top">
+                <template #activator="{ props }">
+                  <span v-bind="props">
+                    <v-btn
+                      data-testid="review-specification-button"
+                      icon="mdi-clipboard-search-outline"
+                      size="small"
+                      variant="text"
+                      color="secondary"
+                      :disabled="!canReview(item)"
+                      @click.stop="reviewSpec(item)"
+                    />
+                  </span>
+                </template>
+              </v-tooltip>
+
               <v-tooltip text="Edit specification" location="top">
                 <template #activator="{ props }">
                   <v-btn
@@ -246,6 +262,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   reconcile: [entityName: string, targetField: string]
+  review: [entityName: string, targetField: string]
 }>()
 
 const reconciliationStore = useReconciliationStore()
@@ -298,6 +315,28 @@ function editSpecification(item: EntityResolutionListItem) {
 
 function reconcileSpec(item: EntityResolutionListItem) {
   emit('reconcile', item.entity_name, item.target_field)
+}
+
+/**
+ * Review needs a business key and a configured target type, but not candidate matching.
+ * Compatibility with Find Candidates never gates this action.
+ */
+function canReview(item: EntityResolutionListItem): boolean {
+  return item.has_business_keys !== false && Boolean(item.remote?.service_type)
+}
+
+function reviewTooltip(item: EntityResolutionListItem): string {
+  if (item.has_business_keys === false) {
+    return 'Add business keys to the entity before reviewing rows'
+  }
+  if (!item.remote?.service_type) {
+    return 'Configure a remote service type before reviewing rows'
+  }
+  return 'Review rows without running Find Candidates'
+}
+
+function reviewSpec(item: EntityResolutionListItem) {
+  emit('review', item.entity_name, item.target_field)
 }
 
 function confirmDelete(item: EntityResolutionListItem) {

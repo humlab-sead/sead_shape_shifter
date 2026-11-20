@@ -41,9 +41,9 @@ The `public_id` column is the only column reconciliation writes. A specification
 ```text
 Configure specification
         ↓
-Find candidates
+Find candidates  (optional for keyed rows)
         ↓
-Review decisions
+Review decisions  (grid, or the Review workspace)
         ↓
 Export to mapping
         ↓
@@ -188,6 +188,34 @@ Preview failures and matching failures are shown apart from an empty result, so 
 
 ## 3. Review Decisions
 
+### 3.0 Review Without Find Candidates
+
+Select **Review** on a specification row to open the review workspace. It does not run Find Candidates, so rows that were never matched can be reviewed. **Find Candidates** stays available for the grid workflow.
+
+The workspace keeps the row queue on the left and the target pane on the right.
+
+| Part | Behavior |
+|------|----------|
+| Needs review queue | Rows with no saved decision, plus rows that cannot be reviewed. A row without a business key, or one with unresolved source errors, stays visible but cannot be reviewed. |
+| Search | Ranked targets for your own text. Enter searches immediately; typing waits about 300 ms. Ranked results are limited suggestions, not proof that a record is absent. |
+| `id: <number>` | Exact lookup of one record by target ID. Invalid syntax is an input error and is never retried as text search. |
+| Browse | Downloads the complete target list when it fits the service's advertised row and byte limits, then filters and sorts it in the browser. `%`, `_`, and `*` are literal characters. A list that is too large is reported explicitly; no partial list is shown. |
+| Stage selected & next | Records an accepted decision for the selected target and moves on. Staging is not saving. |
+| Stage New & next | Records a local-only decision. This approves later new-record handling; it does not create a record. An empty search result never stages New on its own. |
+| Skip for now | Moves on without staging anything. A decision already staged for that row is kept. |
+| Save decisions | Saves every staged decision in one batch. |
+
+Notes are kept per row. Keyboard shortcuts are Alt+Enter (stage selected), Alt+Right and Alt+Left (move), and Alt+Down (skip). Typing, including composed characters, never triggers a decision shortcut.
+
+Unsaved decisions are stored in this browser for the same project, entity, and target field, so a reload keeps them. Another specification never inherits them, and neither a result list nor a selected target is restored.
+
+**Save decisions is not Export.** Saving records decisions in the reconciliation catalog; it does not write the mapping sidecar or change normalized IDs. Export stays a separate action, described in section 4.
+
+- A failed save leaves the catalog unchanged and keeps every staged decision. The reported rows can be corrected and saved again; a save is never retried automatically.
+- If a saved decision changed after the workspace loaded it, for a row you staged, the workspace lists the loaded and current values and asks before replacing them. Your staged decisions stay as they are unless you confirm. That comparison is advisory: a change made between the comparison and the save is still replaced.
+- Accepted exports require a successful candidate check. A failed check blocks the export, so an accepted link is never exported unverified.
+- After a workspace has opened, a valid New-only save or export still works if the service later becomes unavailable. Opening a new workspace requires a service response.
+
 ### 3.1 Row Statuses
 
 | Status | Meaning |
@@ -206,7 +234,7 @@ Rows without a decision or candidates are unresolved. Rows without a business ke
 3. Select a candidate, then select **Accept selected candidate**. Use **Reject** or **Local-only** when no candidate applies.
 4. Add notes when the decision needs explanation.
 
-Decisions are saved by encoded business key. Running **Find Candidates** again preserves them.
+Decisions are saved by encoded business key. Running **Find Candidates** again preserves them. The review workspace in section 3.0 stages decisions for several rows before saving them together.
 
 ### 3.3 Re-accept Older Decisions
 

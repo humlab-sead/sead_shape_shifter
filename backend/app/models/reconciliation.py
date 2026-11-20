@@ -311,3 +311,87 @@ class DecisionBatchResult(BaseModel):
 
     saved: list[SavedDecision] = Field(default_factory=list)
     counts: DecisionBatchCounts
+
+
+# Record selection models: capabilities, ranked search, and complete browse lists.
+
+
+class RecordDisplayFieldDescriptor(BaseModel):
+    """One ordered display field advertised for a record-selection type."""
+
+    name: str = Field(..., min_length=1)
+    source: Literal["record", "fields"]
+    label: str = Field(..., min_length=1)
+    value_type: Literal["string", "integer", "number", "boolean"]
+    display: bool
+
+
+class RecordFieldFilterDescriptor(BaseModel):
+    """One client-side field filter advertised for a record-selection type."""
+
+    field: str = Field(..., min_length=1)
+    operator: Literal["contains_ci", "equals"]
+
+
+class RecordSelectionTypeCapabilities(BaseModel):
+    """Capabilities, limits, and declared fields for one configured record type."""
+
+    type: str = Field(..., min_length=1)
+    search_supported: bool
+    identifier_search_supported: bool
+    browse_supported: bool
+    details_supported: bool
+    export_verification_supported: bool
+    id_base: str | None = None
+    id_path: str = Field(..., min_length=1)
+    browse_max_rows: int | None = Field(default=None, gt=0)
+    browse_max_bytes: int | None = Field(default=None, gt=0)
+    interactive_search_max_results: int | None = Field(default=None, gt=0)
+    display_fields: list[RecordDisplayFieldDescriptor] = Field(default_factory=list)
+    text_filter_fields: list[str] = Field(default_factory=list)
+    sort_fields: list[str] = Field(default_factory=list)
+    field_filters: list[RecordFieldFilterDescriptor] = Field(default_factory=list)
+
+
+class RecordSelectionCapabilities(BaseModel):
+    """Versioned record-selection capabilities for the specification's own type."""
+
+    version: int = Field(..., ge=1)
+    type: RecordSelectionTypeCapabilities
+
+
+class ReconciliationRecord(BaseModel):
+    """One selectable target record shared by search and browse results."""
+
+    id: str = Field(..., min_length=1, description="Complete reconciliation URI for the record")
+    target_id: int | None = Field(default=None, gt=0, description="Positive numeric target ID when the service supplies one")
+    type: str = Field(..., min_length=1, description="Record type the URI was validated against")
+    name: str = Field(..., description="Record label; never used as an identifier")
+    description: str | None = None
+    fields: dict[str, Any] = Field(default_factory=dict, description="Declared display fields")
+    score: float | None = Field(
+        default=None,
+        description="Ranked search score in the OpenRefine 0-100 scale; browse records carry no score",
+    )
+
+
+class RecordSelectionSearchRequest(BaseModel):
+    """Operator search text plus optional declared property context."""
+
+    query: str = Field(..., description="Operator text, or 'id: <positive integer>' for an exact lookup")
+    limit: int | None = Field(default=None, description="Requested result limit; capped by the advertised maximum")
+    context: dict[str, str] = Field(default_factory=dict, description="Declared property IDs used as ranking hints")
+
+
+class RecordSelectionSearchResult(BaseModel):
+    """Ranked search results or the single record for an exact-ID lookup."""
+
+    mode: Literal["ranked", "exact"]
+    items: list[ReconciliationRecord] = Field(default_factory=list)
+
+
+class RecordSelectionBrowseResult(BaseModel):
+    """A verified complete record list for the configured type."""
+
+    items: list[ReconciliationRecord] = Field(default_factory=list)
+    completeness: Literal["complete"] = "complete"
