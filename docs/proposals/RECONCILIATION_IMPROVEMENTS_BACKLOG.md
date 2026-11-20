@@ -2,7 +2,7 @@
 
 **Status:** Working backlog, not yet approved for implementation
 
-**Last updated:** 2026-11-18
+**Last updated:** 2026-11-20
 
 **Scope:** The human review workflow in the Reconciliation view, and the matching options that workflow depends on.
 
@@ -411,7 +411,7 @@ Candidate headers, from the original draft:
 
 - Reject duplicate keys in a request before writing. Validate remaining entries independently: report unknown keys and invalid accepted-candidate decisions per entry while saving valid entries together. If the catalog write fails, fail the whole write rather than reporting success for unsaved entries.
 
-- Detect a stale decision changed since selection and return a conflict rather than silently replacing it. Return saved decision data so the UI can patch rows.
+- Return saved decision data so the UI can patch rows. Detecting a decision changed since selection belongs to R33.
 
 - Keep the single-decision route for compatibility.
 
@@ -421,7 +421,7 @@ Candidate headers, from the original draft:
 
 - Duplicate keys reject the request without writing; independently invalid entries are reported per key while valid entries persist.
 
-- A stale edit is reported as a conflict; a write failure reports no entries as saved.
+- A write failure reports no entries as saved; a stale edit is reported as a conflict once R33 adds the expected decision state.
 
 ### R17. Add bulk actions to the review grid
 
@@ -797,6 +797,35 @@ R21 provides the persistent pane; R26–R31 add search-specific behaviour. R6 re
 
 ---
 
+## Group H — Decision write conflicts
+
+### R33. Require per-row expected decision state on every decision write
+
+**Tracking issue:** [#766](https://github.com/humlab-sead/sead_shape_shifter/issues/766) — "Reconciliation: per-row expected decision state on decision writes" (labels: `reconciliation`, `backend`, `api`)
+
+**Area:** backend. **Effort:** L. **Priority:** Later.
+
+**Problem.** Every decision write loads the catalog under the project lock, changes one business key, and saves, but none of them compares the decision it replaces. Two reviewers working the same project and specification therefore overwrite each other's decisions for the same key on a last-writer-wins basis. This applies to the batch route, the single decision route, the delete route, and mark-unmatched. The Phase 3 workspace warns before a draft replaces a decision that changed since it loaded, but that comparison is client-side and advisory: a decision changed between the comparison and the write is still replaced silently.
+
+**Change.**
+
+- Add an optional expected current state per business key to each decision write: absent, or the decision's status with its target ID, candidate URI, and last-modified marker.
+- Under the project lock, reject a write whose expected state differs from the stored decision, and name the affected keys with their current state so the reviewer can reload and reapply.
+- Keep the batch all-or-nothing: one conflicting key rejects the whole batch without writing.
+- Leave the whole-catalog replacement route on its own rule. Do not give per-key routes a whole-catalog precondition, and do not add server-side review sessions or per-row version storage.
+- Treat a missing expected state as today's last-writer-wins behavior, so legacy routes, clients, and the frozen Phase 2 payload keep working.
+
+**Acceptance criteria.**
+
+- Two writes for the same key, where the first changes the decision, make the second fail with a conflict naming that key; a conflicting batch writes nothing.
+- A write whose expected state matches the stored decision succeeds, and a key with no decision is distinguishable from a key whose decision was deleted.
+- A conflict on one key leaves writes to other keys and other specifications unaffected.
+- A caller that sends no expected state keeps the current behavior.
+
+**Depends on:** Nothing blocks it. It replaces the advisory check `PH3-AC-6` adds and decides the conflict clause R16 states.
+
+---
+
 ## Summary
 
 | Item | Area | Effort | Priority | Depends on |
@@ -816,7 +845,7 @@ R21 provides the persistent pane; R26–R31 add search-specific behaviour. R6 re
 | R13 Reuse unchanged matching outcomes | backend | L | Next | — |
 | R14 Async progress and cancel | frontend, backend | L | Early | — |
 | R15 Effective configurable candidate limit | backend, authority service | L | Next | Service limit support |
-| R16 Batch decision endpoint | backend | L | Next | — |
+| R16 Batch decision endpoint (conflict check owned by R33) | backend | L | Next | — |
 | R17 Bulk actions in the grid | frontend | M | Next | R16 |
 | R18 Review equivalent-query groups | frontend | M | Next | R16 |
 | R19 Partial matching, wildcard follow-up | authority service, backend | L | Later | — |
@@ -833,6 +862,7 @@ R21 provides the persistent pane; R26–R31 add search-specific behaviour. R6 re
 | R30 Decisions without prior batch matching | backend | M | Early | — |
 | R31 Remember and reuse search terms | frontend | M | Next | R26 |
 | R32 Clear decision and/or sidecar entry by key | frontend, backend | M | Next | — |
+| R33 Per-row expected decision state on decision writes | backend | L | Later | — |
 
 ## Suggested order
 
@@ -847,6 +877,8 @@ R21 provides the persistent pane; R26–R31 add search-specific behaviour. R6 re
 5. Fit R6, R7, R10, R23, R25, and R32 around the workflow they support. Reuse the search picker and skip behaviour rather than building parallel implementations. Make R11 opportunistic.
 
 6. Improve automatic matching through R19 and R20 after representative failed-search fixtures show what needs to change. Decide wildcard syntax separately from partial matching; manual expanded or translated query text is already supported by the earlier search-first work.
+
+Add R33 once the workspace ships. It turns the advisory pre-save warning into a server-enforced check, and it is the only item here that removes the last-writer-wins window rather than warning about it.
 
 Assess improvements by measuring time and interactions per saved decision, preview requests per decision, time to resume review, and time to locate and repair an export problem. For Group F, also measure time per explicit New decision, time from entering a query to a usable result (median and 95th percentile), and query attempts per completed decision. Record the fixture size and environment before setting latency targets.
 
@@ -865,3 +897,4 @@ Validate Group F with a dataset dominated by known-new records (for example, 90 
 - R29: establish which interactive-search behaviours the existing route already provides, whether optional context filters or only ranks results, and how result truncation can be reported. Automatic translation and wildcard syntax are separate decisions.
 - R30: choose how validated source-row data is reused and invalidated so a first-time decision is checked against current data without normalizing the whole entity per save. Define an actionable stale-row conflict.
 - R28: choose explicit modified decision shortcuts that coexist with text editing, composition input, and R3; plain Enter in the query field runs search only.
+- R33: decide whether an expected state becomes required once Shape Shifter sends it, and how a rejected batch is recovered by reapplying the preserved drafts.
