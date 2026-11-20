@@ -460,6 +460,25 @@ async def update_mapping(
     return ReconciliationMapper.registry_to_dto(domain_registry)
 
 
+@router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/decisions")
+@handle_endpoint_errors
+async def save_decision_batch(
+    project_name: str,  # pylint: disable=unused-argument
+    entity_name: str,
+    target_field: str,
+    request: api.DecisionBatchRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> api.DecisionBatchResult:
+    """Save first-time accepted and local-only decisions for authorized, unchanged rows."""
+    return await service.save_decision_batch(
+        project_name=authorized_project.resource.locator,
+        entity_name=entity_name,
+        target_field=target_field,
+        drafts=request.drafts,
+    )
+
+
 @router.delete("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mapping")
 @handle_endpoint_errors
 async def delete_mapping(
@@ -585,7 +604,7 @@ async def create_registry(
     entity_mapping_domain: core.EntityResolutionSet = ReconciliationMapper.entity_mapping_to_domain(request.spec)
 
     # Service returns domain model
-    catalog: core.EntityResolutionCatalog = service.catalog_manager.create_entity_mapping(
+    catalog: core.EntityResolutionCatalog = service.create_specification(
         project_name=authorized_project.resource.locator,
         entity_name=request.entity_name,
         target_field=request.target_field,
@@ -636,7 +655,7 @@ async def update_catalog(
     remote_domain: core.ResolutionTarget = ReconciliationMapper.remote_to_domain(request.remote)
 
     # Service returns domain model
-    catalog: core.EntityResolutionCatalog = service.catalog_manager.update_entity_mapping(
+    catalog: core.EntityResolutionCatalog = service.update_specification(
         project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         target_field=target_field,

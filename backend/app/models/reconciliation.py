@@ -37,15 +37,9 @@ class ResolvedEntityPair(BaseModel):
     created_by: str | None = Field(default=None, description="User who created mapping")
     last_modified: str | None = Field(default=None, description="Last modification timestamp")
 
-    @model_validator(mode="after")
-    def validate_status(self) -> "ResolvedEntityPair":
-        if (self.status == "accepted") != (self.target_id is not None):
-            raise ValueError("Only an accepted decision may have a target_id, and accepted decisions require one")
-        if self.candidate_id is not None and not self.candidate_id.strip():  # pylint: disable=no-member
-            raise ValueError("A candidate_id must not be blank")
-        if self.status != "accepted" and self.candidate_id is not None:
-            raise ValueError("Only an accepted decision may have a candidate_id")
-        return self
+    # This model also reads legacy version 3.0 catalogs, so it deliberately does not
+    # enforce the accepted/target/candidate relationship on load. Write paths run the
+    # shared reference validator before saving a decision.
 
 
 class EntityResolutionSet(BaseModel):
@@ -248,3 +242,72 @@ class ExportToMappingResult(BaseModel):
     entity: str = Field(..., description="Entity name whose links were exported.")
     field: str = Field(..., description="Reconciliation field used as the source key during export.")
     outcomes: list[ExportToMappingOutcome] = Field(default_factory=list, description="Verification outcome for each checked business key.")
+
+
+class ReconciliationIssue(BaseModel):
+    """One row-specific problem reported with a rejected reconciliation write."""
+
+    row_index: int | None = Field(default=None, description="Server index in the resolved source rows")
+    local_key_value: str | None = Field(default=None, description="Encoded business key of the affected row")
+    field: str | None = Field(default=None, description="Column name when one column caused the issue")
+    code: str = Field(..., min_length=1, description="Stable issue code")
+    message: str = Field(..., min_length=1, description="Human-readable issue description")
+
+
+class DecisionDraft(BaseModel):
+    """One first-time or replacement decision submitted in a batch."""
+
+    # The service validates the key so a malformed draft produces a row issue
+    # instead of a request-model rejection.
+    local_key_value: str = Field(..., description="Encoded ordered business key")
+    displayed_values: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Columns the operator saw; used only for change detection and never written as source data",
+    )
+    status: Literal["accepted", "local-only"] = Field(..., description="Decision to store for this row")
+    target_id: int | None = Field(default=None, description="Selected target ID for an accepted decision")
+    candidate_id: str | None = Field(default=None, description="Exact selected candidate URI for an accepted decision")
+    notes: str | None = Field(default=None, description="Operator notes")
+
+
+class DecisionBatchRequest(BaseModel):
+    """Batch of decisions saved in one catalog write."""
+
+    drafts: list[DecisionDraft] = Field(default_factory=list, description="Decisions to store; each key appears at most once")
+
+
+class SavedDecision(BaseModel):
+    """One decision stored by a batch save, echoed in request order."""
+
+    local_key_value: str = Field(..., min_length=1)
+    status: Literal["accepted", "local-only"]
+    target_id: int | None = None
+    candidate_id: str | None = None
+    notes: str | None = None
+    last_modified: str | None = None
+
+
+class SpecificationDecisionCounts(BaseModel):
+    """Post-save decision totals for one reconciliation specification."""
+
+    accepted: int = Field(..., ge=0)
+    local_only: int = Field(..., ge=0)
+    proposed: int = Field(..., ge=0)
+    rejected: int = Field(..., ge=0)
+    total: int = Field(..., ge=0)
+
+
+class DecisionBatchCounts(BaseModel):
+    """Counts for the stored batch and the resulting specification."""
+
+    saved: int = Field(..., ge=0)
+    accepted: int = Field(..., ge=0)
+    local_only: int = Field(..., ge=0)
+    specification: SpecificationDecisionCounts
+
+
+class DecisionBatchResult(BaseModel):
+    """Result of a batch decision save."""
+
+    saved: list[SavedDecision] = Field(default_factory=list)
+    counts: DecisionBatchCounts

@@ -262,13 +262,16 @@ A row with no candidate, or only low-scoring candidates, needs a reviewer decisi
 
 Select **Export to Mapping** to copy accepted decisions into the mapping sidecar.
 
-- Each accepted candidate URI is checked against SEAD.
+- Each accepted candidate URI is checked against SEAD before the sidecar is changed.
 - Valid decisions are written to `shapeshifter.mapping.yml` with `source: reconciliation`, `committed_at`, and an owner recorded.
-- A candidate reported as absent or invalid is not exported, and any older link owned by that specification for the same key is removed. The result names the key and the reason.
-- When the Authority Service is unavailable, the link is written with an empty `verified_at` and shown as unverified. Export again after recovery to retry the check.
+- A candidate reported as absent or invalid blocks the whole export. No link is written or removed, so a verification failure never changes the sidecar.
+- When the Authority Service is unavailable or returns an invalid response, the export stops without changing the sidecar. Export again after recovery.
+- Decisions marked New need no verification. A New-only export still works during an outage and writes a committed, owner-tagged approval.
 - Only links owned by that specification are updated; its stale owned links are removed. Manual links and unowned links are protected.
 - A key with a conflicting owner, or a sidecar whose metadata does not match, stops the export without changing the sidecar.
 - Local-only decisions are written as committed, owner-tagged approvals. They do not set `public_id`.
+
+A row with no prior catalog entry receives a decision through a batch save. Accepted and New drafts for authorized, unchanged source rows are saved in one catalog write, so a changed, missing, or repeated row rejects the whole batch without saving any of it.
 
 An accepted decision in the catalog does not change normalized IDs until it is exported.
 

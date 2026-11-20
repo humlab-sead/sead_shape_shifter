@@ -54,6 +54,7 @@ class DomainException(Exception):
         tips: list[str] | None = None,
         recoverable: bool = True,
         context: dict[str, Any] | None = None,
+        issues: list[dict[str, Any]] | None = None,
     ):
         """
         Initialize domain exception.
@@ -64,10 +65,12 @@ class DomainException(Exception):
             tips: Optional override for tips (uses registry if not provided)
             recoverable: True if user can fix, False if requires code changes
             context: Additional debugging context (entities, values, etc.)
+            issues: Optional row-specific issues reported alongside the error
         """
         super().__init__(message)
         self.message = message
         self.context = context or {}
+        self.issues = issues
 
         # Store resolved error code in instance attribute (avoid ClassVar conflict)
         self.code = error_code or self.__class__.error_code
@@ -83,7 +86,7 @@ class DomainException(Exception):
         if isinstance(context, dict) and "details" in context:
             context["details"] = self._truncate_value(context["details"])
 
-        return {
+        detail = {
             "error_type": self.__class__.__name__,
             "error_code": self.code,
             "message": self.message,
@@ -91,6 +94,9 @@ class DomainException(Exception):
             "recoverable": self.recoverable,
             "context": context,
         }
+        if self.issues is not None:
+            detail["issues"] = self._to_json_safe(self.issues)
+        return detail
 
     @staticmethod
     def _to_json_safe(value: Any) -> Any:
