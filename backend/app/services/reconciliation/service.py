@@ -2,10 +2,11 @@
 
 import json
 import math
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 import httpx
 from loguru import logger
@@ -16,6 +17,12 @@ from backend.app.clients.reconciliation_client import (
     CandidateVerificationUnavailableError,
     ReconciliationClient,
     ReconciliationQuery,
+    RecordSelectionInvalidRequestError,
+    RecordSelectionNotFoundError,
+    RecordSelectionServiceError,
+    RecordSelectionTooLargeError,
+    RecordSelectionUnavailableError,
+    RecordSelectionUnsupportedError,
 )
 from backend.app.core.operation_manager import OperationStatus, operation_manager
 from backend.app.exceptions import (
@@ -39,7 +46,12 @@ from backend.app.models.reconciliation import (
     ExportToMappingOutcome,
     ExportToMappingResult,
     ReconciliationIssue,
+    ReconciliationRecord,
     ReconciliationRowError,
+    RecordSelectionBrowseResult,
+    RecordSelectionCapabilities,
+    RecordSelectionSearchRequest,
+    RecordSelectionSearchResult,
     SavedDecision,
     SpecificationDecisionCounts,
 )
@@ -47,7 +59,11 @@ from backend.app.models.shapeshift import PreviewResult
 from backend.app.services import ProjectService, ShapeShiftService
 from backend.app.services.mapping_service import MappingService
 from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
-from backend.app.services.reconciliation.reference_validation import accepted_reference_error
+from backend.app.services.reconciliation.reference_validation import (
+    POSTGRES_INTEGER_MAX,
+    accepted_reference_error,
+    parse_record_uri,
+)
 from backend.app.services.reconciliation.resolvers import ReconciliationSourceResolver
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.model import ShapeShiftProject
@@ -74,6 +90,10 @@ class ResolvedSourceRows:
     rows: list[dict[str, Any]]
     local_key: str | list[str]
     errors: list[ReconciliationRowError] = field(default_factory=list)
+
+
+# Operator text that starts with ``id:`` always means an exact target-ID lookup.
+_EXACT_IDENTIFIER_PATTERN = re.compile(r"^id:\s*(.*)$", re.IGNORECASE | re.DOTALL)
 
 
 def _canonical_value(value: Any) -> str:
@@ -1504,6 +1524,216 @@ class ReconciliationService:
     ) -> core.EntityResolutionCatalog:
         """Mark an existing keyed row as local-only."""
         return self.update_mapping(project_name, entity_name, target_field, local_key_value, core.DecisionStatus.LOCAL_ONLY, None, notes)
+
+    def _selection_resolution_set(self, project_name: str, entity_name: str, target_field: str) -> tuple[core.EntityResolutionSet, str]:
+        """Return the specification and its fixed record type for selection calls."""
+        catalog = self.catalog_manager.load_catalog(project_name)
+        resolution_set = catalog.get(entity_name, target_field)
+        if resolution_set is None:
+            raise ResourceNotFoundError(
+                f"No reconciliation registry for entity '{entity_name}' target '{target_field}'",
+                resource_type="entity_mapping",
+                resource_id=f"{entity_name}.{target_field}",
+            )
+        service_type = resolution_set.metadata.remote.service_type
+        if not service_type or not service_type.strip():
+            raise ValidationError(
+                f"Entity '{entity_name}' has no remote service type configured, so record selection is unavailable.",
+                error_code="RECORD_SELECTION_UNSUPPORTED",
+            )
+        return resolution_set, service_type.strip().lower()
+
+    @staticmethod
+    def _raise_selection_failure(exc: RecordSelectionServiceError) -> NoReturn:
+        """Translate an Authority Service selection failure into a domain exception."""
+        if isinstance(exc, RecordSelectionUnsupportedError):
+            raise ValidationError(str(exc), error_code="RECORD_SELECTION_UNSUPPORTED") from exc
+        if isinstance(exc, RecordSelectionInvalidRequestError):
+            raise ValidationError(str(exc), error_code="RECORD_SELECTION_INVALID_INPUT") from exc
+        if isinstance(exc, RecordSelectionTooLargeError):
+            raise ResourceConflictError(
+                str(exc) or "The complete record list is too large to browse.",
+                error_code="RECORD_SELECTION_TOO_LARGE",
+            ) from exc
+        if isinstance(exc, RecordSelectionUnavailableError):
+            raise ReconciliationManifestError(
+                f"The reconciliation service cannot be reached, so record selection was not completed: {exc}",
+                error_code="RECORD_SELECTION_UNAVAILABLE",
+            ) from exc
+        raise DependencyError(
+            f"The reconciliation service returned an invalid record-selection response: {exc}",
+            error_code="RECORD_SELECTION_INVALID_RESPONSE",
+        ) from exc
+
+    async def get_selection_capabilities(
+        self, project_name: str, entity_name: str, target_field: str, *, fresh: bool = True
+    ) -> RecordSelectionCapabilities:
+        """Return the versioned selection capabilities advertised for the specification's type."""
+        _, service_type = self._selection_resolution_set(project_name, entity_name, target_field)
+        try:
+            version, descriptors = await self.reconciliation_client.get_record_selection_capabilities(fresh=fresh)
+        except RecordSelectionServiceError as exc:
+            self._raise_selection_failure(exc)
+
+        for descriptor in descriptors:
+            if descriptor.type == service_type:
+                return RecordSelectionCapabilities(version=version, type=descriptor)
+
+        raise ValidationError(
+            f"Record selection is not available for remote type '{service_type}'.",
+            error_code="RECORD_SELECTION_UNSUPPORTED",
+        )
+
+    @staticmethod
+    def _selection_record(record: ReconciliationRecord, service_type: str) -> ReconciliationRecord:
+        """Validate that a service-supplied record belongs to the fixed type and ID space."""
+        if record.type != service_type:
+            raise DependencyError(
+                f"The reconciliation service returned a '{record.type}' record for type '{service_type}'.",
+                error_code="RECORD_SELECTION_INVALID_RESPONSE",
+            )
+        if record.target_id is None:
+            raise DependencyError(
+                "The reconciliation service returned a record without a numeric target ID.",
+                error_code="RECORD_SELECTION_INVALID_RESPONSE",
+            )
+        if parse_record_uri(record.id, service_type) != record.target_id:
+            raise DependencyError(
+                f"The reconciliation service returned a record URI that does not match "
+                f"type '{service_type}' and target ID {record.target_id}.",
+                error_code="RECORD_SELECTION_INVALID_RESPONSE",
+            )
+        return record
+
+    @staticmethod
+    def _exact_identifier(text: str) -> int | None:
+        """Return the positive ID of an ``id:`` query, or ``None`` when the text is not one.
+
+        Text that starts with ``id:`` is always treated as an exact-identifier query,
+        so malformed values are rejected instead of falling back to ranked search.
+        """
+        match = _EXACT_IDENTIFIER_PATTERN.match(text)
+        if match is None:
+            return None
+        digits = match.group(1).strip()
+        if not digits.isascii() or not digits.isdecimal():
+            raise ValidationError(
+                "Enter 'id:' followed by a positive whole-number target ID, for example 'id: 42'.",
+                error_code="RECORD_SELECTION_INVALID_INPUT",
+            )
+        identifier = int(digits)
+        if identifier <= 0 or identifier > POSTGRES_INTEGER_MAX:
+            raise ValidationError(
+                "The target ID after 'id:' must be a positive whole number within the supported integer range.",
+                error_code="RECORD_SELECTION_INVALID_INPUT",
+            )
+        return identifier
+
+    async def search_selection(
+        self,
+        project_name: str,
+        entity_name: str,
+        target_field: str,
+        request: RecordSelectionSearchRequest,
+    ) -> RecordSelectionSearchResult:
+        """Run a bounded ranked search, or an exact type-scoped lookup for ``id:`` text."""
+        _, service_type = self._selection_resolution_set(project_name, entity_name, target_field)
+        capabilities = await self.get_selection_capabilities(project_name, entity_name, target_field)
+
+        text = request.query.strip()
+        if not text:
+            raise ValidationError(
+                "Enter search text or 'id: <positive integer>' before searching.",
+                error_code="RECORD_SELECTION_INVALID_INPUT",
+            )
+
+        identifier = self._exact_identifier(text)
+        if identifier is not None:
+            if not capabilities.type.identifier_search_supported:
+                raise ValidationError(
+                    f"Exact identifier lookup is not enabled for remote type '{service_type}'.",
+                    error_code="RECORD_SELECTION_UNSUPPORTED",
+                )
+            try:
+                record = await self.reconciliation_client.get_record_details(service_type, identifier)
+            except RecordSelectionServiceError as exc:
+                if isinstance(exc, RecordSelectionNotFoundError):
+                    logger.info(f"Record selection found no {service_type} record for target ID {identifier}")
+                    return RecordSelectionSearchResult(mode="exact", items=[])
+                self._raise_selection_failure(exc)
+            return RecordSelectionSearchResult(mode="exact", items=[self._selection_record(record, service_type)])
+
+        if not capabilities.type.search_supported:
+            raise ValidationError(
+                f"Interactive search is not enabled for remote type '{service_type}'.",
+                error_code="RECORD_SELECTION_UNSUPPORTED",
+            )
+
+        cap = capabilities.type.interactive_search_max_results
+        if cap is None:
+            raise ValidationError(
+                f"Remote type '{service_type}' does not advertise an interactive search limit.",
+                error_code="RECORD_SELECTION_UNSUPPORTED",
+            )
+        if request.limit is not None and request.limit <= 0:
+            raise ValidationError(
+                "The requested search limit must be a positive whole number.",
+                error_code="RECORD_SELECTION_INVALID_INPUT",
+            )
+        limit = min(request.limit or cap, cap)
+
+        # Declared property IDs are ranking hints only; they never restrict results.
+        if request.context:
+            await self.ensure_reconciliation_eligibility(service_type, request.context)
+
+        try:
+            candidates = await self.reconciliation_client.search_records(service_type, text, limit, request.context or None)
+        except RecordSelectionServiceError as exc:
+            self._raise_selection_failure(exc)
+
+        items: list[ReconciliationRecord] = []
+        for candidate in candidates:
+            target_id = parse_record_uri(candidate.id, service_type)
+            if target_id is None:
+                logger.warning(f"Dropping search candidate whose URI does not match '{service_type}': {candidate.id}")
+                continue
+            items.append(
+                ReconciliationRecord(
+                    id=candidate.id,
+                    target_id=target_id,
+                    type=service_type,
+                    name=candidate.name,
+                    description=candidate.description,
+                    fields={},
+                    score=candidate.score,
+                )
+            )
+        return RecordSelectionSearchResult(mode="ranked", items=items)
+
+    async def browse_selection(self, project_name: str, entity_name: str, target_field: str) -> RecordSelectionBrowseResult:
+        """Return the complete record list for the specification's type, or a too-large error."""
+        _, service_type = self._selection_resolution_set(project_name, entity_name, target_field)
+        capabilities = await self.get_selection_capabilities(project_name, entity_name, target_field)
+        if not capabilities.type.browse_supported:
+            raise ValidationError(
+                f"Browse is not enabled for remote type '{service_type}'.",
+                error_code="RECORD_SELECTION_UNSUPPORTED",
+            )
+
+        try:
+            records, completeness = await self.reconciliation_client.list_records(service_type)
+        except RecordSelectionServiceError as exc:
+            self._raise_selection_failure(exc)
+
+        if completeness != "complete":
+            raise DependencyError(
+                "The reconciliation service returned a record list that it did not mark complete.",
+                error_code="RECORD_SELECTION_INVALID_RESPONSE",
+            )
+        return RecordSelectionBrowseResult(
+            items=[self._selection_record(record, service_type) for record in records],
+            completeness="complete",
+        )
 
     async def get_available_target_fields(self, project_name: str, entity_name: str) -> list[str]:
         """

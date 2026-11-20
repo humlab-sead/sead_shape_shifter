@@ -49,6 +49,7 @@ const validManifestResult = {
       { id: 'feature_type', name: 'Feature type' },
     ],
     propertiesByType: { site: ['place_name'], feature_type: [] },
+    selection: null,
   },
 }
 

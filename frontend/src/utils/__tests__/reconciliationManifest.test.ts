@@ -32,6 +32,7 @@ describe('parseReconciliationManifest', () => {
           site: ['place_name', 'latitude'],
           feature_type: [],
         },
+        selection: null,
       },
     })
   })
@@ -56,8 +57,46 @@ describe('parseReconciliationManifest', () => {
 
     expect(result).toEqual({
       status: 'valid',
-      manifest: { supportedTypes: [], propertiesByType: {} },
+      manifest: { supportedTypes: [], propertiesByType: {}, selection: null },
     })
+  })
+
+  it('reads a valid record-selection extension independently', () => {
+    const result = parseReconciliationManifest({
+      ...validManifest,
+      reconciliation: {
+        supportedTypes: ['site'],
+        record_selection: { version: 1, types_path: '/records/types' },
+      },
+    })
+
+    expect(result.status).toBe('valid')
+    if (result.status === 'valid') {
+      expect(result.manifest.selection).toEqual({ version: 1, typesPath: '/records/types' })
+    }
+  })
+
+  it.each([
+    ['a missing extension', undefined],
+    ['an unsupported version', { version: 0, types_path: '/records/types' }],
+    ['a non-integer version', { version: 1.5, types_path: '/records/types' }],
+    ['a blank types path', { version: 1, types_path: '  ' }],
+    ['an absolute URL', { version: 1, types_path: 'https://elsewhere.example/records/types' }],
+    ['a protocol-relative path', { version: 1, types_path: '//elsewhere.example/records/types' }],
+    ['a path without a leading slash', { version: 1, types_path: 'records/types' }],
+    ['a traversal path', { version: 1, types_path: '/records/../types' }],
+    ['a path with a query', { version: 1, types_path: '/records/types?x=1' }],
+  ])('treats %s as unsupported without invalidating legacy metadata', (_description, extension) => {
+    const result = parseReconciliationManifest({
+      ...validManifest,
+      reconciliation: { supportedTypes: ['site'], record_selection: extension },
+    })
+
+    expect(result.status).toBe('valid')
+    if (result.status === 'valid') {
+      expect(result.manifest.selection).toBeNull()
+      expect(result.manifest.supportedTypes).toEqual([{ id: 'site', name: 'Site' }])
+    }
   })
 
   it.each([

@@ -826,6 +826,36 @@ R21 provides the persistent pane; R26–R31 add search-specific behaviour. R6 re
 
 ---
 
+## Group I — Inspect saved workspace decisions
+
+### R34. Inspect saved decisions in the Search/Browse workspace
+
+**Tracking issue:** `TBD` — "Reconciliation: inspect saved decisions in the Search/Browse workspace" (labels: `reconciliation`, `frontend`, `ux`)
+
+**Area:** frontend. **Effort:** M. **Priority:** Next.
+
+**Problem.** The Search/Browse workspace replaces the legacy grid, and its Needs review queue removes rows with saved decisions. If Authority becomes unavailable after the workspace opens, reviewers cannot inspect saved decisions in the workspace and must switch to the legacy grid.
+
+**Change.**
+
+- Add a **Saved decisions** view to the workspace, separate from the Needs review queue.
+- Populate it from saved decision states already loaded for the specification, and update it from each successful batch response.
+- Show the saved status and available decision details, such as target ID or URI and notes. Do not call Authority to render the saved decision.
+- Keep saved rows out of Needs review so its membership and count do not change.
+
+**Acceptance criteria.**
+
+- After opening the workspace while Authority is available, a reviewer can inspect previously saved decisions and decisions saved during the session after Authority becomes unavailable, without switching to the legacy grid.
+- Inspection uses saved state already loaded or returned by the batch save; it makes no Authority request.
+- The view shows the saved status and available decision details without changing the catalog or mapping sidecar.
+- Saved rows do not appear in Needs review or change its count.
+
+**Depends on:** R2 and R24 for saved-row updates and independent saved review.
+
+**Scope note.** This follow-up is deferred from the [Search and Browse proposal](./RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) and is not a Phase 3 acceptance gate.
+
+---
+
 ## Summary
 
 | Item | Area | Effort | Priority | Depends on |
@@ -863,10 +893,13 @@ R21 provides the persistent pane; R26–R31 add search-specific behaviour. R6 re
 | R31 Remember and reuse search terms | frontend | M | Next | R26 |
 | R32 Clear decision and/or sidecar entry by key | frontend, backend | M | Next | — |
 | R33 Per-row expected decision state on decision writes | backend | L | Later | — |
+| R34 Saved decisions in Search/Browse workspace | frontend | M | Next | R2, R24 |
 
 ## Suggested order
 
 1. Deliver search-first review for mostly-new datasets and labels requiring alternative terms: R30 and R2, then R21, R26, R27, and R28. Assess R29's search fixtures early and extend retrieval only where required. This route does not wait for batch candidates, top-candidate display, R19, or R20. Add R31 next. Bring R9 and R24 alongside it so saved decisions and review access remain clear.
+
+   Add R34 after R2/R24 and the initial Search/Browse workspace; it does not block this proposal's Phase 3 acceptance.
 
 2. Make candidate review fast and recoverable: R1, R5, R8, R3, and R4, supported by R2/R9/R24 above. Implement R5 and R8 together so their shared persistence has one owner; coordinate R3's grid shortcuts with R28's search-field shortcuts.
 
