@@ -81,7 +81,13 @@ class ShapeShiftService:
         entity_config.update(transformed)
 
     async def preview_entity(
-        self, project_name: str, entity_name: str, limit: int | None = 50, override_config: dict[str, Any] | None = None
+        self,
+        project_name: str,
+        entity_name: str,
+        limit: int | None = 50,
+        override_config: dict[str, Any] | None = None,
+        *,
+        fresh: bool = False,
     ) -> PreviewResult:
         """
         Preview entity data with all transformations applied.
@@ -94,6 +100,9 @@ class ShapeShiftService:
             entity_name: Name of the entity to preview
             limit: Maximum number of rows to return (default 50). Use None for all rows.
             override_config: Optional entity configuration dict to preview (bypasses cache)
+            fresh: When true, bypass the warm table store and the entity and dependency
+                caches. Use this when current external source data matters, because the
+                cache is keyed on project configuration rather than source contents.
 
         Returns:
             PreviewResult with data and metadata
@@ -137,6 +146,7 @@ class ShapeShiftService:
         # matches the current project version and has not outlived the cache TTL.
         if (
             not using_override  # pylint: disable=too-many-boolean-expressions
+            and not fresh
             and self._warm_table_store
             and entity_name in self._warm_table_store
             and self._warm_project_name == project_name
@@ -147,8 +157,9 @@ class ShapeShiftService:
             validation_issues = self._warm_validation_issues.get(entity_name, [])
             cached_hit = True
         else:
-            # Skip cache lookup when using override config
-            if using_override:
+            # Override configurations and fresh reads bypass the cache lookup, including
+            # cached dependencies, so the produced rows reflect current source data.
+            if using_override or fresh:
                 cached_data = ShapeShiftCache.CacheCheckResult(found=False, data=None, dependencies=TableStore())
                 cached_hit = False
             else:
@@ -178,8 +189,8 @@ class ShapeShiftService:
                 ]
                 validation_issues = self._deduplicate_validation_issues(cached_dependency_issues + validation_issues)
 
-                # Only cache if not using override config
-                if not using_override:
+                # Only cache when the run used neither an override nor a fresh read
+                if not using_override and not fresh:
                     entities: dict[str, TableConfig] = {name: project.get_table(name) for name in table_store.keys()}
                     hashes = [(name, cfg.hash()[:8]) for name, cfg in entities.items()]
                     logger.trace(f"[CACHE_SET] {project_name}/{entity_name}: project_version={project_version}, hashes={hashes}")

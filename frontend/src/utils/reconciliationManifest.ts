@@ -2,6 +2,7 @@ import type {
   ReconciliationCompatibility,
   ReconciliationManifest,
   ReconciliationManifestResult,
+  ReconciliationSelectionDescriptor,
 } from '@/types/reconciliation'
 
 interface ManifestType {
@@ -19,6 +20,28 @@ function isNonblankString(value: unknown): value is string {
 
 function errorResult(error: string): ReconciliationManifestResult {
   return { status: 'error', error }
+}
+
+/**
+ * Read the optional record-selection extension without affecting legacy validation.
+ *
+ * A missing or malformed extension yields null so capability flags are treated as
+ * unsupported; it never invalidates the supported-type metadata that matching uses.
+ */
+function parseSelectionExtension(reconciliation: Record<string, unknown>): ReconciliationSelectionDescriptor | null {
+  const extension = reconciliation.record_selection
+  if (!isRecord(extension)) return null
+
+  const version = extension.version
+  if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) return null
+
+  const typesPath = extension.types_path
+  if (!isNonblankString(typesPath)) return null
+  const path = typesPath.trim()
+  if (!path.startsWith('/') || path.startsWith('//')) return null
+  if (['://', '?', '#', '..', '\\'].some((marker) => path.includes(marker))) return null
+
+  return { version, typesPath: path }
 }
 
 export function parseReconciliationManifest(value: unknown): ReconciliationManifestResult {
@@ -91,7 +114,11 @@ export function parseReconciliationManifest(value: unknown): ReconciliationManif
     }
   }
 
-  const manifest: ReconciliationManifest = { supportedTypes, propertiesByType }
+  const manifest: ReconciliationManifest = {
+    supportedTypes,
+    propertiesByType,
+    selection: parseSelectionExtension(reconciliation),
+  }
   return { status: 'valid', manifest }
 }
 
