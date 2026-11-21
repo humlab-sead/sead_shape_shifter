@@ -253,6 +253,34 @@ describe('ReconciliationWorkspace', () => {
     expect(wrapper.find('[data-testid="workspace-save-summary"]').exists()).toBe(true)
   })
 
+  it('explains which selection modes the target type does not support', async () => {
+    reconciliationStore.loadSelectionCapabilities.mockImplementation(async () => ({
+      ...capabilities,
+      type: {
+        ...capabilities.type,
+        search_supported: false,
+        identifier_search_supported: false,
+        browse_supported: false,
+      },
+    }))
+
+    const wrapper = await mountWorkspace()
+    await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
+    await nextTick()
+
+    const hint = wrapper.get('[data-testid="workspace-mode-unavailable"]')
+    expect(hint.text()).toContain('Search is unavailable')
+    expect(hint.text()).toContain('Browse is unavailable')
+  })
+
+  it('shows no mode explanation when both modes are supported', async () => {
+    const wrapper = await mountWorkspace()
+    await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="workspace-mode-unavailable"]').exists()).toBe(false)
+  })
+
   it('stages, skips, and moves rows with labelled controls and modified shortcuts', async () => {
     const wrapper = await mountWorkspace({ rows: previewRows(3) })
 

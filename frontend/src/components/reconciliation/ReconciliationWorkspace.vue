@@ -154,6 +154,14 @@
                 </v-tooltip>
               </div>
 
+              <div
+                v-if="modeAvailabilityHint"
+                class="text-caption text-medium-emphasis mb-2"
+                data-testid="workspace-mode-unavailable"
+              >
+                {{ modeAvailabilityHint }}
+              </div>
+
               <div v-if="mode === 'search'">
                 <v-text-field
                   v-model="searchQuery"
@@ -538,6 +546,25 @@ const activeKey = ref<string | null>(null)
 const mode = ref<SelectionMode>('search')
 const activeModeHelp = computed(() => reconciliationWorkspaceHelp.modes[mode.value])
 let releaseWorkspaceHelp: (() => void) | null = null
+
+/**
+ * Explain a disabled mode instead of leaving two greyed-out buttons.
+ *
+ * Vuetify disabled buttons ignore pointer events, so a tooltip on the button
+ * itself never opens. A caption is always readable.
+ */
+const modeAvailabilityHint = computed(() => {
+  const flags = capabilities.value?.type
+  if (!flags) return ''
+  const reasons: string[] = []
+  if (!flags.search_supported && !flags.identifier_search_supported) {
+    reasons.push('Search is unavailable because this target type does not support text or identifier search.')
+  }
+  if (!flags.browse_supported) {
+    reasons.push('Browse is unavailable because this target type cannot list its complete record set.')
+  }
+  return reasons.join(' ')
+})
 const searchQuery = ref('')
 const searchState = ref<'idle' | 'loading' | 'ready' | 'empty' | 'invalid' | 'unsupported' | 'error'>('idle')
 const searchError = ref('')
