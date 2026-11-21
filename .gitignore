@@ -143,3 +143,4 @@ graphify-out/cache/
 secrets
 
 state
+.deepsec
