@@ -308,18 +308,14 @@
                     }}
                   </div>
 
-                  <v-list v-if="visibleBrowseItems.length" density="compact" data-testid="workspace-browse-results">
-                    <v-list-item
-                      v-for="record in visibleBrowseItems"
-                      :key="record.id"
-                      :data-testid="`workspace-result-${record.target_id}`"
-                      :active="selectedRecord?.id === record.id"
-                      @click="selectRecord(record)"
-                    >
-                      <v-list-item-title>{{ record.name || '(no label)' }}</v-list-item-title>
-                      <v-list-item-subtitle class="text-caption">{{ record.id }}</v-list-item-subtitle>
-                    </v-list-item>
-                  </v-list>
+                  <div v-if="visibleBrowseItems.length" data-testid="workspace-browse-results">
+                    <SelectionBrowseGrid
+                      :items="visibleBrowseItems"
+                      :columns="browseColumns"
+                      :selected-id="selectedRecord?.id ?? null"
+                      @select="selectRecord"
+                    />
+                  </div>
                   <div
                     v-else-if="browseState === 'ready'"
                     class="text-caption text-medium-emphasis"
@@ -490,6 +486,8 @@ import {
   setReviewWorkspaceNotices,
 } from '@/composables/useReviewWorkspaceHelp'
 import { reconciliationWorkspaceHelp } from './reconciliationHelp'
+import SelectionBrowseGrid from './SelectionBrowseGrid.vue'
+import { displayedSelectionFields, selectionFieldValue } from '@/utils/selectionRecord'
 import type {
   DecisionBatchIssue,
   DecisionBatchResult,
@@ -967,12 +965,8 @@ function selectRecord(record: SelectionRecord) {
 
 // ---------- Complete-list browse ----------
 
-function browseField(record: SelectionRecord, field: string): unknown {
-  if (field === 'name') return record.name
-  if (field === 'target_id') return record.target_id
-  if (field === 'description') return record.description ?? null
-  return record.fields?.[field] ?? null
-}
+/** Columns to show, in the order the reconciliation service declares them. */
+const browseColumns = computed(() => displayedSelectionFields(capabilities.value?.type.display_fields))
 
 const browseTextFields = computed(() => capabilities.value?.type.text_filter_fields ?? [])
 const browseFieldFilterDeclarations = computed(() => capabilities.value?.type.field_filters ?? [])
@@ -982,7 +976,7 @@ const filteredBrowseItems = computed(() => {
   return browseItems.value.filter((record) => {
     if (needle) {
       const matchesText = browseTextFields.value.some((field) =>
-        String(browseField(record, field) ?? '')
+        String(selectionFieldValue(record, field) ?? '')
           .toLowerCase()
           .includes(needle)
       )
@@ -991,7 +985,7 @@ const filteredBrowseItems = computed(() => {
     return browseFieldFilterDeclarations.value.every((filter) => {
       const expected = (browseFieldFilters[filter.field] ?? '').trim()
       if (!expected) return true
-      const actual = browseField(record, filter.field)
+      const actual = selectionFieldValue(record, filter.field)
       if (filter.operator === 'contains_ci') {
         return String(actual ?? '')
           .toLowerCase()
@@ -1012,8 +1006,8 @@ const sortedBrowseItems = computed(() => {
   const field = sortField.value
   const direction = sortDirection.value === 'asc' ? 1 : -1
   return items.sort((left, right) => {
-    const leftValue = browseField(left, field)
-    const rightValue = browseField(right, field)
+    const leftValue = selectionFieldValue(left, field)
+    const rightValue = selectionFieldValue(right, field)
     const leftMissing = leftValue === null || leftValue === undefined
     const rightMissing = rightValue === null || rightValue === undefined
     if (leftMissing && rightMissing) return compareIds(left, right)
