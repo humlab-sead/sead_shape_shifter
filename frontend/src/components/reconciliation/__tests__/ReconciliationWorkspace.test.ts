@@ -27,6 +27,30 @@ vi.mock('pinia', async () => {
   }
 })
 
+/** Render browse rows as clickable divs so row clicks reach the workspace. */
+vi.mock('ag-grid-vue3', () => ({
+  AgGridVue: {
+    name: 'AgGridVue',
+    props: ['rowData', 'columnDefs'],
+    emits: ['row-clicked', 'grid-ready'],
+    template: `
+      <div data-testid="selection-browse-grid-stub">
+        <div data-testid="workspace-browse-columns">
+          {{ (columnDefs ?? []).map((column) => column.headerName).join('|') }}
+        </div>
+        <div
+          v-for="row in rowData"
+          :key="row.id"
+          :data-testid="'workspace-result-' + row.target_id"
+          @click="$emit('row-clicked', { data: row })"
+        >
+          {{ row.name }} {{ row.description ?? '' }}
+        </div>
+      </div>
+    `,
+  },
+}))
+
 const capabilities: SelectionCapabilities = {
   version: 1,
   type: {
@@ -556,6 +580,39 @@ describe('ReconciliationWorkspace', () => {
 
     expect(wrapper.find('[data-testid="workspace-browse-too-large"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="workspace-browse-results"]').exists()).toBe(false)
+  })
+
+  it('shows browse columns in the order the service declares them', async () => {
+    reconciliationStore.loadSelectionCapabilities.mockResolvedValueOnce({
+      ...capabilities,
+      type: {
+        ...capabilities.type,
+        display_fields: [
+          { name: 'name', source: 'record', label: 'Name', value_type: 'string', display: true },
+          { name: 'target_id', source: 'record', label: 'ID', value_type: 'integer', display: true },
+          { name: 'description', source: 'record', label: 'Description', value_type: 'string', display: true },
+          { name: 'internal_note', source: 'fields', label: 'Internal note', value_type: 'string', display: false },
+        ],
+      },
+    })
+    reconciliationStore.browseSelection.mockResolvedValueOnce({
+      completeness: 'complete',
+      items: [{ ...record(7, 'Bronze Age'), description: 'A period' }],
+    })
+
+    const wrapper = await mountWorkspace({ rows: previewRows(1) })
+    await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
+    await wrapper.find('[data-testid="workspace-mode-browse"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="workspace-browse-columns"]').text()).toBe('Name|ID|Description')
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as {
+      columnDefs: { colId: string }[]
+      rowData: SelectionRecord[]
+    }
+    expect(gridProps.columnDefs.map((column) => column.colId)).toEqual(['name', 'target_id', 'description'])
+    // The grid follows the local sort, so the row it renders is the record it was given.
+    expect(gridProps.rowData.map((item) => item.target_id)).toEqual([7])
   })
 
   it('keeps every draft when the batch is rejected', async () => {
