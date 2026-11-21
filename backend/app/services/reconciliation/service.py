@@ -4,13 +4,14 @@ import json
 import math
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, NoReturn
 
 import httpx
 from loguru import logger
 from pydantic import ValidationError as PydanticValidationError
+from pydantic_core import to_jsonable_python
 
 from backend.app.clients.reconciliation_client import (
     CandidateVerificationProtocolError,
@@ -97,7 +98,14 @@ _EXACT_IDENTIFIER_PATTERN = re.compile(r"^id:\s*(.*)$", re.IGNORECASE | re.DOTAL
 
 
 def _canonical_value(value: Any) -> str:
-    """Return a comparable representation used to detect changed source values."""
+    """Return a comparable representation used to detect changed source values.
+
+    Preview rows reach the browser as JSON, so the value the operator saw is
+    already JSON-safe while the freshly resolved row still holds native values
+    such as ``datetime``. Both copies are converted with the same JSON
+    conversion, so an unchanged date, time, or duration compares equal after
+    that round trip.
+    """
     item = getattr(value, "item", None)
     if callable(item) and not isinstance(value, (str, bytes, bytearray)):
         try:
@@ -106,16 +114,13 @@ def _canonical_value(value: Any) -> str:
             pass
     if value is None:
         return "null"
-    if isinstance(value, float) and math.isnan(value):
+    if isinstance(value, float) and not math.isfinite(value):
         return "null"
-    if isinstance(value, bool):
-        return json.dumps(value)
-    if isinstance(value, (int, float)):
-        return repr(float(value))
-    if isinstance(value, (datetime, date)):
-        iso_value = value.isoformat()
-        return "null" if iso_value == "NaT" else iso_value
-    return json.dumps(value, sort_keys=True, default=str)
+    try:
+        converted = to_jsonable_python(value)
+    except (TypeError, ValueError):
+        converted = str(value)
+    return json.dumps(converted, sort_keys=True, default=str)
 
 
 @dataclass

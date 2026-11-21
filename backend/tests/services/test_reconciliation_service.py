@@ -1,5 +1,6 @@
 """Tests for ReconciliationService."""
 
+from datetime import date, datetime, time, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -25,7 +26,7 @@ from backend.app.services.reconciliation.resolvers import (
     SqlQueryReconciliationSourceResolver,
     TargetEntityReconciliationSourceResolver,
 )
-from backend.app.services.reconciliation.service import ResolvedSourceRows
+from backend.app.services.reconciliation.service import ResolvedSourceRows, _canonical_value
 from backend.app.utils.exceptions import NotFoundError
 from backend.tests.test_reconciliation_client import RECONCILIATION_SERVICE_URL
 from src.reconciliation import model as core
@@ -1891,6 +1892,47 @@ class TestCatalogWriteSerialization:
         assert observed == [True]
 
 
+class TestCanonicalValue:
+    """The changed-row check must agree across the preview JSON round trip."""
+
+    @staticmethod
+    def _wire(value: object) -> object:
+        """Return the value exactly as the preview endpoint sends it to the browser."""
+        preview = PreviewResult(
+            entity_name="site",
+            rows=[{"column": value}],
+            columns=[],
+            total_rows_in_preview=1,
+            estimated_total_rows=1,
+            execution_time_ms=0,
+            has_dependencies=False,
+            dependencies_loaded=[],
+            cache_hit=False,
+            validation_issues=[],
+        )
+        return preview.model_dump(mode="json")["rows"][0]["column"]
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            date(2020, 1, 1),
+            datetime(2020, 1, 1, 10, 30),
+            datetime(2020, 1, 1, 10, 30, tzinfo=timezone.utc),
+            time(10, 30),
+            timedelta(days=1, hours=2),
+        ],
+        ids=["date", "datetime", "utc-datetime", "time", "timedelta"],
+    )
+    def test_temporal_values_survive_the_preview_round_trip(self, value: object):
+        """A native date or duration compares equal to the string the browser receives."""
+        assert _canonical_value(value) == _canonical_value(self._wire(value))
+
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")], ids=["nan", "inf", "-inf"])
+    def test_non_finite_floats_compare_equal_to_json_null(self, value: float):
+        """The preview sends every non-finite float as null."""
+        assert _canonical_value(value) == _canonical_value(self._wire(value)) == "null"
+
+
 class TestDecisionBatchService:
     """Service-level checks for the atomic batch save."""
 
@@ -1939,3 +1981,76 @@ class TestDecisionBatchService:
         assert saved["A"].status == core.DecisionStatus.ACCEPTED
         assert saved["A"].source_value == "Same"
         assert saved["B"].target_id == 102
+
+    @pytest.mark.asyncio
+    async def test_batch_accepts_an_unchanged_datetime_column(
+        self, reconciliation_service: ReconciliationService, sample_entity_spec: core.EntityResolutionSet
+    ):
+        """A timestamp the browser echoes back as text is not a changed row."""
+        reconciliation_service.catalog_manager.save_catalog(
+            "batch",
+            core.EntityResolutionCatalog(
+                version="3.0", service_url="http://localhost:8000", entities={"site": {"site_name": sample_entity_spec}}
+            ),
+        )
+        source = ResolvedSourceRows(
+            local_key="site_code",
+            rows=[
+                {
+                    "site_code": "A",
+                    "site_name": "Same",
+                    "observed_at": datetime(2020, 1, 1, 10, 30, tzinfo=timezone.utc),
+                }
+            ],
+        )
+        drafts = [
+            DecisionDraft(
+                local_key_value="A",
+                displayed_values={"site_name": "Same", "observed_at": "2020-01-01T10:30:00Z"},
+                status="accepted",
+                target_id=101,
+                candidate_id="https://w3id.org/sead/id/site/101",
+            )
+        ]
+
+        with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock(return_value=source)):
+            result = await reconciliation_service.save_decision_batch("batch", "site", "site_name", drafts)
+
+        assert [item.local_key_value for item in result.saved] == ["A"]
+
+    @pytest.mark.asyncio
+    async def test_batch_rejects_a_datetime_column_that_really_changed(
+        self, reconciliation_service: ReconciliationService, sample_entity_spec: core.EntityResolutionSet
+    ):
+        """A different timestamp still rejects the batch as a changed row."""
+        reconciliation_service.catalog_manager.save_catalog(
+            "batch",
+            core.EntityResolutionCatalog(
+                version="3.0", service_url="http://localhost:8000", entities={"site": {"site_name": sample_entity_spec}}
+            ),
+        )
+        source = ResolvedSourceRows(
+            local_key="site_code",
+            rows=[
+                {
+                    "site_code": "A",
+                    "site_name": "Same",
+                    "observed_at": datetime(2020, 1, 2, 10, 30, tzinfo=timezone.utc),
+                }
+            ],
+        )
+        drafts = [
+            DecisionDraft(
+                local_key_value="A",
+                displayed_values={"site_name": "Same", "observed_at": "2020-01-01T10:30:00Z"},
+                status="accepted",
+                target_id=101,
+                candidate_id="https://w3id.org/sead/id/site/101",
+            )
+        ]
+
+        with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock(return_value=source)):
+            with pytest.raises(ValidationError) as excinfo:
+                await reconciliation_service.save_decision_batch("batch", "site", "site_name", drafts)
+
+        assert {issue["code"] for issue in (excinfo.value.issues or [])} == {"row_changed"}
