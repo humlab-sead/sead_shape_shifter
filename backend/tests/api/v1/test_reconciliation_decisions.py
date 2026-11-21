@@ -446,3 +446,60 @@ class TestReconciliationDecisionRoutes:
         assert "manifest" in sync_response.json()["detail"]["message"]
         reconcile_batch.assert_not_awaited()
         suggest_entities.assert_not_awaited()
+
+    async def test_preview_reports_invalid_legacy_accepted_references(self, authorized_client, tmp_path, monkeypatch) -> None:
+        """Invalid legacy accepted references remain readable and repairable."""
+        await _create_project(authorized_client, tmp_path, monkeypatch)
+        catalog = {
+            "version": "3.0",
+            "service_url": "http://localhost:8000",
+            "entities": {
+                "site": {
+                    "site_name": {
+                        "remote": {"service_type": "site"},
+                        "mapping": [
+                            {
+                                "local_key_value": "A",
+                                "source_value": "Same",
+                                "status": "accepted",
+                                "target_id": 101,
+                                "candidate_id": "",
+                            },
+                            {
+                                "local_key_value": "B",
+                                "source_value": "Same",
+                                "status": "accepted",
+                                "target_id": 101,
+                                "candidate_id": "https://w3id.org/sead/id/site/999",
+                            },
+                        ],
+                    }
+                }
+            },
+        }
+        (tmp_path / "review" / "shapeshifter.reconciliation.yml").write_text(yaml.safe_dump(catalog), encoding="utf-8")
+        path = "/api/v1/projects/review/reconciliation/site/site_name"
+
+        preview = await authorized_client.get(f"{path}/preview")
+
+        assert preview.status_code == 200, preview.text
+        rows = {row["local_key_value"]: row for row in preview.json()}
+        assert rows["A"]["status"] == "accepted"
+        assert any("candidate URI" in message for message in rows["A"]["errors"])
+        assert any("does not match" in message for message in rows["B"]["errors"])
+
+        repaired = await authorized_client.post(
+            f"{path}/mapping",
+            json={
+                "local_key_value": "A",
+                "status": "accepted",
+                "target_id": 101,
+                "candidate_id": "https://w3id.org/sead/id/site/101",
+            },
+        )
+
+        assert repaired.status_code == 200, repaired.text
+        repaired_preview = await authorized_client.get(f"{path}/preview")
+        repaired_rows = {row["local_key_value"]: row for row in repaired_preview.json()}
+        assert repaired_rows["A"]["errors"] == []
+        assert any("does not match" in message for message in repaired_rows["B"]["errors"])
