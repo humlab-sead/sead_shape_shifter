@@ -19,6 +19,16 @@
               {{ helpContent.description }}
             </div>
 
+            <div v-if="helpContent.groups && helpContent.groups.length > 0" class="groups-section mt-3">
+              <div v-for="group in helpContent.groups" :key="group.title" class="help-group">
+                <div class="text-caption font-weight-medium mb-1 text-medium-emphasis">{{ group.title }}</div>
+                <div v-for="(tip, index) in group.tips" :key="index" class="tip-item">
+                  <span class="tip-bullet">•</span>
+                  <span class="tip-text" v-html="tip" />
+                </div>
+              </div>
+            </div>
+
             <div v-if="helpContent.tips && helpContent.tips.length > 0" class="tips-section mt-3">
               <div class="text-caption font-weight-medium mb-1 text-medium-emphasis">Tips</div>
               <div v-for="(tip, index) in helpContent.tips" :key="index" class="tip-item">
@@ -63,12 +73,19 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { reconciliationHelp, type ReconciliationHelpItem } from './reconciliation/reconciliationHelp'
+import {
+  reconciliationHelp,
+  reconciliationWorkspaceHelp,
+  type ReconciliationHelpItem,
+} from './reconciliation/reconciliationHelp'
+import { useReviewWorkspaceHelpState } from '@/composables/useReviewWorkspaceHelp'
+import type { SelectionMode } from '@/types/reconciliation'
 
 interface HelpContent {
   title: string
   description?: string
   tips?: string[]
+  groups?: Array<{ title: string; tips: string[] }>
   shortcuts?: Array<{ keys: string; action: string }>
   rowActions?: ReconciliationHelpItem[]
 }
@@ -81,6 +98,21 @@ defineProps<Props>()
 
 const route = useRoute()
 const expanded = ref(true)
+const { reviewWorkspaceHelpActive, reviewWorkspaceHelpMode } = useReviewWorkspaceHelpState()
+
+/** Workspace help follows the Search/Browse mode shown in the open workspace. */
+function workspaceHelpContent(mode: SelectionMode): HelpContent {
+  const modeHelp = reconciliationWorkspaceHelp.modes[mode]
+  return {
+    title: reconciliationWorkspaceHelp.title,
+    description: reconciliationWorkspaceHelp.description,
+    groups: [
+      { title: modeHelp.label, tips: modeHelp.tips },
+      { title: reconciliationWorkspaceHelp.saving.label, tips: reconciliationWorkspaceHelp.saving.tips },
+    ],
+    shortcuts: reconciliationWorkspaceHelp.shortcuts,
+  }
+}
 
 // Help content for different contexts
 const helpContentMap: Record<string, HelpContent> = {
@@ -210,6 +242,9 @@ const helpContent = computed(() => {
   // For project detail views, include the active tab
   if (routeName === 'project-detail' && route.query.tab) {
     const tabKey = `project-detail-${route.query.tab}`
+    if (tabKey === 'project-detail-reconciliation' && reviewWorkspaceHelpActive.value) {
+      return workspaceHelpContent(reviewWorkspaceHelpMode.value)
+    }
     return helpContentMap[tabKey] || null
   }
 
@@ -230,6 +265,10 @@ const helpContent = computed(() => {
 .tips-section,
 .shortcuts-section,
 .row-actions-section {
+  margin-top: 0.75rem;
+}
+
+.help-group + .help-group {
   margin-top: 0.75rem;
 }
 

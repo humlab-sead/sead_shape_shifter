@@ -170,19 +170,40 @@
                   Add Manual Link
                 </v-btn>
 
-                <v-btn
-                  v-if="selectedEntity && selectedTarget && entitySpec"
-                  data-testid="export-to-mapping-button"
-                  variant="tonal"
-                  color="primary"
-                  prepend-icon="mdi-export"
-                  :loading="loading"
-                  :disabled="loading || !selectedEntityHasBusinessKeys"
-                  class="ml-2"
-                  @click="handleExportToMapping"
-                >
-                  Export to Mapping
-                </v-btn>
+                <div v-if="selectedEntity && selectedTarget && entitySpec" class="d-flex align-center ml-2">
+                  <v-btn
+                    data-testid="export-to-mapping-button"
+                    variant="tonal"
+                    color="primary"
+                    prepend-icon="mdi-export"
+                    :loading="loading"
+                    :disabled="loading || !selectedEntityHasBusinessKeys"
+                    @click="handleExportToMapping"
+                  >
+                    Export to Mapping
+                  </v-btn>
+                  <v-tooltip location="bottom" max-width="360">
+                    <template #activator="{ props: exportHelpProps }">
+                      <v-btn
+                        v-bind="exportHelpProps"
+                        icon="mdi-lightbulb-on-outline"
+                        variant="text"
+                        size="small"
+                        class="ml-1"
+                        data-testid="export-help"
+                        aria-label="Export guidance"
+                      />
+                    </template>
+                    <div class="font-weight-bold mb-1">Export</div>
+                    <div class="mb-1">
+                      Accepted links are checked against SEAD before they are written; New decisions are recorded
+                      separately.
+                    </div>
+                    <div class="mb-1">A failed check leaves accepted links unexported.</div>
+                    <div class="mb-1">Saving a decision does not export a link.</div>
+                    <div>Manual and unowned links are protected.</div>
+                  </v-tooltip>
+                </div>
               </div>
 
               <v-alert
@@ -193,21 +214,6 @@
                 class="mb-4"
               >
                 Candidate search is blocked: {{ matchEligibility.message }}
-              </v-alert>
-
-              <v-alert
-                v-if="showExportGuidance"
-                data-testid="reconciliation-export-info"
-                type="info"
-                variant="tonal"
-                class="mb-4"
-                closable
-                @click:close="showExportGuidance = false"
-              >
-                Export checks accepted candidates against SEAD and records New decisions separately. Accepted links are
-                written only after that check succeeds, so a failed check leaves them unexported. After a review
-                workspace has opened, valid New-only saves and exports still work if the service later becomes
-                unavailable. Manual and unowned links are protected. Saving a decision does not export a link.
               </v-alert>
 
               <v-alert v-if="previewError" data-testid="preview-error" type="error" variant="tonal" class="mb-4">
@@ -521,7 +527,6 @@ const manifestResult = ref<ReconciliationManifestResult | null>(null)
 const availableEntityTypes = ref<number>(0)
 const autoReconcileResult = ref<AutoReconcileResult | null>(null)
 const autoReconcileError = ref<string | null>(null)
-const showExportGuidance = ref(true)
 const showCandidateSearchSummary = ref(false)
 const reconciliationHelpDialog = ref(false)
 const manualLinkDialog = ref(false)
