@@ -195,6 +195,7 @@ Every row above except the health check requires an authenticated principal thro
 | `POST`   | `/api/v1/projects/{project_name}/reconciliation/{entity_name}/{target_field}/auto-reconcile-sync`            | `project:edit` |
 | `GET`    | `/api/v1/projects/{project_name}/reconciliation/{entity_name}/{target_field}/suggest`                        | `project:read` |
 | `POST`   | `/api/v1/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mapping`                        | `project:edit` |
+| `POST`   | `/api/v1/projects/{project_name}/reconciliation/{entity_name}/{target_field}/decisions`                      | `project:edit` |
 | `DELETE` | `/api/v1/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mapping`                        | `project:edit` |
 | `POST`   | `/api/v1/projects/{project_name}/reconciliation/{entity_name}/{target_field}/export-to-mapping`              | `project:edit` |
 | `POST`   | `/api/v1/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mark-unmatched`                 | `project:edit` |
@@ -205,6 +206,8 @@ Every row above except the health check requires an authenticated principal thro
 | `GET`    | `/api/v1/projects/{project_name}/reconciliation/available-fields/{entity_name}`                              | `project:read` |
 | `GET`    | `/api/v1/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}/mapping-count` | `project:read` |
 
+`POST /api/v1/projects/{project_name}/reconciliation/{entity_name}/{target_field}/decisions` saves a batch of first-time accepted and local-only review decisions for authorized, unchanged source rows under the project lock, so it declares `project:edit` like the other catalog-write routes.
+
 `POST /api/v1/suggestions/analyze` and `POST /api/v1/suggestions/entity` analyze client-supplied entity configuration and an optional `data_source_name`, so they carry no stored resource; a follow-up should resolve the source server-side and require shared-source read, as with `POST /api/v1/data-sources/tables`. `GET /api/v1/reconciliation/health` and `GET /api/v1/reconciliation/manifest` report reconciliation service status and its manifest and expose no project or shared-source data; the health response includes the configured service URL.
 
 ### Mapping, Execution, And Materialization
@@ -214,6 +217,7 @@ Every row above except the health check requires an authenticated principal thro
 | `GET`    | `/api/v1/projects/{project_name}/mapping/{entity_name}`                   | `project:read`    |
 | `GET`    | `/api/v1/projects/{project_name}/mapping/{entity_name}/{local_key_value:path}` | `project:read`    |
 | `PUT`    | `/api/v1/projects/{project_name}/mapping/{entity_name}/{local_key_value:path}` | `project:edit`    |
+| `DELETE` | `/api/v1/projects/{project_name}/mapping/{entity_name}`                   | `project:edit`    |
 | `DELETE` | `/api/v1/projects/{project_name}/mapping/{entity_name}/{local_key_value:path}` | `project:edit`    |
 | `GET`    | `/api/v1/dispatchers`                                                     | `authenticated`   |
 | `POST`   | `/api/v1/projects/{name}/execute`                                         | `project:execute` |
@@ -223,6 +227,8 @@ Every row above except the health check requires an authenticated principal thro
 | `POST`   | `/api/v1/projects/{project_name}/entities/{entity_name}/unmaterialize`    | `project:edit`    |
 | `PATCH`  | `/api/v1/projects/{project_name}/mapping/from-materialized/{entity_name}` | `project:edit`    |
 | `PATCH`  | `/api/v1/projects/{project_name}/mapping/retry-fixed-entity/{entity_name}` | `project:edit`    |
+
+`DELETE /api/v1/projects/{project_name}/mapping/{entity_name}` removes the mapping link and any local-only approval for one encoded key, so it carries `project:edit` and takes `local_key_value`, `target_field`, and an optional `confirm_protected` flag as query parameters instead of path parameters. The `{local_key_value:path}` routes address the same link by key in the path.
 
 `GET /api/v1/dispatchers` returns only registered output-dispatcher metadata (key, target type, description, and file extension) and exposes no project data, so it requires an authenticated principal and no project role. The route that consumes those dispatchers, `POST /api/v1/projects/{name}/execute`, requires `project:execute`.
 

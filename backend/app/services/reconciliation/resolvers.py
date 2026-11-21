@@ -47,8 +47,12 @@ class ReconciliationSourceResolver(abc.ABC):
         self.preview_service: ShapeShiftService = get_shapeshift_service()
 
     @abc.abstractmethod
-    async def resolve(self, entity_name: str, entity_mapping: core.EntityResolutionSet) -> list[dict]:
-        """Resolve source data based on entity spec source project."""
+    async def resolve(self, entity_name: str, entity_mapping: core.EntityResolutionSet, *, fresh: bool = False) -> list[dict]:
+        """Resolve source data based on entity spec source project.
+
+        When ``fresh`` is true, preview-based sources bypass the warm table store and
+        the entity and dependency caches so the caller sees current external data.
+        """
 
     @staticmethod
     def get_resolver_cls_for_strategy(
@@ -69,9 +73,9 @@ class ReconciliationSourceResolver(abc.ABC):
 class TargetEntityReconciliationSourceResolver(ReconciliationSourceResolver):
     """Loads data from the target entity itself (implements SourceStrategyType.TARGET_ENTITY)."""
 
-    async def resolve(self, entity_name: str, entity_mapping: core.EntityResolutionSet) -> list[dict]:
+    async def resolve(self, entity_name: str, entity_mapping: core.EntityResolutionSet, *, fresh: bool = False) -> list[dict]:
         logger.debug(f"Using normalized data from entity '{entity_name}'")
-        preview_result: PreviewResult = await self.preview_service.preview_entity(self.project_name, entity_name, limit=None)
+        preview_result: PreviewResult = await self.preview_service.preview_entity(self.project_name, entity_name, limit=None, fresh=fresh)
         if preview_result.estimated_total_rows is not None and len(preview_result.rows) != preview_result.estimated_total_rows:
             raise RuntimeError(f"Reconciliation source '{entity_name}' was truncated")
         return preview_result.rows
@@ -80,7 +84,7 @@ class TargetEntityReconciliationSourceResolver(ReconciliationSourceResolver):
 class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
     """Loads data from a different entity (implements SourceStrategyType.ANOTHER_ENTITY)."""
 
-    async def resolve(self, entity_name: str, entity_mapping: core.EntityResolutionSet) -> list[dict]:
+    async def resolve(self, entity_name: str, entity_mapping: core.EntityResolutionSet, *, fresh: bool = False) -> list[dict]:
 
         assert isinstance(entity_mapping.metadata.source, str)
 
@@ -91,7 +95,7 @@ class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
         if source not in self.project.tables:
             raise NotFoundError(f"Source entity '{source}' not found in project")
 
-        preview_result: PreviewResult = await self.preview_service.preview_entity(self.project_name, source, limit=None)
+        preview_result: PreviewResult = await self.preview_service.preview_entity(self.project_name, source, limit=None, fresh=fresh)
         if preview_result.estimated_total_rows is not None and len(preview_result.rows) != preview_result.estimated_total_rows:
             raise RuntimeError(f"Reconciliation search source '{source}' was truncated")
         source_data = preview_result.rows
@@ -103,7 +107,7 @@ class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
 class SqlQueryReconciliationSourceResolver(ReconciliationSourceResolver):
     """Executes custom SQL query (implements SourceStrategyType.SQL_QUERY)."""
 
-    async def resolve(self, entity_name: str, entity_mapping: core.EntityResolutionSet) -> list[dict]:
+    async def resolve(self, entity_name: str, entity_mapping: core.EntityResolutionSet, *, fresh: bool = False) -> list[dict]:
 
         assert isinstance(entity_mapping.metadata.source, core.ResolutionSource)
 

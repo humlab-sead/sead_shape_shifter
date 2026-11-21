@@ -104,10 +104,16 @@ def sample_recon_config(tmp_path):
                             source_value="test1",
                             status="accepted",
                             target_id=1,
+                            candidate_id="https://w3id.org/sead/id/taxon/1",
                             confidence=0.98,
                         ),
                         dto.ResolvedEntityPair(
-                            local_key_value="site-2", source_value="test2", status="accepted", target_id=2, confidence=0.85
+                            local_key_value="site-2",
+                            source_value="test2",
+                            status="accepted",
+                            target_id=2,
+                            candidate_id="https://w3id.org/sead/id/taxon/2",
+                            confidence=0.85,
                         ),
                     ],
                 ),
@@ -692,6 +698,96 @@ class TestDeleteSpecification:
         response = await authorized_client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/nonexistent")
 
         assert response.status_code == 404
+
+
+@pytest.mark.parametrize("raw", [False, True], ids=["json", "raw-yaml"])
+async def test_whole_catalog_save_rejects_invalid_accepted_references(
+    raw, tmp_path, monkeypatch, reset_services, sample_project, authorized_client
+):
+    """A replacement with any invalid accepted reference writes nothing."""
+    monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+    catalog = {
+        "version": "3.0",
+        "service_url": "http://localhost:8000",
+        "entities": {
+            "site": {
+                "site_code": {
+                    "remote": {"service_type": "site"},
+                    "mapping": [
+                        {
+                            "local_key_value": "A",
+                            "source_value": "A",
+                            "status": "accepted",
+                            "target_id": 1,
+                            "candidate_id": "https://w3id.org/sead/id/location/1",
+                        },
+                        {
+                            "local_key_value": "B",
+                            "source_value": "B",
+                            "status": "accepted",
+                            "target_id": 2,
+                            "candidate_id": "https://w3id.org/sead/id/site/999",
+                        },
+                    ],
+                }
+            }
+        },
+    }
+    config_path = tmp_path / "test_project" / "shapeshifter.reconciliation.yml"
+
+    if raw:
+        response = await authorized_client.put(
+            "/api/v1/projects/test_project/reconciliation/raw",
+            content=yaml.safe_dump(catalog, sort_keys=False),
+            headers={"Content-Type": "text/plain"},
+        )
+    else:
+        response = await authorized_client.put("/api/v1/projects/test_project/reconciliation", json=catalog)
+
+    assert response.status_code == 400, response.text
+    issues = response.json()["detail"]["issues"]
+    assert {issue["local_key_value"] for issue in issues} == {"A", "B"}
+    assert {issue["code"] for issue in issues} == {"invalid_reference"}
+    assert not config_path.exists()
+    assert not (tmp_path / "test_project" / "shapeshifter.mapping.yml").exists()
+
+
+async def test_registry_create_and_update_hold_the_project_lock(
+    tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
+):
+    """Registry create and update load, change, and save the catalog under the project lock."""
+    monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+    lock = project_service.ProjectService._get_lock("test_project")
+    observed: list[tuple[str, bool]] = []
+    original_create = EntityMappingManager.create_entity_mapping
+    original_update = EntityMappingManager.update_entity_mapping
+
+    def create(self, project_name, entity_name, target_field, entity_mapping):
+        observed.append(("create", lock.locked()))
+        return original_create(self, project_name, entity_name, target_field, entity_mapping)
+
+    def update(self, project_name, entity_name, target_field, source, property_mappings, remote, auto_threshold, review_threshold):
+        observed.append(("update", lock.locked()))
+        return original_update(
+            self, project_name, entity_name, target_field, source, property_mappings, remote, auto_threshold, review_threshold
+        )
+
+    with (
+        patch.object(EntityMappingManager, "create_entity_mapping", create),
+        patch.object(EntityMappingManager, "update_entity_mapping", update),
+    ):
+        created = await authorized_client.post(
+            "/api/v1/projects/test_project/reconciliation/mapping-registry",
+            json={"entity_name": "site", "target_field": "new_field", "spec": {"remote": {"service_type": "site"}}},
+        )
+        updated = await authorized_client.put(
+            "/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_code",
+            json={"source": None, "property_mappings": {}, "remote": {"service_type": "site"}},
+        )
+
+    assert created.status_code == 201, created.text
+    assert updated.status_code == 200, updated.text
+    assert observed == [("create", True), ("update", True)]
 
 
 @pytest.mark.parametrize("raw", [False, True], ids=["json", "raw-yaml"])

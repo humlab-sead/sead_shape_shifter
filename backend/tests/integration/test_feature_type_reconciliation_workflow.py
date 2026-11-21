@@ -258,3 +258,59 @@ class TestFeatureTypeReconciliationWorkflow:
             ({"FT-001": (10001, TARGET_ID), "FT-002": (10002, None)}, [10001]),
             ({"FT-001": (10001, TARGET_ID), "FT-002": (10002, None)}, [10001]),
         ]
+
+    async def test_first_time_batch_decisions_and_verified_export(self, authorized_client, tmp_path: Path, monkeypatch) -> None:
+        """A batch creates first-time decisions that verified export writes for both statuses."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        captured = _install_mocked_service(monkeypatch)
+        await _create_project(authorized_client)
+        await _register_label_only_specification(authorized_client)
+
+        batch = await authorized_client.post(
+            f"{PATH}/decisions",
+            json={
+                "drafts": [
+                    {
+                        "local_key_value": "FT-001",
+                        "displayed_values": {TARGET_FIELD: "Trench"},
+                        "status": "accepted",
+                        "target_id": TARGET_ID,
+                        "candidate_id": CANDIDATE_URI,
+                    },
+                    {
+                        "local_key_value": "FT-002",
+                        "displayed_values": {TARGET_FIELD: "Trench"},
+                        "status": "local-only",
+                    },
+                ]
+            },
+        )
+
+        assert batch.status_code == 200, batch.text
+        body = batch.json()
+        assert [item["local_key_value"] for item in body["saved"]] == ["FT-001", "FT-002"]
+        assert body["counts"]["specification"] == {"accepted": 1, "local_only": 1, "proposed": 0, "rejected": 0, "total": 2}
+        assert _read_catalog_decisions(tmp_path) == {
+            "FT-001": ("accepted", TARGET_ID, "Trench"),
+            "FT-002": ("local-only", None, "Trench"),
+        }
+
+        exported = await authorized_client.post(f"{PATH}/export-to-mapping")
+
+        assert exported.status_code == 200, exported.text
+        assert exported.json()["exported"] == 1
+        assert exported.json()["exported_local_only_approvals"] == 1
+        assert [(item.type, item.id) for item in captured["verifications"][-1]] == [(ENTITY_NAME, CANDIDATE_URI)]
+        sidecar = yaml.safe_load(_sidecar_path(tmp_path).read_text(encoding="utf-8"))
+        entity = sidecar["entities"][ENTITY_NAME]
+        assert entity["links"]["FT-001"]["target_id"] == TARGET_ID
+        assert entity["links"]["FT-001"]["verified_at"]
+        assert set(entity["local_only_approvals"]) == {"FT-002"}
+        assert "Trench" not in entity["links"]
+
+        results = await _normalize_twice(_project_file(tmp_path), monkeypatch)
+
+        assert results == [
+            ({"FT-001": (10001, TARGET_ID), "FT-002": (10002, None)}, [10001]),
+            ({"FT-001": (10001, TARGET_ID), "FT-002": (10002, None)}, [10001]),
+        ]

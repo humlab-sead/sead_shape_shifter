@@ -3,7 +3,7 @@
 import json
 import time
 from copy import deepcopy
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx
 from loguru import logger
@@ -14,11 +14,15 @@ from backend.app.models.reconciliation import (
     CandidateVerificationResponse,
     CandidateVerificationResult,
     ReconciliationCandidate,
+    ReconciliationRecord,
+    RecordSelectionTypeCapabilities,
 )
 
 _CANDIDATE_VERIFICATION_BATCH_SIZE = 100
 _SERVICE_MANIFEST_CACHE_TTL_SECONDS = 30
 _SERVICE_MANIFEST_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+_RECORD_SELECTION_CACHE_TTL_SECONDS = 30
+_RECORD_SELECTION_CACHE: dict[str, tuple[float, int, list[RecordSelectionTypeCapabilities]]] = {}
 
 
 class CandidateVerificationUnavailableError(Exception):
@@ -27,6 +31,92 @@ class CandidateVerificationUnavailableError(Exception):
 
 class CandidateVerificationProtocolError(Exception):
     """Raised when the Authority Service returns an invalid verification response."""
+
+
+class RecordSelectionServiceError(Exception):
+    """Base class for record-selection failures reported by the Authority Service."""
+
+    code: ClassVar[str] = "record_selection_failed"
+
+
+class RecordSelectionUnavailableError(RecordSelectionServiceError):
+    """Raised when the Authority Service or its SEAD database cannot be reached."""
+
+    code: ClassVar[str] = "service_unavailable"
+
+
+class RecordSelectionProtocolError(RecordSelectionServiceError):
+    """Raised when the Authority Service returns a malformed or unexpected selection response."""
+
+    code: ClassVar[str] = "invalid_response"
+
+
+class RecordSelectionUnsupportedError(RecordSelectionServiceError):
+    """Raised when the Authority Service does not support the requested capability or type."""
+
+    code: ClassVar[str] = "unsupported_capability"
+
+
+class RecordSelectionInvalidRequestError(RecordSelectionServiceError):
+    """Raised when the Authority Service rejects a selection request as invalid."""
+
+    code: ClassVar[str] = "invalid_request"
+
+
+class RecordSelectionTooLargeError(RecordSelectionServiceError):
+    """Raised when a complete list exceeds the advertised browse limits."""
+
+    code: ClassVar[str] = "too_large_to_browse"
+
+
+class RecordSelectionNotFoundError(RecordSelectionServiceError):
+    """Raised when an exact identifier matches no record."""
+
+    code: ClassVar[str] = "record_not_found"
+
+
+def _same_service_path(types_path: Any) -> str:
+    """Return a validated same-service relative path from the service manifest.
+
+    The path must stay on the configured Authority Service: it is rejected when it
+    is absolute, cross-origin, or carries a query, fragment, or traversal segment.
+    """
+    if not isinstance(types_path, str) or not types_path.strip():
+        raise RecordSelectionProtocolError("The Authority Service manifest has no record-selection types path")
+    path = types_path.strip()
+    if not path.startswith("/") or path.startswith("//"):
+        raise RecordSelectionProtocolError("The record-selection types path must be relative to the Authority Service")
+    if any(marker in path for marker in ("://", "?", "#", "..", "\\")):
+        raise RecordSelectionProtocolError("The record-selection types path must stay on the Authority Service")
+    return path
+
+
+def _selection_error(response: httpx.Response, default_message: str) -> RecordSelectionServiceError:
+    """Map an Authority Service error response to the matching selection exception."""
+    code = ""
+    message = ""
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    if isinstance(body, dict):
+        error = body.get("error")
+        if isinstance(error, dict):
+            code = str(error.get("code") or "")
+            message = str(error.get("message") or "")
+
+    detail = message or default_message
+    if response.status_code == 404:
+        return RecordSelectionNotFoundError(detail)
+    if response.status_code == 409:
+        return RecordSelectionTooLargeError(detail)
+    if response.status_code == 503:
+        return RecordSelectionUnavailableError(detail)
+    if response.status_code == 422:
+        if code in {"unsupported_capability", "unsupported_type"}:
+            return RecordSelectionUnsupportedError(detail)
+        return RecordSelectionInvalidRequestError(detail)
+    return RecordSelectionProtocolError(f"The Authority Service returned HTTP {response.status_code} for record selection")
 
 
 class ReconciliationQuery:
@@ -304,15 +394,19 @@ class ReconciliationClient:
         response.raise_for_status()
         return response.json()
 
-    async def get_service_manifest(self) -> dict[str, Any]:
+    async def get_service_manifest(self, *, fresh: bool = False) -> dict[str, Any]:
         """
         Get reconciliation service metadata.
+
+        Args:
+            fresh: When true, bypass the short-lived cache so capability discovery
+                reflects the Authority Service as it is now.
 
         Returns:
             Service manifest with supported types and configuration
         """
         now = time.monotonic()
-        cached_manifest = _SERVICE_MANIFEST_CACHE.get(self.base_url)
+        cached_manifest = None if fresh else _SERVICE_MANIFEST_CACHE.get(self.base_url)
         if cached_manifest and now < cached_manifest[0]:
             logger.debug(f"[RECON] Returning cached service manifest for {self.base_url}")
             return deepcopy(cached_manifest[1])
@@ -330,3 +424,175 @@ class ReconciliationClient:
                 deepcopy(manifest),
             )
         return manifest
+
+    async def get_record_selection_capabilities(self, *, fresh: bool = False) -> tuple[int, list[RecordSelectionTypeCapabilities]]:
+        """Discover the versioned record-selection capabilities of the Authority Service.
+
+        Returns the published extension version and one descriptor per advertised
+        type. A missing or malformed extension is a protocol error, not an empty
+        capability list, because a type without capabilities means "unsupported".
+        """
+        now = time.monotonic()
+        cached = None if fresh else _RECORD_SELECTION_CACHE.get(self.base_url)
+        if cached and now < cached[0]:
+            logger.debug(f"[RECON] Returning cached record-selection capabilities for {self.base_url}")
+            return cached[1], [descriptor.model_copy(deep=True) for descriptor in cached[2]]
+
+        try:
+            manifest = await self.get_service_manifest(fresh=fresh)
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            raise RecordSelectionUnavailableError("The Authority Service is unavailable") from exc
+        except (httpx.HTTPError, ValueError) as exc:
+            raise RecordSelectionProtocolError("The Authority Service manifest could not be read") from exc
+
+        reconciliation = manifest.get("reconciliation") if isinstance(manifest, dict) else None
+        extension = reconciliation.get("record_selection") if isinstance(reconciliation, dict) else None
+        if not isinstance(extension, dict):
+            raise RecordSelectionProtocolError("The Authority Service does not publish record-selection capabilities")
+
+        version = extension.get("version")
+        if isinstance(version, bool) or not isinstance(version, int) or version < 1:
+            raise RecordSelectionProtocolError("The record-selection capability version is missing or invalid")
+        types_path = _same_service_path(extension.get("types_path"))
+
+        client: httpx.AsyncClient = await self._get_client()
+        try:
+            response = await client.get(f"{self.base_url}{types_path}")
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            raise RecordSelectionUnavailableError("The Authority Service is unavailable") from exc
+        except httpx.HTTPError as exc:
+            raise RecordSelectionProtocolError("The record-selection capability request failed") from exc
+
+        if response.status_code != 200:
+            raise _selection_error(response, "The record-selection capabilities could not be read")
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise RecordSelectionProtocolError("The Authority Service returned invalid capability JSON") from exc
+
+        types = payload.get("types") if isinstance(payload, dict) else None
+        if not isinstance(types, list):
+            raise RecordSelectionProtocolError("The record-selection capabilities are missing a types list")
+
+        descriptors: list[RecordSelectionTypeCapabilities] = []
+        seen: set[str] = set()
+        for item in types:
+            try:
+                descriptor = RecordSelectionTypeCapabilities.model_validate(item)
+            except ValidationError as exc:
+                raise RecordSelectionProtocolError("The Authority Service returned an invalid record-selection capability") from exc
+            if descriptor.type in seen:
+                raise RecordSelectionProtocolError(f"The Authority Service advertised record type '{descriptor.type}' twice")
+            seen.add(descriptor.type)
+            descriptors.append(descriptor)
+
+        _RECORD_SELECTION_CACHE[self.base_url] = (
+            time.monotonic() + _RECORD_SELECTION_CACHE_TTL_SECONDS,
+            version,
+            [descriptor.model_copy(deep=True) for descriptor in descriptors],
+        )
+        return version, descriptors
+
+    async def search_records(
+        self,
+        record_type: str,
+        query: str,
+        limit: int,
+        context: dict[str, str] | None = None,
+    ) -> list[ReconciliationCandidate]:
+        """Run one bounded, marked interactive search for a fixed record type."""
+        payload: dict[str, Any] = {"query": query, "type": record_type, "limit": limit}
+        if context:
+            payload["properties"] = [{"pid": property_id, "v": value} for property_id, value in sorted(context.items())]
+
+        client: httpx.AsyncClient = await self._get_client()
+        try:
+            response = await client.post(
+                f"{self.base_url}/reconcile",
+                headers={"X-Record-Selection": "interactive"},
+                json={"queries": {"q0": payload}},
+            )
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            raise RecordSelectionUnavailableError("The Authority Service is unavailable") from exc
+        except httpx.HTTPError as exc:
+            raise RecordSelectionProtocolError("The interactive record search request failed") from exc
+
+        if response.status_code != 200:
+            raise _selection_error(response, "The interactive record search failed")
+
+        try:
+            body = response.json()
+        except ValueError as exc:
+            raise RecordSelectionProtocolError("The Authority Service returned invalid search JSON") from exc
+
+        result = body.get("q0") if isinstance(body, dict) else None
+        candidates = result.get("result") if isinstance(result, dict) else None
+        if not isinstance(candidates, list):
+            raise RecordSelectionProtocolError("The interactive record search response has no result list")
+
+        parsed: list[ReconciliationCandidate] = []
+        for item in candidates:
+            try:
+                parsed.append(ReconciliationCandidate.model_validate(item))
+            except ValidationError as exc:
+                raise RecordSelectionProtocolError("The interactive record search returned an invalid candidate") from exc
+        return parsed
+
+    async def get_record_details(self, record_type: str, target_id: int) -> ReconciliationRecord:
+        """Return one exact record for the fixed type and positive target ID."""
+        client: httpx.AsyncClient = await self._get_client()
+        try:
+            response = await client.get(
+                f"{self.base_url}/records/{record_type}/details",
+                params={"target_id": str(target_id)},
+            )
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            raise RecordSelectionUnavailableError("The Authority Service is unavailable") from exc
+        except httpx.HTTPError as exc:
+            raise RecordSelectionProtocolError("The record details request failed") from exc
+
+        if response.status_code != 200:
+            raise _selection_error(response, "The record details request failed")
+
+        try:
+            body = response.json()
+        except ValueError as exc:
+            raise RecordSelectionProtocolError("The Authority Service returned invalid record JSON") from exc
+
+        item = body.get("item") if isinstance(body, dict) else None
+        try:
+            return ReconciliationRecord.model_validate(item)
+        except ValidationError as exc:
+            raise RecordSelectionProtocolError("The Authority Service returned an invalid record") from exc
+
+    async def list_records(self, record_type: str) -> tuple[list[ReconciliationRecord], str]:
+        """Return the complete record list for a type, or raise a too-large error."""
+        client: httpx.AsyncClient = await self._get_client()
+        try:
+            response = await client.get(f"{self.base_url}/records/{record_type}")
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            raise RecordSelectionUnavailableError("The Authority Service is unavailable") from exc
+        except httpx.HTTPError as exc:
+            raise RecordSelectionProtocolError("The record list request failed") from exc
+
+        if response.status_code != 200:
+            raise _selection_error(response, "The record list request failed")
+
+        try:
+            body = response.json()
+        except ValueError as exc:
+            raise RecordSelectionProtocolError("The Authority Service returned invalid record-list JSON") from exc
+
+        items = body.get("items") if isinstance(body, dict) else None
+        completeness = body.get("completeness") if isinstance(body, dict) else None
+        if not isinstance(items, list) or completeness != "complete":
+            raise RecordSelectionProtocolError("The record list is not a complete list")
+
+        records: list[ReconciliationRecord] = []
+        for item in items:
+            try:
+                records.append(ReconciliationRecord.model_validate(item))
+            except ValidationError as exc:
+                raise RecordSelectionProtocolError("The Authority Service returned an invalid list record") from exc
+        return records, completeness

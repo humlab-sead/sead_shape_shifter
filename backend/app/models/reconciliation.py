@@ -37,15 +37,9 @@ class ResolvedEntityPair(BaseModel):
     created_by: str | None = Field(default=None, description="User who created mapping")
     last_modified: str | None = Field(default=None, description="Last modification timestamp")
 
-    @model_validator(mode="after")
-    def validate_status(self) -> "ResolvedEntityPair":
-        if (self.status == "accepted") != (self.target_id is not None):
-            raise ValueError("Only an accepted decision may have a target_id, and accepted decisions require one")
-        if self.candidate_id is not None and not self.candidate_id.strip():  # pylint: disable=no-member
-            raise ValueError("A candidate_id must not be blank")
-        if self.status != "accepted" and self.candidate_id is not None:
-            raise ValueError("Only an accepted decision may have a candidate_id")
-        return self
+    # This model also reads legacy version 3.0 catalogs, so it deliberately does not
+    # enforce the accepted/target/candidate relationship on load. Write paths run the
+    # shared reference validator before saving a decision.
 
 
 class EntityResolutionSet(BaseModel):
@@ -248,3 +242,156 @@ class ExportToMappingResult(BaseModel):
     entity: str = Field(..., description="Entity name whose links were exported.")
     field: str = Field(..., description="Reconciliation field used as the source key during export.")
     outcomes: list[ExportToMappingOutcome] = Field(default_factory=list, description="Verification outcome for each checked business key.")
+
+
+class ReconciliationIssue(BaseModel):
+    """One row-specific problem reported with a rejected reconciliation write."""
+
+    row_index: int | None = Field(default=None, description="Server index in the resolved source rows")
+    local_key_value: str | None = Field(default=None, description="Encoded business key of the affected row")
+    field: str | None = Field(default=None, description="Column name when one column caused the issue")
+    code: str = Field(..., min_length=1, description="Stable issue code")
+    message: str = Field(..., min_length=1, description="Human-readable issue description")
+
+
+class DecisionDraft(BaseModel):
+    """One first-time or replacement decision submitted in a batch."""
+
+    # The service validates the key so a malformed draft produces a row issue
+    # instead of a request-model rejection.
+    local_key_value: str = Field(..., description="Encoded ordered business key")
+    displayed_values: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Columns the operator saw; used only for change detection and never written as source data",
+    )
+    status: Literal["accepted", "local-only"] = Field(..., description="Decision to store for this row")
+    target_id: int | None = Field(default=None, description="Selected target ID for an accepted decision")
+    candidate_id: str | None = Field(default=None, description="Exact selected candidate URI for an accepted decision")
+    notes: str | None = Field(default=None, description="Operator notes")
+
+
+class DecisionBatchRequest(BaseModel):
+    """Batch of decisions saved in one catalog write."""
+
+    drafts: list[DecisionDraft] = Field(default_factory=list, description="Decisions to store; each key appears at most once")
+
+
+class SavedDecision(BaseModel):
+    """One decision stored by a batch save, echoed in request order."""
+
+    local_key_value: str = Field(..., min_length=1)
+    status: Literal["accepted", "local-only"]
+    target_id: int | None = None
+    candidate_id: str | None = None
+    notes: str | None = None
+    last_modified: str | None = None
+
+
+class SpecificationDecisionCounts(BaseModel):
+    """Post-save decision totals for one reconciliation specification."""
+
+    accepted: int = Field(..., ge=0)
+    local_only: int = Field(..., ge=0)
+    proposed: int = Field(..., ge=0)
+    rejected: int = Field(..., ge=0)
+    total: int = Field(..., ge=0)
+
+
+class DecisionBatchCounts(BaseModel):
+    """Counts for the stored batch and the resulting specification."""
+
+    saved: int = Field(..., ge=0)
+    accepted: int = Field(..., ge=0)
+    local_only: int = Field(..., ge=0)
+    specification: SpecificationDecisionCounts
+
+
+class DecisionBatchResult(BaseModel):
+    """Result of a batch decision save."""
+
+    saved: list[SavedDecision] = Field(default_factory=list)
+    counts: DecisionBatchCounts
+
+
+# Record selection models: capabilities, ranked search, and complete browse lists.
+
+
+class RecordDisplayFieldDescriptor(BaseModel):
+    """One ordered display field advertised for a record-selection type."""
+
+    name: str = Field(..., min_length=1)
+    source: Literal["record", "fields"]
+    label: str = Field(..., min_length=1)
+    value_type: Literal["string", "integer", "number", "boolean"]
+    display: bool
+
+
+class RecordFieldFilterDescriptor(BaseModel):
+    """One client-side field filter advertised for a record-selection type."""
+
+    field: str = Field(..., min_length=1)
+    operator: Literal["contains_ci", "equals"]
+
+
+class RecordSelectionTypeCapabilities(BaseModel):
+    """Capabilities, limits, and declared fields for one configured record type."""
+
+    type: str = Field(..., min_length=1)
+    search_supported: bool
+    identifier_search_supported: bool
+    browse_supported: bool
+    details_supported: bool
+    export_verification_supported: bool
+    id_base: str | None = None
+    id_path: str = Field(..., min_length=1)
+    browse_max_rows: int | None = Field(default=None, gt=0)
+    browse_max_bytes: int | None = Field(default=None, gt=0)
+    interactive_search_max_results: int | None = Field(default=None, gt=0)
+    display_fields: list[RecordDisplayFieldDescriptor] = Field(default_factory=list)
+    text_filter_fields: list[str] = Field(default_factory=list)
+    sort_fields: list[str] = Field(default_factory=list)
+    field_filters: list[RecordFieldFilterDescriptor] = Field(default_factory=list)
+
+
+class RecordSelectionCapabilities(BaseModel):
+    """Versioned record-selection capabilities for the specification's own type."""
+
+    version: int = Field(..., ge=1)
+    type: RecordSelectionTypeCapabilities
+
+
+class ReconciliationRecord(BaseModel):
+    """One selectable target record shared by search and browse results."""
+
+    id: str = Field(..., min_length=1, description="Complete reconciliation URI for the record")
+    target_id: int | None = Field(default=None, gt=0, description="Positive numeric target ID when the service supplies one")
+    type: str = Field(..., min_length=1, description="Record type the URI was validated against")
+    name: str = Field(..., description="Record label; never used as an identifier")
+    description: str | None = None
+    fields: dict[str, Any] = Field(default_factory=dict, description="Declared display fields")
+    score: float | None = Field(
+        default=None,
+        description="Ranked search score in the OpenRefine 0-100 scale; browse records carry no score",
+    )
+
+
+class RecordSelectionSearchRequest(BaseModel):
+    """Operator search text plus optional declared property context."""
+
+    query: str = Field(..., description="Operator text, or 'id: <positive integer>' for an exact lookup")
+    limit: int | None = Field(default=None, description="Requested result limit; capped by the advertised maximum")
+    context: dict[str, str] = Field(default_factory=dict, description="Declared property IDs used as ranking hints")
+
+
+class RecordSelectionSearchResult(BaseModel):
+    """Ranked search results or the single record for an exact-ID lookup."""
+
+    mode: Literal["ranked", "exact"]
+    items: list[ReconciliationRecord] = Field(default_factory=list)
+
+
+class RecordSelectionBrowseResult(BaseModel):
+    """A verified complete record list for the configured type."""
+
+    items: list[ReconciliationRecord] = Field(default_factory=list)
+    completeness: Literal["complete"] = "complete"

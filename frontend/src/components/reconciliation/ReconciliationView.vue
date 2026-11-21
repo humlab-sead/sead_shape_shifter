@@ -62,6 +62,7 @@
                 :project-name="projectName"
                 :manifest-result="manifestResult"
                 @reconcile="handleReconcileSpec"
+                @review="handleReviewSpec"
               />
             </div>
           </v-window-item>
@@ -203,9 +204,10 @@
                 closable
                 @click:close="showExportGuidance = false"
               >
-                Export checks accepted candidates against SEAD and records New decisions separately. Missing or invalid
-                candidates are not exported; links exported while the service is unavailable remain unverified until you
-                export again. Manual and unowned links are protected.
+                Export checks accepted candidates against SEAD and records New decisions separately. Accepted links are
+                written only after that check succeeds, so a failed check leaves them unexported. After a review
+                workspace has opened, valid New-only saves and exports still work if the service later becomes
+                unavailable. Manual and unowned links are protected. Saving a decision does not export a link.
               </v-alert>
 
               <v-alert v-if="previewError" data-testid="preview-error" type="error" variant="tonal" class="mb-4">
@@ -241,9 +243,22 @@
                 </ul>
               </v-alert>
 
+              <!-- Persistent review workspace: search or browse without Find Candidates -->
+              <reconciliation-workspace
+                v-if="reviewWorkspaceVisible"
+                :key="workspaceKey"
+                :project-name="projectName"
+                :entity-name="selectedEntity ?? ''"
+                :target-field="selectedTarget ?? ''"
+                :service-type="entitySpec?.remote?.service_type ?? null"
+                :preview-rows="entityPreviewData"
+                :selection-descriptor="manifestResult?.status === 'valid' ? manifestResult.manifest.selection : null"
+                @fallback="reviewMode = false"
+              />
+
               <!-- Reconciliation Grid -->
               <reconciliation-grid
-                v-if="
+                v-else-if="
                   selectedEntity &&
                   selectedTarget &&
                   entitySpec &&
@@ -457,6 +472,7 @@ import { useReconciliationStore } from '@/stores/reconciliation'
 import { storeToRefs } from 'pinia'
 import ReconciliationGrid from './ReconciliationGrid.vue'
 import ReconciliationHelpDialog from './ReconciliationHelpDialog.vue'
+import ReconciliationWorkspace from './ReconciliationWorkspace.vue'
 import SpecificationsList from './SpecificationsList.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
 import type {
@@ -519,6 +535,9 @@ const removeSavedEntryDialog = ref(false)
 const removeSavedEntryRow = ref<ReconciliationPreviewRow | null>(null)
 const confirmProtectedSidecarDeletion = ref(false)
 const removingSavedEntry = ref(false)
+// The review workspace replaces the grid for the current specification until the
+// reviewer falls back to the legacy grid.
+const reviewMode = ref(false)
 
 // YAML Editor state
 const yamlContent = ref('')
@@ -575,6 +594,19 @@ const entityPreviewData = computed(() => {
   return previewData.value[props.projectName]?.[selectedEntity.value]?.[selectedTarget.value] || []
 })
 
+/** The workspace needs a reviewable specification and loaded preview rows. */
+const reviewWorkspaceVisible = computed(
+  () =>
+    reviewMode.value &&
+    Boolean(selectedEntity.value) &&
+    Boolean(selectedTarget.value) &&
+    Boolean(entitySpec.value) &&
+    selectedEntityHasBusinessKeys.value &&
+    entityPreviewData.value.length > 0
+)
+
+const workspaceKey = computed(() => JSON.stringify([props.projectName, selectedEntity.value, selectedTarget.value]))
+
 const previewError = computed(() => {
   if (!selectedEntity.value || !selectedTarget.value) return null
   return previewErrors.value[props.projectName]?.[selectedEntity.value]?.[selectedTarget.value] ?? null
@@ -628,6 +660,7 @@ const removeSidecarProtected = computed(() => {
 function handleReconcileSpec(entityName: string, targetField: string) {
   selectedEntity.value = entityName
   selectedTarget.value = targetField
+  reviewMode.value = false
   activeTab.value = 'reconcile'
 }
 
@@ -740,6 +773,14 @@ async function handleUpdateMapping(request: DecisionUpdateRequest): Promise<void
     throw new Error('Select an entity and target before saving a decision.')
   }
   await reconciliationStore.updateMapping(props.projectName, selectedEntity.value, selectedTarget.value, request)
+}
+
+/** Open the review workspace without running candidate matching. */
+function handleReviewSpec(entityName: string, targetField: string) {
+  selectedEntity.value = entityName
+  selectedTarget.value = targetField
+  reviewMode.value = true
+  activeTab.value = 'reconcile'
 }
 
 function openManualLinkDialog(row?: ReconciliationPreviewRow) {
@@ -997,12 +1038,14 @@ watch(activeTab, async (newTab) => {
 watch(
   selectedEntity,
   (newEntity) => {
-    if (newEntity && entityTargets.value.length > 0) {
-      // Auto-select the first target
-      selectedTarget.value = entityTargets.value[0] || null
-    } else {
+    if (!newEntity) {
       selectedTarget.value = null
+      return
     }
+    // Keep a target that belongs to this entity. The review entry point selects an
+    // entity and a target together, so the first target must not overwrite it.
+    if (selectedTarget.value && entityTargets.value.includes(selectedTarget.value)) return
+    selectedTarget.value = entityTargets.value[0] || null
   },
   { immediate: true }
 )

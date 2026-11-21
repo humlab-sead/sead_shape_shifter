@@ -709,6 +709,35 @@ class TestShapeShiftService:
         mock_shapeshifter.normalize.assert_awaited_once()
 
     @pytest.mark.asyncio
+    async def test_fresh_preview_ignores_warm_store(
+        self,
+        shapeshift_service: ShapeShiftService,
+        sample_project: ShapeShiftProject,
+        sample_dataframe: pd.DataFrame,
+    ):
+        """A fresh preview bypasses the warm store so current source data is produced."""
+        shapeshift_service._warm_table_store = TableStore({"users": sample_dataframe})
+        shapeshift_service._warm_project_name = "test_project"
+        shapeshift_service._warm_project_version = 1
+        shapeshift_service._warm_timestamp = time.time()
+
+        mock_shapeshifter = MagicMock()
+        mock_shapeshifter.normalize = AsyncMock()
+        mock_shapeshifter.table_store = {"users": sample_dataframe}
+        mock_shapeshifter.unresolved_extra_columns = {}
+        mock_shapeshifter.linker.validators = []
+
+        with (
+            patch.object(shapeshift_service.project_cache, "get_project", new=AsyncMock(return_value=sample_project)),
+            patch.object(shapeshift_service, "get_project_version", return_value=1),
+            patch("backend.app.services.shapeshift_service.ShapeShifter", return_value=mock_shapeshifter),
+        ):
+            result = await shapeshift_service.preview_entity("test_project", "users", 50, fresh=True)
+
+        assert result.cache_hit is False
+        mock_shapeshifter.normalize.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_get_entity_sample(
         self, shapeshift_service: ShapeShiftService, sample_project: ShapeShiftProject, sample_dataframe: pd.DataFrame
     ):

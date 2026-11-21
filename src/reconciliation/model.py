@@ -65,16 +65,11 @@ class ResolvedEntityPair:
     candidate_id: str | None = None
 
     def __post_init__(self) -> None:
+        # Reads tolerate legacy version 3.0 entries, including accepted decisions
+        # with a missing, blank, or mismatched candidate reference. Write paths run
+        # the shared reference validator before saving a decision.
         if not self.local_key_value:
             raise ValueError("A reconciliation decision requires an encoded local_key_value")
-        if self.status == DecisionStatus.ACCEPTED and self.target_id is None:
-            raise ValueError("An accepted decision requires a target_id")
-        if self.status != DecisionStatus.ACCEPTED and self.target_id is not None:
-            raise ValueError("Only an accepted decision may have a target_id")
-        if self.candidate_id is not None and not self.candidate_id.strip():
-            raise ValueError("A candidate_id must not be blank")
-        if self.status != DecisionStatus.ACCEPTED and self.candidate_id is not None:
-            raise ValueError("Only an accepted decision may have a candidate_id")
 
 
 @dataclass

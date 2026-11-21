@@ -18,6 +18,12 @@ import type {
   MappingEntryDeleteResponse,
   ReconciliationCandidate,
   ReconciliationPreviewRow,
+  SelectionBrowseResult,
+  SelectionCapabilities,
+  SelectionSearchRequest,
+  SelectionSearchResult,
+  DecisionBatchRequest,
+  DecisionBatchResult,
 } from '@/types/reconciliation'
 import { apiRequest } from './client'
 
@@ -235,6 +241,66 @@ export const reconciliationServiceApi = {
       method: 'GET',
       url: `/projects/${projectName}/reconciliation/${entityName}/${targetField}/suggest`,
       params: { query },
+    })
+  },
+
+  /**
+   * Discover the record-selection capabilities advertised for the specification's type.
+   */
+  getSelectionCapabilities: async (
+    projectName: string,
+    entityName: string,
+    targetField: string
+  ): Promise<SelectionCapabilities> => {
+    return apiRequest<SelectionCapabilities>({
+      method: 'GET',
+      url: `/projects/${projectName}/reconciliation/${entityName}/${targetField}/selection/capabilities`,
+    })
+  },
+
+  /**
+   * Run bounded ranked search, or an exact type-scoped lookup for 'id: <positive integer>'.
+   */
+  searchSelection: async (
+    projectName: string,
+    entityName: string,
+    targetField: string,
+    request: SelectionSearchRequest
+  ): Promise<SelectionSearchResult> => {
+    return apiRequest<SelectionSearchResult>({
+      method: 'POST',
+      url: `/projects/${projectName}/reconciliation/${entityName}/${targetField}/selection/search`,
+      data: request,
+    })
+  },
+
+  /**
+   * Download the complete record list for the specification's type.
+   */
+  browseSelection: async (
+    projectName: string,
+    entityName: string,
+    targetField: string
+  ): Promise<SelectionBrowseResult> => {
+    return apiRequest<SelectionBrowseResult>({
+      method: 'GET',
+      url: `/projects/${projectName}/reconciliation/${entityName}/${targetField}/selection/browse`,
+    })
+  },
+
+  /**
+   * Save staged decisions in one batch, without reloading the preview.
+   */
+  saveDecisionBatch: async (
+    projectName: string,
+    entityName: string,
+    targetField: string,
+    request: DecisionBatchRequest
+  ): Promise<DecisionBatchResult> => {
+    return apiRequest<DecisionBatchResult>({
+      method: 'POST',
+      url: `/projects/${projectName}/reconciliation/${entityName}/${targetField}/decisions`,
+      data: request,
     })
   },
 

@@ -434,6 +434,70 @@ async def suggest_entities(
     return candidates
 
 
+@router.get("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/selection/capabilities")
+@handle_endpoint_errors
+async def get_record_selection_capabilities(
+    project_name: str,  # pylint: disable=unused-argument
+    entity_name: str,
+    target_field: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> api.RecordSelectionCapabilities:
+    """Discover the record-selection capabilities of the specification's configured type.
+
+    The type comes from the stored catalog, never from the caller. Each capability
+    flag is independent, and a missing or malformed extension is an error rather
+    than an empty capability list.
+    """
+    return await service.get_selection_capabilities(
+        authorized_project.resource.locator,
+        entity_name,
+        target_field,
+        fresh=True,
+    )
+
+
+@router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/selection/search")
+@handle_endpoint_errors
+async def search_record_selection(
+    project_name: str,  # pylint: disable=unused-argument
+    entity_name: str,
+    target_field: str,
+    request: api.RecordSelectionSearchRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> api.RecordSelectionSearchResult:
+    """Run bounded ranked search, or an exact type-scoped lookup for 'id: <positive integer>'.
+
+    Text that starts with 'id:' is never sent to fuzzy matching, so a malformed
+    identifier is an input error and an unknown identifier returns no record.
+    Declared context is passed as ranking hints only.
+    """
+    return await service.search_selection(
+        authorized_project.resource.locator,
+        entity_name,
+        target_field,
+        request,
+    )
+
+
+@router.get("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/selection/browse")
+@handle_endpoint_errors
+async def browse_record_selection(
+    project_name: str,  # pylint: disable=unused-argument
+    entity_name: str,
+    target_field: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> api.RecordSelectionBrowseResult:
+    """Return the complete record list for the configured type, or an explicit too-large error.
+
+    The list is never partial: filtering and sorting happen in the browser over the
+    complete response.
+    """
+    return await service.browse_selection(authorized_project.resource.locator, entity_name, target_field)
+
+
 @router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mapping")
 @handle_endpoint_errors
 async def update_mapping(
@@ -458,6 +522,25 @@ async def update_mapping(
 
     # Map to DTO for API response
     return ReconciliationMapper.registry_to_dto(domain_registry)
+
+
+@router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/decisions")
+@handle_endpoint_errors
+async def save_decision_batch(
+    project_name: str,  # pylint: disable=unused-argument
+    entity_name: str,
+    target_field: str,
+    request: api.DecisionBatchRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> api.DecisionBatchResult:
+    """Save first-time accepted and local-only decisions for authorized, unchanged rows."""
+    return await service.save_decision_batch(
+        project_name=authorized_project.resource.locator,
+        entity_name=entity_name,
+        target_field=target_field,
+        drafts=request.drafts,
+    )
 
 
 @router.delete("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mapping")
@@ -585,7 +668,7 @@ async def create_registry(
     entity_mapping_domain: core.EntityResolutionSet = ReconciliationMapper.entity_mapping_to_domain(request.spec)
 
     # Service returns domain model
-    catalog: core.EntityResolutionCatalog = service.catalog_manager.create_entity_mapping(
+    catalog: core.EntityResolutionCatalog = service.create_specification(
         project_name=authorized_project.resource.locator,
         entity_name=request.entity_name,
         target_field=request.target_field,
@@ -636,7 +719,7 @@ async def update_catalog(
     remote_domain: core.ResolutionTarget = ReconciliationMapper.remote_to_domain(request.remote)
 
     # Service returns domain model
-    catalog: core.EntityResolutionCatalog = service.catalog_manager.update_entity_mapping(
+    catalog: core.EntityResolutionCatalog = service.update_specification(
         project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         target_field=target_field,

@@ -330,13 +330,14 @@ class TestReconciliationExportApi:
         verify.assert_not_awaited()
         assert not (tmp_path / "test_project" / "shapeshifter.mapping.yml").exists()
 
-    async def test_verification_outage_exports_unverified_then_retry_verifies_link(
+    async def test_verification_outage_does_not_write_unverified_links_then_retry_verifies(
         self, tmp_path: Path, monkeypatch, authorized_client
     ) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         await _create_project(authorized_client, "site", _SITE_ENTITY)
         _write_reconciliation_catalog(tmp_path)
         path = "/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
 
         with patch.object(
             ReconciliationClient,
@@ -345,11 +346,9 @@ class TestReconciliationExportApi:
         ):
             unavailable = await authorized_client.post(path)
 
-        assert unavailable.status_code == 200, unavailable.text
-        assert {item["outcome"] for item in unavailable.json()["outcomes"]} == {"unverified"}
-        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
-        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
-        assert all(link["verified_at"] is None for link in sidecar["entities"]["site"]["links"].values())
+        assert unavailable.status_code == 500, unavailable.text
+        assert "unavailable" in unavailable.json()["detail"]["message"]
+        assert not sidecar_path.exists()
 
         retried = await authorized_client.post(path)
 
@@ -358,15 +357,15 @@ class TestReconciliationExportApi:
         sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
         assert all(link["verified_at"] is not None for link in sidecar["entities"]["site"]["links"].values())
 
-    async def test_not_found_and_invalid_candidates_remove_only_their_owned_links(
-        self, tmp_path: Path, monkeypatch, authorized_client
-    ) -> None:
+    async def test_not_found_and_invalid_candidates_do_not_change_the_sidecar(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         await _create_project(authorized_client, "site", _SITE_ENTITY)
         _write_reconciliation_catalog(tmp_path)
         path = "/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping"
         first = await authorized_client.post(path)
         assert first.status_code == 200, first.text
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.mapping.yml"
+        original = sidecar_path.read_bytes()
 
         async def reject_candidates(_client, items):
             return [
@@ -382,12 +381,9 @@ class TestReconciliationExportApi:
         with patch.object(ReconciliationClient, "verify_candidates", new=reject_candidates):
             response = await authorized_client.post(path)
 
-        assert response.status_code == 200, response.text
-        assert response.json()["exported"] == 0
-        assert response.json()["removed"] == 2
-        assert [item["outcome"] for item in response.json()["outcomes"]] == ["not_found", "invalid_candidate"]
-        sidecar = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.mapping.yml").read_text(encoding="utf-8"))
-        assert sidecar["entities"]["site"]["links"] == {}
+        assert response.status_code == 500, response.text
+        assert "no mapping links were changed" in response.json()["detail"]["message"]
+        assert sidecar_path.read_bytes() == original
 
     async def test_mismatched_verified_target_id_does_not_write_links(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -560,23 +556,13 @@ class TestReconciliationExportApi:
 
         response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
 
-        assert response.status_code == 200, response.text
-        assert response.json() == {
-            "exported": 0,
-            "removed": 0,
-            "exported_local_only_approvals": 0,
-            "removed_local_only_approvals": 0,
-            "skipped_manual": 0,
-            "entity": "site",
-            "field": "site_code",
-            "outcomes": [
-                {
-                    "local_key_value": encoded_key,
-                    "outcome": "invalid_candidate",
-                    "reason": "The selected candidate URI is invalid for this entity type.",
-                }
-            ],
-        }
+        assert response.status_code == 400, response.text
+        detail = response.json()["detail"]
+        assert "invalid target references" in detail["message"]
+        assert len(detail["issues"]) == 1
+        assert detail["issues"][0]["local_key_value"] == encoded_key
+        assert detail["issues"][0]["field"] == "candidate_id"
+        assert detail["issues"][0]["code"] == "invalid_reference"
         assert not (tmp_path / "test_project" / "shapeshifter.mapping.yml").exists()
 
     async def test_export_to_mapping_returns_404_when_reconciliation_catalog_is_missing(

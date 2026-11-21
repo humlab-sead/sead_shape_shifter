@@ -37,6 +37,7 @@ PROPERTY_SOURCE = "fixture_place_name"
 PUBLIC_ID = "location_id"
 TARGET_ID = 4233
 CANDIDATE_URI = f"https://w3id.org/sead/id/location/{TARGET_ID}"
+COUNTRY_CANDIDATE_URI = f"https://w3id.org/sead/id/country/{TARGET_ID}"
 PATH = f"/api/v1/projects/{PROJECT_NAME}/reconciliation/{ENTITY_NAME}/{TARGET_FIELD}"
 
 # Two fixed rows share the search label "Trench" but keep distinct business keys
@@ -141,6 +142,18 @@ async def _register_property_specification(client) -> None:
                 "remote": {"service_type": ENTITY_NAME},
                 "property_mappings": {PROPERTY_ID: PROPERTY_SOURCE},
             },
+        },
+    )
+    assert response.status_code == 201, response.text
+
+
+async def _register_country_specification(client) -> None:
+    response = await client.post(
+        f"/api/v1/projects/{PROJECT_NAME}/reconciliation/mapping-registry",
+        json={
+            "entity_name": ENTITY_NAME,
+            "target_field": TARGET_FIELD,
+            "spec": {"remote": {"service_type": "country"}},
         },
     )
     assert response.status_code == 201, response.text
@@ -274,6 +287,61 @@ class TestLocationReconciliationWorkflow:
         assert unchanged.json()["exported"] == 0
         assert unchanged.json()["removed"] == 0
         assert _sidecar_path(tmp_path).read_bytes() == sidecar_bytes
+
+        results = await _normalize_twice(_project_file(tmp_path), monkeypatch)
+
+        assert results == [
+            ({"LOC-001": (20001, TARGET_ID), "LOC-002": (20002, None)}, [20001]),
+            ({"LOC-001": (20001, TARGET_ID), "LOC-002": (20002, None)}, [20001]),
+        ]
+
+    async def test_country_first_time_batch_and_verified_export(self, authorized_client, tmp_path: Path, monkeypatch) -> None:
+        """A country specification keyed on location_id saves and exports first-time decisions."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        captured = _install_mocked_service(monkeypatch)
+        await _create_project(authorized_client)
+        await _register_country_specification(authorized_client)
+
+        batch = await authorized_client.post(
+            f"{PATH}/decisions",
+            json={
+                "drafts": [
+                    {
+                        "local_key_value": "LOC-001",
+                        "displayed_values": {TARGET_FIELD: "Trench"},
+                        "status": "accepted",
+                        "target_id": TARGET_ID,
+                        "candidate_id": COUNTRY_CANDIDATE_URI,
+                    },
+                    {
+                        "local_key_value": "LOC-002",
+                        "displayed_values": {TARGET_FIELD: "Trench"},
+                        "status": "local-only",
+                    },
+                ]
+            },
+        )
+
+        assert batch.status_code == 200, batch.text
+        body = batch.json()
+        assert [item["local_key_value"] for item in body["saved"]] == ["LOC-001", "LOC-002"]
+        assert _read_catalog_decisions(tmp_path) == {
+            "LOC-001": ("accepted", TARGET_ID, "Trench"),
+            "LOC-002": ("local-only", None, "Trench"),
+        }
+
+        exported = await authorized_client.post(f"{PATH}/export-to-mapping")
+
+        assert exported.status_code == 200, exported.text
+        assert exported.json()["exported"] == 1
+        assert exported.json()["exported_local_only_approvals"] == 1
+        assert [(item.type, item.id) for item in captured["verifications"][-1]] == [("country", COUNTRY_CANDIDATE_URI)]
+        sidecar = yaml.safe_load(_sidecar_path(tmp_path).read_text(encoding="utf-8"))
+        entity = sidecar["entities"][ENTITY_NAME]
+        assert entity["public_id"] == PUBLIC_ID
+        assert entity["links"]["LOC-001"]["target_id"] == TARGET_ID
+        assert entity["links"]["LOC-001"]["verified_at"]
+        assert set(entity["local_only_approvals"]) == {"LOC-002"}
 
         results = await _normalize_twice(_project_file(tmp_path), monkeypatch)
 

@@ -1,5 +1,6 @@
 """Tests for ReconciliationService."""
 
+from datetime import date, datetime, time, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -9,16 +10,24 @@ import yaml
 from backend.app import models as dto
 from backend.app.exceptions import DependencyError, ResourceConflictError, ResourceNotFoundError, ValidationError
 from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
+from backend.app.models.reconciliation import DecisionDraft
 from backend.app.models.shapeshift import PreviewResult
+from backend.app.services.project_service import ProjectService
 from backend.app.services.reconciliation import ReconciliationQueryService, ReconciliationService
+from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
+from backend.app.services.reconciliation.reference_validation import (
+    POSTGRES_INTEGER_MAX,
+    accepted_reference_error,
+    parse_record_uri,
+)
 from backend.app.services.reconciliation.resolvers import (
     AnotherEntityReconciliationSourceResolver,
     ReconciliationSourceResolver,
     SqlQueryReconciliationSourceResolver,
     TargetEntityReconciliationSourceResolver,
 )
-from backend.app.services.reconciliation.service import ResolvedSourceRows
-from backend.app.utils.exceptions import BadRequestError, NotFoundError
+from backend.app.services.reconciliation.service import ResolvedSourceRows, _canonical_value
+from backend.app.utils.exceptions import NotFoundError
 from backend.tests.test_reconciliation_client import RECONCILIATION_SERVICE_URL
 from src.reconciliation import model as core
 from src.reconciliation.source_strategy import ReconciliationSourceStrategy, SourceStrategyType
@@ -251,7 +260,7 @@ class TestTargetEntityReconciliationSourceResolver:
             result = await resolver.resolve("site", sample_entity_spec)
 
             assert result == preview_data
-            mock_preview.assert_called_once_with("test_project", "site", limit=None)
+            mock_preview.assert_called_once_with("test_project", "site", limit=None, fresh=False)
 
 
 class TestAnotherEntityReconciliationSourceResolver:
@@ -283,7 +292,7 @@ class TestAnotherEntityReconciliationSourceResolver:
             result = await resolver.resolve("sample", entity_spec)
 
             assert result == source_data
-            mock_preview.assert_called_once_with("test_project", "site", limit=None)
+            mock_preview.assert_called_once_with("test_project", "site", limit=None, fresh=False)
 
     @pytest.mark.asyncio
     async def test_resolve_raises_for_missing_source_entity(self, mock_config_service, mock_core_project):
@@ -584,25 +593,39 @@ class TestReconciliationService:
 
                         # Verify resolver was created with correct parameters
                         mock_resolver_cls.assert_called_once_with("test_project", mock_core_project, reconciliation_service.project_service)
-                        mock_resolver.resolve.assert_called_once_with("site", sample_entity_spec)
+                        mock_resolver.resolve.assert_called_once_with("site", sample_entity_spec, fresh=False)
 
-    def test_extract_id_from_uri_success(self, reconciliation_service: ReconciliationService):
-        """Test _extract_id_from_uri extracts ID correctly."""
-        uri = "https://w3id.org/sead/id/site/12345"
-        target_id = reconciliation_service._extract_id_from_uri(uri)
-        assert target_id == 12345
+    def test_parse_record_uri_accepts_leading_zeros(self):
+        """The shared validator resolves a leading-zero ID to its integer value."""
+        assert parse_record_uri("https://w3id.org/sead/id/site/000123", "site") == 123
 
-    def test_extract_id_from_uri_with_trailing_slash(self, reconciliation_service: ReconciliationService):
-        """Test _extract_id_from_uri handles trailing slash."""
-        uri = "https://w3id.org/sead/id/site/12345/"
-        target_id = reconciliation_service._extract_id_from_uri(uri)
-        assert target_id == 12345
+    def test_parse_record_uri_rejects_trailing_slash(self):
+        """A trailing slash adds an empty segment after the ID and is rejected."""
+        assert parse_record_uri("https://w3id.org/sead/id/site/12345/", "site") is None
 
-    def test_extract_id_from_uri_raises_on_invalid(self, reconciliation_service: ReconciliationService):
-        """Test _extract_id_from_uri raises on invalid URI."""
+    def test_parse_record_uri_rejects_wrong_type_and_shape(self):
+        """A different type, relative path, query, fragment, or invalid ID is rejected."""
+        assert parse_record_uri("https://w3id.org/sead/id/site/12345", "site") == 12345
+        for candidate in (
+            "https://w3id.org/sead/id/location/12345",
+            "https://w3id.org/sead/id/site/12345?x=1",
+            "https://w3id.org/sead/id/site/12345#fragment",
+            "site/12345",
+            "https://w3id.org/sead/id/site/12345/extra",
+            "https://w3id.org/sead/id/site/12a",
+            "https://w3id.org/sead/id/site/\u0661\u0662\u0663",
+            "https://w3id.org/sead/id/site/0",
+            f"https://w3id.org/sead/id/site/{POSTGRES_INTEGER_MAX + 1}",
+        ):
+            assert parse_record_uri(candidate, "site") is None, candidate
 
-        with pytest.raises(BadRequestError, match="Cannot extract numeric ID"):
-            reconciliation_service._extract_id_from_uri("https://example.com/invalid")
+    def test_accepted_reference_error_reports_mismatch_and_missing_values(self):
+        """Reference validation reports missing and mismatched values."""
+        assert accepted_reference_error("https://w3id.org/sead/id/site/1", 1, "site") is None
+        assert "does not match" in (accepted_reference_error("https://w3id.org/sead/id/site/2", 1, "site") or "")
+        assert accepted_reference_error(None, 1, "site") is not None
+        assert accepted_reference_error("https://w3id.org/sead/id/site/1", None, "site") is not None
+        assert accepted_reference_error("https://w3id.org/sead/id/site/1", 1, None) is not None
 
     @pytest.mark.asyncio
     async def test_auto_reconcile_entity_disabled_without_service_type(
@@ -1116,7 +1139,7 @@ class TestReconciliationService:
                 core.DecisionStatus.ACCEPTED,
                 101,
                 "reviewed",
-                candidate_id="site/101",
+                candidate_id="https://w3id.org/sead/id/site/101",
             )
             return {"q0": [dto.ReconciliationCandidate(id="new", name="New", score=100.0)]}
 
@@ -1798,3 +1821,236 @@ class TestSpecificationManagement:
 
         with pytest.raises(NotFoundError, match="not found"):
             reconciliation_service.get_mapping_count("test", "site", "nonexistent_field")
+
+
+class TestCatalogWriteSerialization:
+    """Every catalog read-modify-write runs inside the project lock."""
+
+    def test_create_specification_holds_the_project_lock(
+        self, reconciliation_service: ReconciliationService, sample_entity_spec: core.EntityResolutionSet
+    ):
+        lock = ProjectService._get_lock("lock-project")
+        observed: list[bool] = []
+
+        def create(project_name, entity_name, target_field, entity_mapping):
+            observed.append(lock.locked())
+            return core.EntityResolutionCatalog(version="3.0", service_url="http://localhost:8000")
+
+        with patch.object(EntityMappingManager, "create_entity_mapping", side_effect=create):
+            reconciliation_service.create_specification("lock-project", "site", "site_name", sample_entity_spec)
+
+        assert observed == [True]
+
+    def test_update_specification_holds_the_project_lock(self, reconciliation_service: ReconciliationService):
+        lock = ProjectService._get_lock("lock-project")
+        observed: list[bool] = []
+
+        def update(*_args, **_kwargs):
+            observed.append(lock.locked())
+            return core.EntityResolutionCatalog(version="3.0", service_url="http://localhost:8000")
+
+        with patch.object(EntityMappingManager, "update_entity_mapping", side_effect=update):
+            reconciliation_service.update_specification(
+                "lock-project",
+                "site",
+                "site_name",
+                None,
+                {},
+                core.ResolutionTarget(service_type="site"),
+                0.9,
+                0.7,
+            )
+
+        assert observed == [True]
+
+    @pytest.mark.asyncio
+    async def test_threshold_only_matching_write_holds_the_project_lock(
+        self, reconciliation_service: ReconciliationService, sample_entity_spec: core.EntityResolutionSet
+    ):
+        sample_entity_spec.metadata.remote.service_type = None
+        existing = core.EntityResolutionSet(
+            metadata=core.EntityResolutionMetadata(
+                remote=core.ResolutionTarget(service_type=None), auto_accept_threshold=0.5, review_threshold=0.5
+            )
+        )
+        reconciliation_service.catalog_manager.save_catalog(
+            "editing",
+            core.EntityResolutionCatalog(version="3.0", service_url="http://localhost:8000", entities={"site": {"site_name": existing}}),
+        )
+        lock = ProjectService._get_lock("editing")
+        observed: list[bool] = []
+        original_save = EntityMappingManager.save_catalog
+
+        def save(self, project_name, catalog, filename=None):
+            if project_name == "editing":
+                observed.append(lock.locked())
+            return original_save(self, project_name, catalog, filename)
+
+        with patch.object(EntityMappingManager, "save_catalog", save):
+            await reconciliation_service.auto_reconcile_entity("editing", "site", "site_name", sample_entity_spec)
+
+        assert observed == [True]
+
+
+class TestCanonicalValue:
+    """The changed-row check must agree across the preview JSON round trip."""
+
+    @staticmethod
+    def _wire(value: object) -> object:
+        """Return the value exactly as the preview endpoint sends it to the browser."""
+        preview = PreviewResult(
+            entity_name="site",
+            rows=[{"column": value}],
+            columns=[],
+            total_rows_in_preview=1,
+            estimated_total_rows=1,
+            execution_time_ms=0,
+            has_dependencies=False,
+            dependencies_loaded=[],
+            cache_hit=False,
+            validation_issues=[],
+        )
+        return preview.model_dump(mode="json")["rows"][0]["column"]
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            date(2020, 1, 1),
+            datetime(2020, 1, 1, 10, 30),
+            datetime(2020, 1, 1, 10, 30, tzinfo=timezone.utc),
+            time(10, 30),
+            timedelta(days=1, hours=2),
+        ],
+        ids=["date", "datetime", "utc-datetime", "time", "timedelta"],
+    )
+    def test_temporal_values_survive_the_preview_round_trip(self, value: object):
+        """A native date or duration compares equal to the string the browser receives."""
+        assert _canonical_value(value) == _canonical_value(self._wire(value))
+
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")], ids=["nan", "inf", "-inf"])
+    def test_non_finite_floats_compare_equal_to_json_null(self, value: float):
+        """The preview sends every non-finite float as null."""
+        assert _canonical_value(value) == _canonical_value(self._wire(value)) == "null"
+
+
+class TestDecisionBatchService:
+    """Service-level checks for the atomic batch save."""
+
+    @pytest.mark.asyncio
+    async def test_batch_resolves_source_rows_once_with_fresh_data(
+        self, reconciliation_service: ReconciliationService, sample_entity_spec: core.EntityResolutionSet
+    ):
+        reconciliation_service.catalog_manager.save_catalog(
+            "batch",
+            core.EntityResolutionCatalog(
+                version="3.0", service_url="http://localhost:8000", entities={"site": {"site_name": sample_entity_spec}}
+            ),
+        )
+        source = ResolvedSourceRows(
+            local_key="site_code", rows=[{"site_code": "A", "site_name": "Same"}, {"site_code": "B", "site_name": "Same"}]
+        )
+        drafts = [
+            DecisionDraft(
+                local_key_value="A",
+                displayed_values={"site_name": "Same"},
+                status="accepted",
+                target_id=101,
+                candidate_id="https://w3id.org/sead/id/site/101",
+            ),
+            DecisionDraft(
+                local_key_value="B",
+                displayed_values={"site_name": "Same"},
+                status="accepted",
+                target_id=102,
+                candidate_id="https://w3id.org/sead/id/site/102",
+            ),
+        ]
+        with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock(return_value=source)) as resolve:
+            result = await reconciliation_service.save_decision_batch("batch", "site", "site_name", drafts)
+
+        resolve.assert_awaited_once()
+        assert resolve.await_args is not None and resolve.await_args.kwargs["fresh"] is True
+        assert [item.local_key_value for item in result.saved] == ["A", "B"]
+        assert result.counts.accepted == 2
+        assert result.counts.local_only == 0
+
+        saved = {
+            decision.local_key_value: decision
+            for decision in reconciliation_service.catalog_manager.load_catalog("batch").get("site", "site_name").links
+        }
+        assert saved["A"].status == core.DecisionStatus.ACCEPTED
+        assert saved["A"].source_value == "Same"
+        assert saved["B"].target_id == 102
+
+    @pytest.mark.asyncio
+    async def test_batch_accepts_an_unchanged_datetime_column(
+        self, reconciliation_service: ReconciliationService, sample_entity_spec: core.EntityResolutionSet
+    ):
+        """A timestamp the browser echoes back as text is not a changed row."""
+        reconciliation_service.catalog_manager.save_catalog(
+            "batch",
+            core.EntityResolutionCatalog(
+                version="3.0", service_url="http://localhost:8000", entities={"site": {"site_name": sample_entity_spec}}
+            ),
+        )
+        source = ResolvedSourceRows(
+            local_key="site_code",
+            rows=[
+                {
+                    "site_code": "A",
+                    "site_name": "Same",
+                    "observed_at": datetime(2020, 1, 1, 10, 30, tzinfo=timezone.utc),
+                }
+            ],
+        )
+        drafts = [
+            DecisionDraft(
+                local_key_value="A",
+                displayed_values={"site_name": "Same", "observed_at": "2020-01-01T10:30:00Z"},
+                status="accepted",
+                target_id=101,
+                candidate_id="https://w3id.org/sead/id/site/101",
+            )
+        ]
+
+        with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock(return_value=source)):
+            result = await reconciliation_service.save_decision_batch("batch", "site", "site_name", drafts)
+
+        assert [item.local_key_value for item in result.saved] == ["A"]
+
+    @pytest.mark.asyncio
+    async def test_batch_rejects_a_datetime_column_that_really_changed(
+        self, reconciliation_service: ReconciliationService, sample_entity_spec: core.EntityResolutionSet
+    ):
+        """A different timestamp still rejects the batch as a changed row."""
+        reconciliation_service.catalog_manager.save_catalog(
+            "batch",
+            core.EntityResolutionCatalog(
+                version="3.0", service_url="http://localhost:8000", entities={"site": {"site_name": sample_entity_spec}}
+            ),
+        )
+        source = ResolvedSourceRows(
+            local_key="site_code",
+            rows=[
+                {
+                    "site_code": "A",
+                    "site_name": "Same",
+                    "observed_at": datetime(2020, 1, 2, 10, 30, tzinfo=timezone.utc),
+                }
+            ],
+        )
+        drafts = [
+            DecisionDraft(
+                local_key_value="A",
+                displayed_values={"site_name": "Same", "observed_at": "2020-01-01T10:30:00Z"},
+                status="accepted",
+                target_id=101,
+                candidate_id="https://w3id.org/sead/id/site/101",
+            )
+        ]
+
+        with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock(return_value=source)):
+            with pytest.raises(ValidationError) as excinfo:
+                await reconciliation_service.save_decision_batch("batch", "site", "site_name", drafts)
+
+        assert {issue["code"] for issue in (excinfo.value.issues or [])} == {"row_changed"}
