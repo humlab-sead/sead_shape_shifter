@@ -2,7 +2,7 @@
   <div v-if="!rail" class="context-help">
     <v-expansion-panels variant="accordion" :model-value="expanded ? [0] : []">
       <v-expansion-panel>
-        <v-expansion-panel-title @click="expanded = !expanded">
+        <v-expansion-panel-title @click="toggleExpanded">
           <div class="d-flex align-center">
             <v-icon size="small" class="mr-2">mdi-help-circle-outline</v-icon>
             <span class="text-body-2 font-weight-medium">Context Help</span>
@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   reconciliationHelp,
@@ -97,8 +97,39 @@ interface Props {
 defineProps<Props>()
 
 const route = useRoute()
-const expanded = ref(true)
 const { reviewWorkspaceHelpActive, reviewWorkspaceHelpMode } = useReviewWorkspaceHelpState()
+
+/** Browser key that remembers whether the reviewer keeps the panel open. */
+const HELP_EXPANDED_STORAGE_KEY = 'shapeshifter.contextHelp.expanded'
+
+function readStoredExpanded(): boolean {
+  try {
+    const stored = globalThis.localStorage?.getItem(HELP_EXPANDED_STORAGE_KEY)
+    return stored === null || stored === undefined ? true : stored === 'true'
+  } catch {
+    return true
+  }
+}
+
+function storeExpanded(value: boolean): void {
+  try {
+    globalThis.localStorage?.setItem(HELP_EXPANDED_STORAGE_KEY, String(value))
+  } catch {
+    // Blocked storage keeps the panel usable for this session only.
+  }
+}
+
+const expanded = ref(readStoredExpanded() || reviewWorkspaceHelpActive.value)
+
+function toggleExpanded() {
+  expanded.value = !expanded.value
+  storeExpanded(expanded.value)
+}
+
+watch(reviewWorkspaceHelpActive, (active) => {
+  // Opening the workspace is when workspace help matters most.
+  if (active) expanded.value = true
+})
 
 /** Workspace help follows the Search/Browse mode shown in the open workspace. */
 function workspaceHelpContent(mode: SelectionMode): HelpContent {
