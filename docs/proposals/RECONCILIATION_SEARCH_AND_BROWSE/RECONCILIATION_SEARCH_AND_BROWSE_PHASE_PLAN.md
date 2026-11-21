@@ -208,10 +208,30 @@ Validate the paired workflow and advertise only capabilities that pass for each 
 - Phase 1–3 validated outputs, a named pilot environment, and selected service images implementing the approved contracts.
 - Per-type live data projection, row and byte measurements, browse-limit behavior, search latency, and verification checks.
 
+**Environment**
+
+The pilot environment is named `pilot-recon-2026-11-20`. It pairs the Authority Service at commit `1f3f1b8` with Shape Shifter at commit `7340510f`, both built from published refs and pinned by image tag, against `sead_pilot_recon`, a 2026-11-20 snapshot of `sead_staging` reached through a read-only role. All five capabilities are enabled for `feature_type` and `country` in the pilot's mounted Authority configuration only; the shipped configuration keeps every flag `false`. The pair, ports, and startup command are recorded in [the Phase 4 task plan](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_4_TASK_PLAN.md#pilot-environment).
+
+The [Phase 4 baseline](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_4_BASELINE.md) records complete per-type Search and Browse timings at loopback and at approximately 100 ms and 200 ms RTT, the VM-12 decision and request measurements, and the per-capability pilot decisions. Both list limits were exercised and restored; neither list was partially returned.
+
+**Capability Decisions (pilot only)**
+
+| Capability | `feature_type` | `country` | Reason |
+| --- | --- | --- | --- |
+| `search_supported` | Advertise | Advertise | Search p95 stayed within budget at tested RTTs; browser Search passed (Phase 4 `V-1`, `V-8`). |
+| `identifier_search_supported` | Advertise | Advertise | Exact-ID browser checks passed for both types (Phase 4 `V-8`). |
+| `browse_supported` | Advertise | Advertise | Complete lists, limit errors, filtering, sorting, and delayed timings passed (Phase 4 `V-5`–`V-8`). |
+| `details_supported` | Advertise | Advertise | Read-only URI detail lookups returned the expected records; the [Phase 1 task plan](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_1_TASK_PLAN.md) covers URI and numeric details. |
+| `export_verification_supported` | Advertise | Advertise | Valid IDs verified, and unknown IDs blocked export without a sidecar write (Phase 4 `V-7`, `V-10`). |
+
 **Outputs**
 
 - Recorded pilot results and initial timing/request baseline.
 - Independently advertised capabilities for each type that passes its checks; failures remain unadvertised.
+
+**Delivery**
+
+Use [the Phase 4 task plan](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_4_TASK_PLAN.md) and its [baseline record](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_4_BASELINE.md). They record the environment, the measurement methods, the per-type checks, and the advertisement decision.
 
 **Acceptance Criteria**
 
@@ -228,11 +248,12 @@ Validate the paired workflow and advertise only capabilities that pass for each 
 **Task-Plan Handoff**
 
 - Source criteria: `P-AC-1`–`P-AC-13`. Use the proposal's validation cases and the per-type gates rather than treating successful catalog saves as proof of target existence.
-- Blocking decisions: name the pilot environment and select the paired service images. Measure actual data and latency; do not assume production list sizes.
+- The environment is named and the paired images are selected; both blocking decisions are settled.
+- The [baseline record](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_4_BASELINE.md) lists the pilot-only decision and evidence for each capability and type. The shipped Authority Service flags remain false.
 
 **Readiness**
 
-Requires the named pilot environment and paired service images, plus completed Phase 1–3 outputs.
+The pilot checks and baseline are complete for `pilot-recon-2026-11-20`. Advertise all five capabilities for `feature_type` and `country` in this isolated pilot only. This decision does not authorize general release or change the shipped Authority Service configuration.
 
 ## Cross-Phase Rules
 
