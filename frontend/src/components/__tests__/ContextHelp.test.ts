@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import ContextHelp from '../ContextHelp.vue'
-import { activateReviewWorkspaceHelp, setReviewWorkspaceHelpMode } from '@/composables/useReviewWorkspaceHelp'
+import {
+  activateReviewWorkspaceHelp,
+  clearReviewWorkspaceNotices,
+  setReviewWorkspaceHelpMode,
+  setReviewWorkspaceNotices,
+} from '@/composables/useReviewWorkspaceHelp'
 
 vi.mock('vue-router', () => ({
   useRoute: () => ({ name: 'project-detail', query: { tab: 'reconciliation' } }),
@@ -169,6 +174,37 @@ describe('ContextHelp expansion', () => {
       expect(panelState(wrapper)).toBe('[0]')
       expect(storage.get('shapeshifter.contextHelp.expanded')).toBe('false')
     } finally {
+      release()
+    }
+  })
+})
+
+describe('ContextHelp workspace status', () => {
+  it('shows restore and storage notices while the workspace is open', () => {
+    const release = activateReviewWorkspaceHelp('search')
+    setReviewWorkspaceNotices({ restoreNotice: 'Restored 1 unsaved decision.', storageError: 'Draft is not durable.' })
+    try {
+      const wrapper = mountHelp()
+
+      expect(wrapper.get('[data-testid="context-help-restore-notice"]').text()).toContain('Restored 1 unsaved decision')
+      expect(wrapper.get('[data-testid="context-help-storage-warning"]').text()).toContain('Draft is not durable')
+    } finally {
+      clearReviewWorkspaceNotices()
+      release()
+    }
+  })
+
+  it('dismisses the restore notice without hiding the storage warning', async () => {
+    const release = activateReviewWorkspaceHelp('search')
+    setReviewWorkspaceNotices({ restoreNotice: 'Restored 1 unsaved decision.', storageError: 'Draft is not durable.' })
+    try {
+      const wrapper = mountHelp()
+      await wrapper.get('[data-testid="context-help-restore-dismiss"]').trigger('click')
+
+      expect(wrapper.find('[data-testid="context-help-restore-notice"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="context-help-storage-warning"]').exists()).toBe(true)
+    } finally {
+      clearReviewWorkspaceNotices()
       release()
     }
   })
