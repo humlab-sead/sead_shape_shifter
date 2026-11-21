@@ -18,6 +18,29 @@
       <v-card-text>
         <p>{{ reconciliationHelp.description }}</p>
 
+        <v-alert
+          v-if="workspaceTopic"
+          type="info"
+          variant="tonal"
+          class="mt-4"
+          data-testid="reconciliation-help-workspace"
+        >
+          <div class="text-subtitle-2 font-weight-bold mb-1">{{ workspaceTopic.title }}</div>
+          <p class="mb-2">{{ workspaceTopic.description }}</p>
+          <div v-for="group in workspaceTopic.groups" :key="group.title" class="mb-2">
+            <div class="font-weight-medium">{{ group.title }}</div>
+            <ul class="workspace-help-list">
+              <li v-for="tip in group.tips" :key="tip">{{ tip }}</li>
+            </ul>
+          </div>
+          <div v-if="workspaceTopic.shortcuts?.length">
+            <div class="font-weight-medium">Shortcuts</div>
+            <div v-for="shortcut in workspaceTopic.shortcuts" :key="shortcut.keys" class="text-body-2">
+              <strong>{{ shortcut.keys }}</strong> — {{ shortcut.action }}
+            </div>
+          </div>
+        </v-alert>
+
         <h3 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Quick workflow</h3>
         <ol class="workflow-list">
           <li v-for="step in reconciliationHelp.workflow" :key="step.label">
@@ -88,13 +111,20 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { reconciliationHelp } from './reconciliationHelp'
+import { reconciliationWorkspaceTopic } from '@/help/helpRegistry'
+import type { SelectionMode } from '@/types/reconciliation'
 
 interface Props {
   modelValue: boolean
+  /** When set, the dialog adds the review workspace topic for that mode. */
+  workspaceMode?: SelectionMode | null
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), { workspaceMode: null })
+
+const workspaceTopic = computed(() => (props.workspaceMode ? reconciliationWorkspaceTopic(props.workspaceMode) : null))
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
@@ -128,5 +158,10 @@ function close() {
 
 .help-item dd {
   margin-left: 0;
+}
+
+.workspace-help-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
 }
 </style>

@@ -68,8 +68,22 @@
         </v-card>
 
         <v-card variant="outlined" class="workspace-pane">
-          <v-card-title class="text-subtitle-1">
-            {{ activeEntry?.label || 'Select a row' }}
+          <v-card-title class="text-subtitle-1 d-flex align-center justify-space-between">
+            <span>{{ activeEntry?.label || 'Select a row' }}</span>
+            <v-tooltip location="bottom">
+              <template #activator="{ props: helpButtonProps }">
+                <v-btn
+                  v-bind="helpButtonProps"
+                  icon="mdi-help-circle-outline"
+                  variant="text"
+                  size="small"
+                  data-testid="workspace-open-help"
+                  aria-label="Open full help"
+                  @click="emit('help')"
+                />
+              </template>
+              Open full help
+            </v-tooltip>
           </v-card-title>
           <v-card-subtitle v-if="activeEntry" class="text-caption">
             {{ entityName }}.{{ targetField }} · key: {{ activeEntry.key ?? 'none' }} ·
@@ -500,6 +514,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   fallback: []
+  help: []
   saved: [result: DecisionBatchResult]
 }>()
 

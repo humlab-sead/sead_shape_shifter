@@ -275,6 +275,7 @@
                 :preview-rows="entityPreviewData"
                 :selection-descriptor="manifestResult?.status === 'valid' ? manifestResult.manifest.selection : null"
                 @fallback="reviewMode = false"
+                @help="reconciliationHelpDialog = true"
               />
 
               <!-- Reconciliation Grid -->
@@ -331,7 +332,7 @@
       </v-card-text>
     </v-card>
 
-    <ReconciliationHelpDialog v-model="reconciliationHelpDialog" />
+    <ReconciliationHelpDialog v-model="reconciliationHelpDialog" :workspace-mode="workspaceHelpMode" />
 
     <v-dialog v-model="manualLinkDialog" max-width="600">
       <v-card>
@@ -506,6 +507,7 @@ import type {
   ReconciliationPreviewRow,
 } from '@/types/reconciliation'
 import { getReconciliationCompatibility, parseReconciliationManifest } from '@/utils/reconciliationManifest'
+import { useReviewWorkspaceHelpState } from '@/composables/useReviewWorkspaceHelp'
 import yaml from 'js-yaml'
 
 interface Props {
@@ -630,6 +632,8 @@ const candidateSearchSummary = computed(() => {
   return `Candidate search: ${parts.join(', ')}.`
 })
 
+const { reviewWorkspaceHelpMode } = useReviewWorkspaceHelpState()
+
 /** The workspace needs a reviewable specification and loaded preview rows. */
 const reviewWorkspaceVisible = computed(
   () =>
@@ -642,6 +646,9 @@ const reviewWorkspaceVisible = computed(
 )
 
 const workspaceKey = computed(() => JSON.stringify([props.projectName, selectedEntity.value, selectedTarget.value]))
+
+/** The dialog shows workspace guidance only while the workspace is on screen. */
+const workspaceHelpMode = computed(() => (reviewWorkspaceVisible.value ? reviewWorkspaceHelpMode.value : null))
 
 const previewError = computed(() => {
   if (!selectedEntity.value || !selectedTarget.value) return null
