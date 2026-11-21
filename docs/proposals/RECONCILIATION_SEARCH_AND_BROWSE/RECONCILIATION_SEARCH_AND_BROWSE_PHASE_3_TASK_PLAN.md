@@ -321,6 +321,16 @@ Used controlled projects `v6-isolation-a` and `v6-isolation-b`, with the same `f
 - **Passed, malformed ID:** Searching `id: abc` displayed `Enter 'id:' followed by a positive whole-number target ID, for example 'id: 42'.` instead of Axios's generic status message.
 - **Reused prior evidence:** The unchanged Search/Browse, composition, outage, cold-start, and Save/Export checks from the earlier V-6 browser rerun were not repeated. Saved-decision inspection inside the workspace remains deferred to R34 and is not a Phase 3 acceptance gate.
 
+### VM-9 Independent Corroboration (2026-11-20)
+
+The `V-6 Targeted Browser Follow-up` above already passed project isolation, superseding the earlier "Not verified" notes in the two preceding sections. This run adds independent evidence on the pinned pilot pair, and an automated guard so the behaviour cannot regress silently.
+
+- **Environment:** Shape Shifter `7340510f` and Authority Service `1f3f1b8`, both built from published refs and pinned by image tag; one shared snapshot database.
+- **Fixtures:** New controlled projects `vm9-alpha` and `vm9-beta`, each a `fixed` `feature_type` entity with the same target field `feature_type_name` and the same business key `vm9-shared`. Only the project name differs.
+- **Passed, live catalog isolation:** With `vm9-alpha` holding an accepted decision for `vm9-shared` to `feature_type/12`, `vm9-beta` reported no decision for the same key. Saving `vm9-shared` to `feature_type/576` in `vm9-beta` left `vm9-alpha` unchanged at `12`. Each project persisted and read back only its own decision.
+- **Passed, automated scope regression:** `ReconciliationWorkspace.test.ts` gained a cross-project case that stages a decision in one project, mounts a second project with identical entity, field, and keys, and asserts the second shows no draft, no restored notice, and no carried-over selection, then returns to the first and asserts its draft is restored. The check was mutation-tested: making the draft store ignore the project name fails it with `expected 'Save decisions (1)' to contain '0'`, and keying the scope without the project fails the scope assertion. Suite result: 23 tests in that file, 35 across it and the store test, and 102 across `src/components/reconciliation` plus the store test; `vue-tsc` and ESLint are clean.
+- **Limit:** This host has no browser available and Playwright does not support Ubuntu 26.04, so these runs are API- and component-level rather than browser-level. The browser-level project-isolation result remains the `V-6 Targeted Browser Follow-up` above, which this evidence corroborates rather than replaces.
+
 ## Definition Of Done
 
 - [x] Every `PH3-AC-*` criterion has passing task and validation evidence for `VM-7`–`VM-10`.
