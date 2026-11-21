@@ -77,9 +77,15 @@ const reconciliationStore = reactive({
   saveDecisionBatch: vi.fn(),
   getDecisionBatchIssues: vi.fn((): DecisionBatchIssue[] => []),
   loadWorkspaceDraft: vi.fn(
-    (): { status: WorkspaceDraftStatus; draft: WorkspaceDraft | null } => ({ status: 'empty', draft: null })
+    (
+      _projectName: string,
+      _entityName: string,
+      _targetField: string
+    ): { status: WorkspaceDraftStatus; draft: WorkspaceDraft | null } => ({ status: 'empty', draft: null })
   ),
-  saveWorkspaceDraft: vi.fn(() => true),
+  saveWorkspaceDraft: vi.fn(
+    (_projectName: string, _entityName: string, _targetField: string, _draft: WorkspaceDraft) => true
+  ),
   clearWorkspaceDraft: vi.fn(),
 })
 
@@ -140,6 +146,7 @@ interface MountOptions {
   rows?: ReconciliationPreviewRow[]
   descriptor?: { version: number; typesPath: string } | null
   attachTo?: Element
+  projectName?: string
 }
 
 /** Vuetify dialogs teleport to the document body, so read them from there. */
@@ -166,7 +173,7 @@ async function mountWorkspace(options: MountOptions = {}) {
     },
     ...(options.attachTo ? { attachTo: options.attachTo } : {}),
     props: {
-      projectName: 'project',
+      projectName: options.projectName ?? 'project',
       entityName: 'site',
       targetField: 'site_name',
       serviceType: 'feature_type',
@@ -750,5 +757,95 @@ describe('ReconciliationWorkspace', () => {
 
     expect(wrapper.text()).toContain('No business key')
     expect(wrapper.text()).toContain('key: K1')
+  })
+})
+
+/**
+ * VM-9 cross-project scope check.
+ *
+ * Two controlled projects share the same entity, target field, and business
+ * key, so only the project name differs. A draft staged in one project must not
+ * appear in the other, and returning to the first project must restore its own
+ * draft. The draft store below applies the same scope rule the real store uses,
+ * so the assertion covers the component's forwarding of `projectName`.
+ */
+describe('ReconciliationWorkspace cross-project scope (VM-9)', () => {
+  const scopes = new Map<string, WorkspaceDraft>()
+  const scopeId = (projectName: string, entityName: string, targetField: string) =>
+    JSON.stringify([projectName, entityName, targetField])
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    scopes.clear()
+    document.querySelectorAll('.v-overlay-container').forEach((element) => element.remove())
+    reconciliationStore.loadSelectionCapabilities.mockImplementation(async () => capabilities)
+    reconciliationStore.searchSelection.mockImplementation(async () => ({
+      mode: 'ranked' as const,
+      items: [record(101, 'Bronze Age')],
+    }))
+    reconciliationStore.browseSelection.mockImplementation(async () => ({
+      items: [],
+      completeness: 'complete' as const,
+    }))
+    reconciliationStore.fetchSavedDecisionStates.mockImplementation(async () => ({}))
+    reconciliationStore.changedDecisionKeys.mockImplementation(() => [])
+    reconciliationStore.getDecisionBatchIssues.mockImplementation(() => [])
+    reconciliationStore.saveWorkspaceDraft.mockImplementation(
+      (projectName: string, entityName: string, targetField: string, draft: WorkspaceDraft) => {
+        scopes.set(scopeId(projectName, entityName, targetField), draft)
+        return true
+      }
+    )
+    reconciliationStore.loadWorkspaceDraft.mockImplementation(
+      (projectName: string, entityName: string, targetField: string) => {
+        const draft = scopes.get(scopeId(projectName, entityName, targetField))
+        return draft ? { status: 'restored' as const, draft } : { status: 'empty' as const, draft: null }
+      }
+    )
+  })
+
+  /** Stage one decision for key K1 in the workspace mounted for `projectName`. */
+  async function stageDecisionIn(projectName: string) {
+    const wrapper = await mountWorkspace({ rows: previewRows(3), projectName })
+    await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
+    await searchAndSelect(wrapper)
+    const input = wrapper.find('[data-testid="workspace-search-input"] input')
+    await input.trigger('keydown', { key: 'Enter', altKey: true })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="workspace-save"]').text()).toContain('1')
+    return wrapper
+  }
+
+  it('never lets one project inherit another project draft or selection', async () => {
+    const alpha = await stageDecisionIn('vm9-alpha')
+    try {
+      // The draft was persisted under the alpha scope only.
+      expect(scopes.size).toBe(1)
+      expect([...scopes.keys()]).toEqual([JSON.stringify(['vm9-alpha', 'site', 'site_name'])])
+
+      // Opening the same entity, field, and keys under another project starts empty.
+      const beta = await mountWorkspace({ rows: previewRows(3), projectName: 'vm9-beta' })
+      try {
+        expect(reconciliationStore.loadWorkspaceDraft).toHaveBeenCalledWith('vm9-beta', 'site', 'site_name')
+        expect(beta.find('[data-testid="workspace-save"]').text()).toContain('0')
+        expect(beta.text()).not.toContain('Restored 1 unsaved decision')
+        expect(beta.text()).not.toContain('Bronze Age')
+      } finally {
+        beta.unmount()
+      }
+
+      // Returning to the first project restores its own draft.
+      const alphaAgain = await mountWorkspace({ rows: previewRows(3), projectName: 'vm9-alpha' })
+      try {
+        expect(alphaAgain.text()).toContain('Restored 1 unsaved decision')
+        expect(alphaAgain.find('[data-testid="workspace-save"]').text()).toContain('1')
+        // A restored draft never reinstates the target selection or result list.
+        expect(alphaAgain.text()).not.toContain('Bronze Age')
+      } finally {
+        alphaAgain.unmount()
+      }
+    } finally {
+      alpha.unmount()
+    }
   })
 })
