@@ -1,6 +1,6 @@
 <template>
   <ag-grid-vue
-    class="ag-theme-material selection-browse-grid"
+    :class="['selection-browse-grid', themeClass]"
     :columnDefs="columnDefs"
     :rowData="items"
     :defaultColDef="defaultColDef"
@@ -18,6 +18,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useTheme } from 'vuetify'
 import { AgGridVue } from 'ag-grid-vue3'
 import type { ColDef, GridApi, GridReadyEvent, RowClassParams, RowClickedEvent } from 'ag-grid-community'
 import type { SelectionDisplayField, SelectionRecord } from '@/types/reconciliation'
@@ -45,6 +46,17 @@ const ROW_HEIGHT = 32
 const SELECTED_ROW_CLASS = 'selection-row-selected'
 
 const gridApi = ref<GridApi<SelectionRecord> | null>(null)
+
+/**
+ * Follow the active application theme.
+ *
+ * ag-Grid ships both material variants in one stylesheet, so switching the
+ * class is enough. The auto-dark variant is not used because it follows the
+ * operating system rather than the theme toggle stored by the application.
+ */
+const theme = useTheme()
+const isDark = computed(() => theme.global.current.value.dark)
+const themeClass = computed(() => (isDark.value ? 'ag-theme-material-dark' : 'ag-theme-material'))
 
 /** Numeric IDs stay narrow so the text columns get the remaining width. */
 function sizingFor(field: string): ColDef<SelectionRecord> {
@@ -112,6 +124,7 @@ watch(
 }
 
 :deep(.selection-browse-grid .ag-row.selection-row-selected) {
-  background-color: #e3f2fd;
+  /* Derived from the theme so the highlight stays readable in both modes. */
+  background-color: rgba(var(--v-theme-primary), 0.16);
 }
 </style>
