@@ -285,6 +285,15 @@ describe('ReconciliationWorkspace', () => {
     expect(wrapper.find('[data-testid="workspace-mode-unavailable"]').exists()).toBe(false)
   })
 
+  it('requests the full help view from the pane header', async () => {
+    const wrapper = await mountWorkspace()
+    await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
+    await nextTick()
+
+    await wrapper.get('[data-testid="workspace-open-help"]').trigger('click')
+    expect(wrapper.emitted('help')).toHaveLength(1)
+  })
+
   it('stages, skips, and moves rows with labelled controls and modified shortcuts', async () => {
     const wrapper = await mountWorkspace({ rows: previewRows(3) })
 

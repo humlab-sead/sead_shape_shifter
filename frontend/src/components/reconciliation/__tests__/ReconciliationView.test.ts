@@ -135,7 +135,10 @@ async function mountView() {
         ReconciliationWorkspace: {
           props: ['previewRows', 'selectionDescriptor', 'serviceType'],
           template:
-            '<div data-testid="workspace-stub"><button data-testid="workspace-stub-fallback" @click="$emit(\'fallback\')">Fallback</button></div>',
+            '<div data-testid="workspace-stub">' +
+            '<button data-testid="workspace-stub-fallback" @click="$emit(\'fallback\')">Fallback</button>' +
+            '<button data-testid="workspace-stub-help" @click="$emit(\'help\')">Help</button>' +
+            '</div>',
         },
         YamlEditor: {
           props: ['mode'],
@@ -736,6 +739,25 @@ describe('ReconciliationView', () => {
 
     expect(wrapper.find('[data-testid="workspace-stub"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="open-remove-saved-entry"]').exists()).toBe(true)
+  })
+
+  it('opens the full help dialog with workspace guidance from the workspace', async () => {
+    reconciliationStore.previewData = {
+      test_project: {
+        site: { site_code: [{ local_key_value: 'A', site_code: 'Same', status: null, errors: [] }] },
+      },
+    }
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-review"]').trigger('click')
+    await nextTick()
+
+    await wrapper.get('[data-testid="workspace-stub-help"]').trigger('click')
+    await nextTick()
+
+    const workspaceHelp = wrapper.get('[data-testid="reconciliation-help-workspace"]')
+    expect(workspaceHelp.text()).toContain('Review workspace')
+    expect(workspaceHelp.text()).toContain('Saving and export')
   })
 
   it('offers export guidance next to the export button without a persistent alert', async () => {
