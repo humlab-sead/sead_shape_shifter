@@ -129,7 +129,13 @@ async function mountView() {
         },
         SpecificationsList: {
           template:
-            "<button data-testid=\"open-reconcile\" @click=\"$emit('reconcile', 'site', 'site_code')\">Open</button>",
+            "<div><button data-testid=\"open-reconcile\" @click=\"$emit('reconcile', 'site', 'site_code')\">Open</button>" +
+            "<button data-testid=\"open-review\" @click=\"$emit('review', 'site', 'site_code')\">Review</button></div>",
+        },
+        ReconciliationWorkspace: {
+          props: ['previewRows', 'selectionDescriptor', 'serviceType'],
+          template:
+            '<div data-testid="workspace-stub"><button data-testid="workspace-stub-fallback" @click="$emit(\'fallback\')">Fallback</button></div>',
         },
         YamlEditor: {
           props: ['mode'],
@@ -673,5 +679,53 @@ describe('ReconciliationView', () => {
 
     expect(wrapper.find('[data-testid="preview-loading"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('No Preview Rows')
+  })
+
+  it('opens the review workspace without running Find Candidates', async () => {
+    reconciliationStore.previewData = {
+      test_project: {
+        site: { site_code: [{ local_key_value: 'A', site_code: 'Same', status: null, errors: [] }] },
+      },
+    }
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-review"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="workspace-stub"]').exists()).toBe(true)
+    expect(reconciliationStore.autoReconcile).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="find-candidates-button"]').exists()).toBe(true)
+  })
+
+  it('returns to the review grid when the workspace falls back', async () => {
+    reconciliationStore.previewData = {
+      test_project: {
+        site: { site_code: [{ local_key_value: 'A', site_code: 'Same', status: null, errors: [] }] },
+      },
+    }
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-review"]').trigger('click')
+    await nextTick()
+    expect(wrapper.find('[data-testid="workspace-stub"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="workspace-stub-fallback"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="workspace-stub"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="open-remove-saved-entry"]').exists()).toBe(true)
+  })
+
+  it('states that accepted exports are verified and saving is separate from exporting', async () => {
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+
+    const guidance = wrapper.get('[data-testid="reconciliation-export-info"]').text()
+    expect(guidance).toContain('Accepted links are written only after that check succeeds')
+    expect(guidance).toContain('Saving a decision does not export a link')
+    expect(guidance).not.toContain('remain unverified until you export again')
+    expect(wrapper.find('[data-testid="export-to-mapping-button"]').exists()).toBe(true)
   })
 })
