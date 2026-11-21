@@ -116,27 +116,43 @@
                 </div>
               </div>
 
-              <v-btn-toggle
-                v-model="mode"
-                mandatory
-                density="compact"
-                class="mb-4"
-                data-testid="workspace-mode-toggle"
-                @update:model-value="onModeChange"
-              >
-                <v-btn
-                  value="search"
-                  size="small"
-                  :disabled="!capabilities?.type.search_supported && !capabilities?.type.identifier_search_supported"
+              <div class="d-flex align-center mb-4">
+                <v-btn-toggle
+                  v-model="mode"
+                  mandatory
+                  density="compact"
+                  data-testid="workspace-mode-toggle"
+                  @update:model-value="onModeChange"
                 >
-                  <v-icon start size="small">mdi-magnify</v-icon>
-                  Search
-                </v-btn>
-                <v-btn value="browse" size="small" :disabled="!capabilities?.type.browse_supported">
-                  <v-icon start size="small">mdi-format-list-bulleted</v-icon>
-                  Browse
-                </v-btn>
-              </v-btn-toggle>
+                  <v-btn
+                    value="search"
+                    size="small"
+                    :disabled="!capabilities?.type.search_supported && !capabilities?.type.identifier_search_supported"
+                  >
+                    <v-icon start size="small">mdi-magnify</v-icon>
+                    Search
+                  </v-btn>
+                  <v-btn value="browse" size="small" :disabled="!capabilities?.type.browse_supported">
+                    <v-icon start size="small">mdi-format-list-bulleted</v-icon>
+                    Browse
+                  </v-btn>
+                </v-btn-toggle>
+                <v-tooltip location="top" max-width="320">
+                  <template #activator="{ props: helpProps }">
+                    <v-btn
+                      v-bind="helpProps"
+                      icon="mdi-lightbulb-on-outline"
+                      variant="text"
+                      size="small"
+                      class="ml-2"
+                      data-testid="workspace-mode-help"
+                      :aria-label="`${activeModeHelp.label} help`"
+                    />
+                  </template>
+                  <div class="font-weight-bold mb-1">{{ activeModeHelp.label }}</div>
+                  <div v-for="tip in activeModeHelp.tips" :key="tip" class="mb-1">• {{ tip }}</div>
+                </v-tooltip>
+              </div>
 
               <div v-if="mode === 'search'">
                 <v-text-field
@@ -151,9 +167,6 @@
                   @compositionstart="composing = true"
                   @compositionend="composing = false"
                 />
-                <div class="text-caption mt-1">
-                  Enter searches immediately. Ranked results are limited suggestions, not proof of absence.
-                </div>
 
                 <v-alert
                   v-if="searchState === 'loading'"
@@ -345,9 +358,20 @@
                 >
                   Stage selected &amp; next
                 </v-btn>
-                <v-btn data-testid="workspace-stage-new" variant="tonal" color="secondary" @click="stageNew">
-                  Stage New &amp; next
-                </v-btn>
+                <v-tooltip location="top" max-width="280">
+                  <template #activator="{ props: newProps }">
+                    <v-btn
+                      v-bind="newProps"
+                      data-testid="workspace-stage-new"
+                      variant="tonal"
+                      color="secondary"
+                      @click="stageNew"
+                    >
+                      Stage New &amp; next
+                    </v-btn>
+                  </template>
+                  New approves later new-record handling; it does not create a record.
+                </v-tooltip>
                 <v-btn data-testid="workspace-skip" variant="text" @click="skipRow">Skip for now</v-btn>
                 <v-btn
                   data-testid="workspace-clear-draft"
@@ -357,10 +381,6 @@
                 >
                   Clear staged decision
                 </v-btn>
-              </div>
-              <div class="text-caption mt-2">
-                Shortcuts: Alt+Enter stages, Alt+Right/Left moves, Alt+Down skips. New approves later new-record
-                handling; it does not create a record.
               </div>
             </template>
           </v-card-text>
@@ -449,8 +469,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useReconciliationStore } from '@/stores/reconciliation'
+import { activateReviewWorkspaceHelp, setReviewWorkspaceHelpMode } from '@/composables/useReviewWorkspaceHelp'
+import { reconciliationWorkspaceHelp } from './reconciliationHelp'
 import type {
   DecisionBatchIssue,
   DecisionBatchResult,
@@ -514,6 +536,8 @@ const draftStorageError = ref<string | null>(null)
 
 const activeKey = ref<string | null>(null)
 const mode = ref<SelectionMode>('search')
+const activeModeHelp = computed(() => reconciliationWorkspaceHelp.modes[mode.value])
+let releaseWorkspaceHelp: (() => void) | null = null
 const searchQuery = ref('')
 const searchState = ref<'idle' | 'loading' | 'ready' | 'empty' | 'invalid' | 'unsupported' | 'error'>('idle')
 const searchError = ref('')
@@ -1187,10 +1211,18 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 onMounted(async () => {
+  releaseWorkspaceHelp = activateReviewWorkspaceHelp(mode.value)
   loadedStates.value = reconciliationStore.decisionStatesFromPreview(props.previewRows)
   restoreDraft()
   await loadCapabilities()
 })
+
+onUnmounted(() => {
+  releaseWorkspaceHelp?.()
+  releaseWorkspaceHelp = null
+})
+
+watch(mode, (next) => setReviewWorkspaceHelpMode(next))
 
 watch(
   () => [props.projectName, props.entityName, props.targetField],

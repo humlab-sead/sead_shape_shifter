@@ -235,7 +235,7 @@ describe('ReconciliationView', () => {
     )
   })
 
-  it('allows dismissing the export guidance and candidate search summary', async () => {
+  it('allows dismissing the candidate search summary', async () => {
     reconciliationStore.autoReconcile = vi.fn().mockResolvedValue({
       proposed: 3,
       unmatched: 1,
@@ -247,10 +247,6 @@ describe('ReconciliationView', () => {
 
     await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
     await nextTick()
-
-    const exportGuidance = wrapper.get('[data-testid="reconciliation-export-info"]')
-    await exportGuidance.get('button').trigger('click')
-    expect(wrapper.find('[data-testid="reconciliation-export-info"]').exists()).toBe(false)
 
     await wrapper.get('[data-testid="find-candidates-button"]').trigger('click')
     await flushPromises()
@@ -716,16 +712,14 @@ describe('ReconciliationView', () => {
     expect(wrapper.find('[data-testid="open-remove-saved-entry"]').exists()).toBe(true)
   })
 
-  it('states that accepted exports are verified and saving is separate from exporting', async () => {
+  it('offers export guidance next to the export button without a persistent alert', async () => {
     const wrapper = await mountView()
 
     await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
     await nextTick()
 
-    const guidance = wrapper.get('[data-testid="reconciliation-export-info"]').text()
-    expect(guidance).toContain('Accepted links are written only after that check succeeds')
-    expect(guidance).toContain('Saving a decision does not export a link')
-    expect(guidance).not.toContain('remain unverified until you export again')
+    expect(wrapper.find('[data-testid="reconciliation-export-info"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="export-help"]').attributes('aria-label')).toBe('Export guidance')
     expect(wrapper.find('[data-testid="export-to-mapping-button"]').exists()).toBe(true)
   })
 })
