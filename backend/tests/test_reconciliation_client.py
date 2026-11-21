@@ -22,6 +22,12 @@ from backend.app.clients.reconciliation_client import (
     CandidateVerificationUnavailableError,
     ReconciliationClient,
     ReconciliationQuery,
+    RecordSelectionInvalidRequestError,
+    RecordSelectionNotFoundError,
+    RecordSelectionProtocolError,
+    RecordSelectionTooLargeError,
+    RecordSelectionUnavailableError,
+    RecordSelectionUnsupportedError,
 )
 from backend.app.models.reconciliation import (
     CandidateVerificationRequestItem,
@@ -785,3 +791,271 @@ class TestReconciliationClientServiceManifest:
         cached_get_client.assert_not_awaited()
         other_http_client.get.assert_awaited_once_with("http://other-service/reconcile")
         refreshed_http_client.get.assert_awaited_once_with("http://first-service/reconcile")
+
+
+class TestRecordSelectionClient:
+    """Tests for the Authority Service record-selection transport."""
+
+    @pytest.fixture(autouse=True)
+    def clear_selection_cache(self, monkeypatch):
+        monkeypatch.setattr(reconciliation_client_module, "_RECORD_SELECTION_CACHE", {})
+
+    @staticmethod
+    def _descriptor(**overrides):
+        payload = {
+            "type": "feature_type",
+            "search_supported": True,
+            "identifier_search_supported": True,
+            "browse_supported": True,
+            "details_supported": True,
+            "export_verification_supported": False,
+            "id_base": "https://w3id.org/sead/id/",
+            "id_path": "feature_type",
+            "browse_max_rows": 500,
+            "browse_max_bytes": 1048576,
+            "interactive_search_max_results": 25,
+            "display_fields": [{"name": "name", "source": "record", "label": "Name", "value_type": "string", "display": True}],
+            "text_filter_fields": ["name"],
+            "sort_fields": ["name", "target_id"],
+            "field_filters": [{"field": "name", "operator": "contains_ci"}],
+        }
+        payload.update(overrides)
+        return payload
+
+    @staticmethod
+    def _manifest(extension=None, types_path="/records/types"):
+        payload = {
+            "defaultTypes": [{"id": "feature_type", "name": "Feature type"}],
+            "reconciliation": {"supportedTypes": ["feature_type"]},
+            "extend": {"property_settings": []},
+        }
+        if extension is not None:
+            payload["reconciliation"]["record_selection"] = extension
+        elif types_path is not None:
+            payload["reconciliation"]["record_selection"] = {"version": 1, "types_path": types_path}
+        return payload
+
+    @staticmethod
+    def _response(payload, status_code=200):
+        response = MagicMock()
+        response.status_code = status_code
+        response.json = MagicMock(return_value=payload)
+        response.raise_for_status = MagicMock()
+        return response
+
+    def _client(self, manifest, responses):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        http_client = AsyncMock()
+        http_client.get.side_effect = [self._response(manifest), *responses]
+        return client, http_client
+
+    @pytest.mark.asyncio
+    async def test_capabilities_are_parsed_from_the_versioned_extension(self):
+        client, http_client = self._client(self._manifest(), [self._response({"types": [self._descriptor()]})])
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            version, descriptors = await client.get_record_selection_capabilities(fresh=True)
+
+        assert version == 1
+        assert [descriptor.type for descriptor in descriptors] == ["feature_type"]
+        assert descriptors[0].interactive_search_max_results == 25
+        assert http_client.get.call_args_list[1][0][0] == f"{RECONCILIATION_SERVICE_URL}/records/types"
+
+    @pytest.mark.asyncio
+    async def test_missing_extension_is_a_protocol_error(self):
+        client, http_client = self._client(self._manifest(extension=None, types_path=None), [])
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            with pytest.raises(RecordSelectionProtocolError):
+                await client.get_record_selection_capabilities(fresh=True)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "types_path",
+        [
+            "http://elsewhere.example/records/types",
+            "//elsewhere.example/records/types",
+            "records/types",
+            "/records/../types",
+            "/records/types?x=1",
+        ],
+    )
+    async def test_cross_origin_or_malformed_types_paths_are_rejected(self, types_path):
+        client, http_client = self._client(self._manifest(types_path=types_path), [])
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            with pytest.raises(RecordSelectionProtocolError):
+                await client.get_record_selection_capabilities(fresh=True)
+
+        assert len(http_client.get.call_args_list) == 1
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("case", ["missing_types", "types_not_a_list", "invalid_descriptor", "duplicate_type"])
+    async def test_malformed_capability_payloads_are_protocol_errors(self, case):
+        payloads = {
+            "missing_types": {},
+            "types_not_a_list": {"types": "not-a-list"},
+            "invalid_descriptor": {"types": [{"type": "feature_type"}]},
+            "duplicate_type": {"types": [self._descriptor(), self._descriptor()]},
+        }
+        client, http_client = self._client(self._manifest(), [self._response(payloads[case])])
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            with pytest.raises(RecordSelectionProtocolError):
+                await client.get_record_selection_capabilities(fresh=True)
+
+    @pytest.mark.asyncio
+    async def test_capabilities_cache_can_be_bypassed(self):
+        first = self._response({"types": [self._descriptor()]})
+        second = self._response({"types": [self._descriptor(search_supported=False)]})
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        http_client = AsyncMock()
+        http_client.get.side_effect = [self._response(self._manifest()), first, self._response(self._manifest()), second]
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            await client.get_record_selection_capabilities(fresh=True)
+            _, cached = await client.get_record_selection_capabilities()
+            _, refreshed = await client.get_record_selection_capabilities(fresh=True)
+
+        assert cached[0].search_supported is True
+        assert refreshed[0].search_supported is False
+
+    @pytest.mark.asyncio
+    async def test_interactive_search_marks_the_request_and_returns_candidates(self):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        http_client = AsyncMock()
+        http_client.post.return_value = self._response(
+            {"q0": {"result": [{"id": "https://w3id.org/sead/id/feature_type/7", "name": "Bronze Age", "score": 91.0}]}}
+        )
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            candidates = await client.search_records("feature_type", "bronze", 5, {"period": "Bronze Age"})
+
+        assert [candidate.id for candidate in candidates] == ["https://w3id.org/sead/id/feature_type/7"]
+        call = http_client.post.call_args
+        assert call.args[0] == f"{RECONCILIATION_SERVICE_URL}/reconcile"
+        assert call.kwargs["headers"] == {"X-Record-Selection": "interactive"}
+        assert call.kwargs["json"] == {
+            "queries": {
+                "q0": {
+                    "query": "bronze",
+                    "type": "feature_type",
+                    "limit": 5,
+                    "properties": [{"pid": "period", "v": "Bronze Age"}],
+                }
+            }
+        }
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("status_code", "payload", "error_class"),
+        [
+            (422, {"error": {"code": "unsupported_capability", "message": "disabled"}}, RecordSelectionUnsupportedError),
+            (422, {"error": {"code": "invalid_request", "message": "bad"}}, RecordSelectionInvalidRequestError),
+            (409, {"error": {"code": "too_large_to_browse", "message": "too large"}}, RecordSelectionTooLargeError),
+            (503, {"error": {"code": "database_unavailable", "message": "down"}}, RecordSelectionUnavailableError),
+        ],
+    )
+    async def test_search_errors_keep_their_distinct_meanings(self, status_code, payload, error_class):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        http_client = AsyncMock()
+        http_client.post.return_value = self._response(payload, status_code)
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            with pytest.raises(error_class):
+                await client.search_records("feature_type", "bronze", 5)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("payload", [{}, {"q1": {"result": []}}, {"q0": {"result": "no"}}, {"q0": {"result": [{"name": "x"}]}}])
+    async def test_malformed_search_payloads_are_protocol_errors(self, payload):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        http_client = AsyncMock()
+        http_client.post.return_value = self._response(payload)
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            with pytest.raises(RecordSelectionProtocolError):
+                await client.search_records("feature_type", "bronze", 5)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("failure", [httpx.ConnectError("refused"), httpx.TimeoutException("timeout")])
+    async def test_search_connection_failures_are_unavailable(self, failure):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        http_client = AsyncMock()
+        http_client.post.side_effect = failure
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            with pytest.raises(RecordSelectionUnavailableError):
+                await client.search_records("feature_type", "bronze", 5)
+
+    @pytest.mark.asyncio
+    async def test_details_returns_one_typed_record(self):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        http_client = AsyncMock()
+        http_client.get.return_value = self._response(
+            {
+                "item": {
+                    "id": "https://w3id.org/sead/id/feature_type/42",
+                    "target_id": 42,
+                    "type": "feature_type",
+                    "name": "Exact",
+                    "fields": {},
+                }
+            }
+        )
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            record = await client.get_record_details("feature_type", 42)
+
+        assert record.target_id == 42
+        assert http_client.get.call_args.args[0] == f"{RECONCILIATION_SERVICE_URL}/records/feature_type/details"
+        assert http_client.get.call_args.kwargs["params"] == {"target_id": "42"}
+
+    @pytest.mark.asyncio
+    async def test_details_not_found_is_distinct_from_a_failure(self):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        http_client = AsyncMock()
+        http_client.get.return_value = self._response({"error": {"code": "record_not_found", "message": "No record exists"}}, 404)
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            with pytest.raises(RecordSelectionNotFoundError):
+                await client.get_record_details("feature_type", 99)
+
+    @pytest.mark.asyncio
+    async def test_complete_list_is_accepted(self):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        http_client = AsyncMock()
+        http_client.get.return_value = self._response(
+            {
+                "items": [
+                    {"id": "https://w3id.org/sead/id/feature_type/1", "target_id": 1, "type": "feature_type", "name": "A", "fields": {}}
+                ],
+                "completeness": "complete",
+            }
+        )
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            records, completeness = await client.list_records("feature_type")
+
+        assert [record.target_id for record in records] == [1]
+        assert completeness == "complete"
+
+    @pytest.mark.asyncio
+    async def test_too_large_list_raises_without_partial_items(self):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        http_client = AsyncMock()
+        http_client.get.return_value = self._response({"error": {"code": "too_large_to_browse", "message": "too large"}}, 409)
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            with pytest.raises(RecordSelectionTooLargeError):
+                await client.list_records("feature_type")
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("payload", [{"items": []}, {"items": [], "completeness": "partial"}, {"items": "no"}])
+    async def test_incomplete_or_malformed_lists_are_protocol_errors(self, payload):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        http_client = AsyncMock()
+        http_client.get.return_value = self._response(payload)
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            with pytest.raises(RecordSelectionProtocolError):
+                await client.list_records("feature_type")
