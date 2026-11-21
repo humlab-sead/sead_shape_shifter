@@ -16,6 +16,7 @@ import type {
 } from '@/types/reconciliation'
 
 import ReconciliationWorkspace from '../ReconciliationWorkspace.vue'
+import { clearReviewWorkspaceNotices, useReviewWorkspaceHelpState } from '@/composables/useReviewWorkspaceHelp'
 
 vi.mock('pinia', async () => {
   const actual = await vi.importActual<typeof import('pinia')>('pinia')
@@ -197,8 +198,11 @@ async function searchAndSelect(wrapper: Awaited<ReturnType<typeof mountWorkspace
 }
 
 describe('ReconciliationWorkspace', () => {
+  const workspaceHelp = useReviewWorkspaceHelpState()
+
   beforeEach(() => {
     vi.clearAllMocks()
+    clearReviewWorkspaceNotices()
     document.querySelectorAll('.v-overlay-container').forEach((element) => element.remove())
     reconciliationStore.loadSelectionCapabilities.mockImplementation(async () => capabilities)
     reconciliationStore.searchSelection.mockImplementation(async () => ({
@@ -700,7 +704,7 @@ describe('ReconciliationWorkspace', () => {
     reconciliationStore.loadWorkspaceDraft.mockImplementation(() => ({ status: 'restored' as const, draft: restored }))
     const wrapper = await mountWorkspace({ rows: previewRows(3) })
 
-    expect(wrapper.find('[data-testid="workspace-restore-notice"]').exists()).toBe(true)
+    expect(workspaceHelp.reviewWorkspaceNotices.value.restoreNotice).toContain('Restored 1 unsaved')
     expect(wrapper.find('[data-testid="workspace-save"]').text()).toContain('1')
     expect(wrapper.text()).toContain('key: K2')
     expect(wrapper.find('[data-testid="workspace-search-results"]').exists()).toBe(false)
@@ -738,7 +742,7 @@ describe('ReconciliationWorkspace', () => {
     reconciliationStore.loadWorkspaceDraft.mockImplementation(() => ({ status: 'invalid' as const, draft: null }))
     const wrapper = await mountWorkspace({ rows: previewRows(2) })
 
-    expect(wrapper.find('[data-testid="workspace-restore-notice"]').text()).toContain('could not be read')
+    expect(workspaceHelp.reviewWorkspaceNotices.value.restoreNotice).toContain('could not be read')
     expect(wrapper.find('[data-testid="workspace-save"]').text()).toContain('0')
   })
 
@@ -749,7 +753,8 @@ describe('ReconciliationWorkspace', () => {
     await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
     await nextTick()
 
-    expect(wrapper.find('[data-testid="workspace-storage-warning"]').exists()).toBe(true)
+    expect(workspaceHelp.reviewWorkspaceNotices.value.storageError).toBeTruthy()
+    expect(wrapper.find('[data-testid="workspace-storage-warning"]').exists()).toBe(false)
   })
 
   it('falls back to the legacy grid when the service publishes no selection extension', async () => {
@@ -799,12 +804,14 @@ describe('ReconciliationWorkspace', () => {
  */
 describe('ReconciliationWorkspace cross-project scope (VM-9)', () => {
   const scopes = new Map<string, WorkspaceDraft>()
+  const workspaceHelp = useReviewWorkspaceHelpState()
   const scopeId = (projectName: string, entityName: string, targetField: string) =>
     JSON.stringify([projectName, entityName, targetField])
 
   beforeEach(() => {
     vi.clearAllMocks()
     scopes.clear()
+    clearReviewWorkspaceNotices()
     document.querySelectorAll('.v-overlay-container').forEach((element) => element.remove())
     reconciliationStore.loadSelectionCapabilities.mockImplementation(async () => capabilities)
     reconciliationStore.searchSelection.mockImplementation(async () => ({
@@ -856,7 +863,7 @@ describe('ReconciliationWorkspace cross-project scope (VM-9)', () => {
       try {
         expect(reconciliationStore.loadWorkspaceDraft).toHaveBeenCalledWith('vm9-beta', 'site', 'site_name')
         expect(beta.find('[data-testid="workspace-save"]').text()).toContain('0')
-        expect(beta.text()).not.toContain('Restored 1 unsaved decision')
+        expect(workspaceHelp.reviewWorkspaceNotices.value.restoreNotice).toBeNull()
         expect(beta.text()).not.toContain('Bronze Age')
       } finally {
         beta.unmount()
@@ -865,7 +872,7 @@ describe('ReconciliationWorkspace cross-project scope (VM-9)', () => {
       // Returning to the first project restores its own draft.
       const alphaAgain = await mountWorkspace({ rows: previewRows(3), projectName: 'vm9-alpha' })
       try {
-        expect(alphaAgain.text()).toContain('Restored 1 unsaved decision')
+        expect(workspaceHelp.reviewWorkspaceNotices.value.restoreNotice).toContain('Restored 1 unsaved decision')
         expect(alphaAgain.find('[data-testid="workspace-save"]').text()).toContain('1')
         // A restored draft never reinstates the target selection or result list.
         expect(alphaAgain.text()).not.toContain('Bronze Age')

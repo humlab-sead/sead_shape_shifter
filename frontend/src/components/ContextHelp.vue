@@ -19,6 +19,36 @@
               {{ helpContent.description }}
             </div>
 
+            <div
+              v-if="workspaceStatusVisible"
+              class="workspace-status mt-3"
+              data-testid="context-help-workspace-status"
+            >
+              <div class="text-caption font-weight-medium mb-1 text-medium-emphasis">Workspace status</div>
+              <div
+                v-if="reviewWorkspaceNotices.storageError"
+                class="help-notice help-notice--warning"
+                data-testid="context-help-storage-warning"
+              >
+                {{ reviewWorkspaceNotices.storageError }}
+              </div>
+              <div
+                v-if="reviewWorkspaceNotices.restoreNotice"
+                class="help-notice help-notice--info"
+                data-testid="context-help-restore-notice"
+              >
+                <span>{{ reviewWorkspaceNotices.restoreNotice }}</span>
+                <button
+                  type="button"
+                  class="help-notice-dismiss"
+                  data-testid="context-help-restore-dismiss"
+                  @click="dismissReviewWorkspaceRestoreNotice"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+
             <div v-if="helpContent.groups && helpContent.groups.length > 0" class="groups-section mt-3">
               <div v-for="group in helpContent.groups" :key="group.title" class="help-group">
                 <div class="text-caption font-weight-medium mb-1 text-medium-emphasis">{{ group.title }}</div>
@@ -78,7 +108,7 @@ import {
   reconciliationWorkspaceHelp,
   type ReconciliationHelpItem,
 } from './reconciliation/reconciliationHelp'
-import { useReviewWorkspaceHelpState } from '@/composables/useReviewWorkspaceHelp'
+import { dismissReviewWorkspaceRestoreNotice, useReviewWorkspaceHelpState } from '@/composables/useReviewWorkspaceHelp'
 import type { SelectionMode } from '@/types/reconciliation'
 
 interface HelpContent {
@@ -97,7 +127,14 @@ interface Props {
 defineProps<Props>()
 
 const route = useRoute()
-const { reviewWorkspaceHelpActive, reviewWorkspaceHelpMode } = useReviewWorkspaceHelpState()
+const { reviewWorkspaceHelpActive, reviewWorkspaceHelpMode, reviewWorkspaceNotices } = useReviewWorkspaceHelpState()
+
+/** Show the status block only while the workspace is open and has something to report. */
+const workspaceStatusVisible = computed(
+  () =>
+    reviewWorkspaceHelpActive.value &&
+    Boolean(reviewWorkspaceNotices.value.storageError || reviewWorkspaceNotices.value.restoreNotice)
+)
 
 /** Browser key that remembers whether the reviewer keeps the panel open. */
 const HELP_EXPANDED_STORAGE_KEY = 'shapeshifter.contextHelp.expanded'
@@ -301,6 +338,34 @@ const helpContent = computed(() => {
 
 .help-group + .help-group {
   margin-top: 0.75rem;
+}
+
+.help-notice {
+  margin-bottom: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.help-notice--info {
+  background: rgba(var(--v-theme-info), 0.12);
+}
+
+.help-notice--warning {
+  background: rgba(var(--v-theme-warning), 0.16);
+}
+
+.help-notice-dismiss {
+  display: block;
+  margin-top: 0.25rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: rgb(var(--v-theme-primary));
+  font-size: 0.6875rem;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .row-action-item {

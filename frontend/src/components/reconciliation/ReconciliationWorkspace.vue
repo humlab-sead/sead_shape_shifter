@@ -30,28 +30,6 @@
     </v-alert>
 
     <template v-else>
-      <v-alert
-        v-if="draftStorageError"
-        type="warning"
-        variant="tonal"
-        class="mb-4"
-        data-testid="workspace-storage-warning"
-      >
-        {{ draftStorageError }}
-      </v-alert>
-
-      <v-alert
-        v-if="restoreNotice"
-        type="info"
-        variant="tonal"
-        class="mb-4"
-        closable
-        data-testid="workspace-restore-notice"
-        @click:close="restoreNotice = null"
-      >
-        {{ restoreNotice }}
-      </v-alert>
-
       <div class="workspace-layout">
         <v-card variant="outlined" class="workspace-queue">
           <v-card-title class="text-subtitle-1 d-flex align-center justify-space-between">
@@ -479,7 +457,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useReconciliationStore } from '@/stores/reconciliation'
-import { activateReviewWorkspaceHelp, setReviewWorkspaceHelpMode } from '@/composables/useReviewWorkspaceHelp'
+import {
+  activateReviewWorkspaceHelp,
+  clearReviewWorkspaceNotices,
+  setReviewWorkspaceHelpMode,
+  setReviewWorkspaceNotices,
+} from '@/composables/useReviewWorkspaceHelp'
 import { reconciliationWorkspaceHelp } from './reconciliationHelp'
 import type {
   DecisionBatchIssue,
@@ -539,8 +522,6 @@ const composing = ref(false)
 const capabilities = ref<SelectionCapabilities | null>(null)
 const capabilityState = ref<'loading' | 'ready' | 'fallback'>('loading')
 const fallbackMessage = ref<string | null>(null)
-const restoreNotice = ref<string | null>(null)
-const draftStorageError = ref<string | null>(null)
 
 const activeKey = ref<string | null>(null)
 const mode = ref<SelectionMode>('search')
@@ -766,9 +747,11 @@ function persistDraft() {
     props.targetField,
     currentDraft()
   )
-  draftStorageError.value = stored
-    ? null
-    : 'This browser could not store the draft, so the staged decisions are not durable. Save them before reloading or leaving this page.'
+  setReviewWorkspaceNotices({
+    storageError: stored
+      ? null
+      : 'This browser could not store the draft, so the staged decisions are not durable. Save them before reloading or leaving this page.',
+  })
 }
 
 function restoreDraft() {
@@ -779,8 +762,10 @@ function restoreDraft() {
   )
 
   if (status === 'invalid') {
-    restoreNotice.value =
-      'The stored draft for this specification could not be read and was cleared. Nothing was reused from another specification.'
+    setReviewWorkspaceNotices({
+      restoreNotice:
+        'The stored draft for this specification could not be read and was cleared. Nothing was reused from another specification.',
+    })
     return
   }
   if (!draft) return
@@ -803,7 +788,9 @@ function restoreDraft() {
 
   const restoredCount = Object.values(restored).filter((row) => row.decision !== null).length
   if (restoredCount > 0) {
-    restoreNotice.value = `Restored ${restoredCount} unsaved ${restoredCount === 1 ? 'decision' : 'decisions'}. No target selection or result list was restored.`
+    setReviewWorkspaceNotices({
+      restoreNotice: `Restored ${restoredCount} unsaved ${restoredCount === 1 ? 'decision' : 'decisions'}. No target selection or result list was restored.`,
+    })
   }
 
   if (draft.focusedKey && reviewableQueue.value.some((entry) => entry.key === draft.focusedKey)) {
@@ -1239,12 +1226,14 @@ function handleKeydown(event: KeyboardEvent) {
 
 onMounted(async () => {
   releaseWorkspaceHelp = activateReviewWorkspaceHelp(mode.value)
+  clearReviewWorkspaceNotices()
   loadedStates.value = reconciliationStore.decisionStatesFromPreview(props.previewRows)
   restoreDraft()
   await loadCapabilities()
 })
 
 onUnmounted(() => {
+  clearReviewWorkspaceNotices()
   releaseWorkspaceHelp?.()
   releaseWorkspaceHelp = null
 })
@@ -1255,6 +1244,7 @@ watch(
   () => [props.projectName, props.entityName, props.targetField],
   () => {
     // A different specification is a different scope: drop in-memory state and reload.
+    clearReviewWorkspaceNotices()
     rowsByKey.value = {}
     loadedStates.value = reconciliationStore.decisionStatesFromPreview(props.previewRows)
     activeKey.value = null

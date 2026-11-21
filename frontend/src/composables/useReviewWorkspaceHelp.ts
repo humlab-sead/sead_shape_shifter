@@ -13,6 +13,27 @@ import type { SelectionMode } from '@/types/reconciliation'
 const activeCount = ref(0)
 const activeMode = ref<SelectionMode>('search')
 
+/** Sidebar status text that describes the workspace rather than a decision. */
+export interface ReviewWorkspaceNotices {
+  restoreNotice: string | null
+  storageError: string | null
+}
+
+const notices = ref<ReviewWorkspaceNotices>({ restoreNotice: null, storageError: null })
+
+/** Update one or more workspace notices shown in the sidebar help. */
+export function setReviewWorkspaceNotices(next: Partial<ReviewWorkspaceNotices>): void {
+  notices.value = { ...notices.value, ...next }
+}
+
+export function clearReviewWorkspaceNotices(): void {
+  notices.value = { restoreNotice: null, storageError: null }
+}
+
+export function dismissReviewWorkspaceRestoreNotice(): void {
+  notices.value = { ...notices.value, restoreNotice: null }
+}
+
 /**
  * Mark the review workspace as open and return a release function.
  *
@@ -39,5 +60,6 @@ export function useReviewWorkspaceHelpState() {
   return {
     reviewWorkspaceHelpActive: computed(() => activeCount.value > 0),
     reviewWorkspaceHelpMode: readonly(activeMode),
+    reviewWorkspaceNotices: readonly(notices),
   }
 }
