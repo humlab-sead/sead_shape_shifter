@@ -544,7 +544,7 @@ describe('ReconciliationView', () => {
     expect(wrapper.find('[data-testid="matching-result"]').exists()).toBe(false)
   })
 
-  it('reports candidate-search counts and row-specific matching errors', async () => {
+  it('summarizes candidate-search counts in one line and reveals row errors on demand', async () => {
     reconciliationStore.autoReconcile = vi.fn().mockResolvedValue({
       proposed: 1,
       unmatched: 2,
@@ -558,9 +558,35 @@ describe('ReconciliationView', () => {
     await wrapper.get('[data-testid="find-candidates-button"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.get('[data-testid="matching-result"]').text()).toContain('considered 4 rows')
-    expect(wrapper.get('[data-testid="matching-result"]').text()).toContain('found no candidates for 2 rows')
-    expect(wrapper.get('[data-testid="matching-result"]').text()).toContain('Row 3 (A): Missing required key')
+    const summary = wrapper.get('[data-testid="matching-result-summary"]').text()
+    expect(summary).toContain('4 rows considered')
+    expect(summary).toContain('1 proposal updated')
+    expect(summary).toContain('2 with no candidates')
+    expect(summary).toContain('1 row needs attention')
+    expect(wrapper.find('[data-testid="matching-result-details"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="matching-result-details-toggle"]').trigger('click')
+    expect(wrapper.get('[data-testid="matching-result-details"]').text()).toContain('Row 3 (A): Missing required key')
+  })
+
+  it('hides the details toggle when no row needs attention', async () => {
+    reconciliationStore.autoReconcile = vi.fn().mockResolvedValue({
+      proposed: 4,
+      unmatched: 0,
+      total: 4,
+      candidates: {},
+      errors: [],
+    })
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await wrapper.get('[data-testid="find-candidates-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="matching-result-summary"]').text()).toContain(
+      'Candidate search: 4 rows considered'
+    )
+    expect(wrapper.find('[data-testid="matching-result-details-toggle"]').exists()).toBe(false)
   })
 
   it('blocks saved mappings that the current manifest does not declare', async () => {

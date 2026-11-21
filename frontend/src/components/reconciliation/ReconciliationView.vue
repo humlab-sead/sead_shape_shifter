@@ -233,14 +233,29 @@
                 data-testid="matching-result"
                 type="success"
                 variant="tonal"
+                density="compact"
                 class="mb-4"
                 closable
                 @click:close="showCandidateSearchSummary = false"
               >
-                Candidate search considered {{ autoReconcileResult.total }} rows, updated
-                {{ autoReconcileResult.proposed }} proposed decisions, and found no candidates for
-                {{ autoReconcileResult.unmatched }} rows. {{ autoReconcileResult.errors.length }} rows need attention.
-                <ul v-if="autoReconcileResult.errors.length" class="mt-2">
+                <div class="d-flex align-center flex-wrap ga-2">
+                  <span data-testid="matching-result-summary">{{ candidateSearchSummary }}</span>
+                  <v-btn
+                    v-if="autoReconcileResult.errors.length"
+                    data-testid="matching-result-details-toggle"
+                    variant="text"
+                    size="x-small"
+                    :append-icon="showCandidateSearchDetails ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+                    @click="showCandidateSearchDetails = !showCandidateSearchDetails"
+                  >
+                    Details
+                  </v-btn>
+                </div>
+                <ul
+                  v-if="showCandidateSearchDetails && autoReconcileResult.errors.length"
+                  class="mt-2"
+                  data-testid="matching-result-details"
+                >
                   <li v-for="(rowError, index) in autoReconcileResult.errors" :key="`${rowError.row_index}-${index}`">
                     Row {{ rowError.row_index + 1
                     }}{{ rowError.local_key_value ? ` (${rowError.local_key_value})` : '' }}:
@@ -528,6 +543,7 @@ const availableEntityTypes = ref<number>(0)
 const autoReconcileResult = ref<AutoReconcileResult | null>(null)
 const autoReconcileError = ref<string | null>(null)
 const showCandidateSearchSummary = ref(false)
+const showCandidateSearchDetails = ref(false)
 const reconciliationHelpDialog = ref(false)
 const manualLinkDialog = ref(false)
 const manualLocalKeyValue = ref('')
@@ -597,6 +613,21 @@ watch(matchEligibility, (eligibility) => {
 const entityPreviewData = computed(() => {
   if (!selectedEntity.value || !selectedTarget.value) return []
   return previewData.value[props.projectName]?.[selectedEntity.value]?.[selectedTarget.value] || []
+})
+
+/** One-line candidate-search result; row errors stay behind the Details toggle. */
+const candidateSearchSummary = computed(() => {
+  const result = autoReconcileResult.value
+  if (!result) return ''
+  const parts = [
+    `${result.total} rows considered`,
+    `${result.proposed} ${result.proposed === 1 ? 'proposal' : 'proposals'} updated`,
+    `${result.unmatched} with no candidates`,
+  ]
+  if (result.errors.length) {
+    parts.push(`${result.errors.length} ${result.errors.length === 1 ? 'row needs' : 'rows need'} attention`)
+  }
+  return `Candidate search: ${parts.join(', ')}.`
 })
 
 /** The workspace needs a reviewable specification and loaded preview rows. */
@@ -688,6 +719,7 @@ async function handleAutoReconcile() {
   autoReconcileError.value = null
   autoReconcileResult.value = null
   showCandidateSearchSummary.value = false
+  showCandidateSearchDetails.value = false
   if (!matchEligibility.value.canMatch) {
     autoReconcileError.value = matchEligibility.value.message ?? 'Reconciliation compatibility could not be verified.'
     return
