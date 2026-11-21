@@ -109,26 +109,31 @@
               </div>
 
               <div class="d-flex align-center mb-4">
-                <v-btn-toggle
+                <v-tabs
                   v-model="mode"
-                  mandatory
                   density="compact"
+                  bg-color="transparent"
+                  class="workspace-mode-tabs"
                   data-testid="workspace-mode-toggle"
                   @update:model-value="onModeChange"
                 >
-                  <v-btn
+                  <v-tab
                     value="search"
-                    size="small"
+                    data-testid="workspace-mode-search"
                     :disabled="!capabilities?.type.search_supported && !capabilities?.type.identifier_search_supported"
                   >
                     <v-icon start size="small">mdi-magnify</v-icon>
                     Search
-                  </v-btn>
-                  <v-btn value="browse" size="small" :disabled="!capabilities?.type.browse_supported">
+                  </v-tab>
+                  <v-tab
+                    value="browse"
+                    data-testid="workspace-mode-browse"
+                    :disabled="!capabilities?.type.browse_supported"
+                  >
                     <v-icon start size="small">mdi-format-list-bulleted</v-icon>
                     Browse
-                  </v-btn>
-                </v-btn-toggle>
+                  </v-tab>
+                </v-tabs>
                 <v-tooltip location="top" max-width="320">
                   <template #activator="{ props: helpProps }">
                     <v-btn
@@ -1284,6 +1289,12 @@ watch(
 .workspace-queue-list {
   max-height: 520px;
   overflow-y: auto;
+}
+
+/* Keep the mode tabs compact instead of stretching across the pane. */
+.workspace-mode-tabs {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 @media (max-width: 960px) {

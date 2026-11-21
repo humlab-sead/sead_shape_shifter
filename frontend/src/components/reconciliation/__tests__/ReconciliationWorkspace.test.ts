@@ -480,8 +480,8 @@ describe('ReconciliationWorkspace', () => {
     const wrapper = await mountWorkspace({ rows: previewRows(2) })
     await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
 
-    const browseButton = wrapper.findAll('button').find((button) => button.text() === 'Browse')
-    await browseButton?.trigger('click')
+    const browseButton = wrapper.find('[data-testid="workspace-mode-browse"]')
+    await browseButton.trigger('click')
     await flushPromises()
 
     expect(reconciliationStore.browseSelection).toHaveBeenCalledTimes(1)
@@ -514,21 +514,14 @@ describe('ReconciliationWorkspace', () => {
     const wrapper = await mountWorkspace({ rows: previewRows(2) })
     await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
 
-    const modeButtons = wrapper.find('[data-testid="workspace-mode-toggle"]')
-    await modeButtons
-      .findAll('button')
-      .find((button) => button.text() === 'Browse')
-      ?.trigger('click')
+    await wrapper.find('[data-testid="workspace-mode-browse"]').trigger('click')
     await flushPromises()
 
     const filter = wrapper.find('[data-testid="workspace-browse-filter"] input')
     await filter.setValue('Iron')
     await nextTick()
 
-    await modeButtons
-      .findAll('button')
-      .find((button) => button.text() === 'Search')
-      ?.trigger('click')
+    await wrapper.find('[data-testid="workspace-mode-search"]').trigger('click')
     const searchInput = wrapper.find('[data-testid="workspace-search-input"] input')
     await searchInput.setValue('bronze')
     await searchInput.trigger('keydown', { key: 'Enter' })
@@ -537,10 +530,7 @@ describe('ReconciliationWorkspace', () => {
 
     expect(wrapper.find('[data-testid="workspace-stage-next"]').attributes('disabled')).toBeUndefined()
 
-    await modeButtons
-      .findAll('button')
-      .find((button) => button.text() === 'Browse')
-      ?.trigger('click')
+    await wrapper.find('[data-testid="workspace-mode-browse"]').trigger('click')
     await nextTick()
     expect(wrapper.find('[data-testid="workspace-stage-next"]').attributes('disabled')).toBeDefined()
 
@@ -560,8 +550,8 @@ describe('ReconciliationWorkspace', () => {
     const wrapper = await mountWorkspace({ rows: previewRows(2) })
     await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
 
-    const browseButton = wrapper.findAll('button').find((button) => button.text() === 'Browse')
-    await browseButton?.trigger('click')
+    const browseButton = wrapper.find('[data-testid="workspace-mode-browse"]')
+    await browseButton.trigger('click')
     await flushPromises()
 
     expect(wrapper.find('[data-testid="workspace-browse-too-large"]').exists()).toBe(true)
