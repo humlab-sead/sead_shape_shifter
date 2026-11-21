@@ -280,7 +280,7 @@
                 </v-alert>
 
                 <template v-else>
-                  <div class="d-flex align-center gap-2 mb-2">
+                  <div class="d-flex align-center mb-2 workspace-gap">
                     <v-text-field
                       v-model="browseText"
                       data-testid="workspace-browse-filter"
@@ -353,29 +353,36 @@
                 <div v-else class="text-caption text-medium-emphasis">Nothing staged for this row.</div>
               </div>
 
-              <div class="d-flex flex-wrap gap-2 mt-4">
-                <v-btn
-                  data-testid="workspace-stage-next"
-                  variant="tonal"
-                  color="primary"
-                  :disabled="!selectedRecord || selectedRecord.target_id === null"
-                  @click="stageSelected"
-                >
-                  Stage selected &amp; next
-                </v-btn>
+              <div class="d-flex flex-wrap align-center mt-4 workspace-gap" data-testid="workspace-actions">
+                <v-tooltip location="top" max-width="280">
+                  <template #activator="{ props: stageProps }">
+                    <v-btn
+                      v-bind="stageProps"
+                      data-testid="workspace-stage-next"
+                      variant="elevated"
+                      color="primary"
+                      :disabled="!selectedRecord || selectedRecord.target_id === null"
+                      @click="stageSelected"
+                    >
+                      Stage selected
+                    </v-btn>
+                  </template>
+                  Stages the selected target and moves to the next row. Saving is separate.
+                </v-tooltip>
                 <v-tooltip location="top" max-width="280">
                   <template #activator="{ props: newProps }">
                     <v-btn
                       v-bind="newProps"
                       data-testid="workspace-stage-new"
                       variant="tonal"
-                      color="secondary"
+                      color="primary"
                       @click="stageNew"
                     >
-                      Stage New &amp; next
+                      Stage New
                     </v-btn>
                   </template>
-                  New approves later new-record handling; it does not create a record.
+                  Approves later new-record handling for this row and moves to the next row. It does not create a
+                  record.
                 </v-tooltip>
                 <v-btn data-testid="workspace-skip" variant="text" @click="skipRow">Skip for now</v-btn>
                 <v-btn
@@ -384,7 +391,7 @@
                   :disabled="!activeDraft.decision"
                   @click="clearDraft"
                 >
-                  Clear staged decision
+                  Clear staged
                 </v-btn>
               </div>
             </template>
@@ -1295,6 +1302,11 @@ watch(
 .workspace-mode-tabs {
   flex: 0 1 auto;
   min-width: 0;
+}
+
+/* Vuetify has no base gap utility, so `gap-2` alone leaves rows flush. */
+.workspace-gap {
+  gap: 8px;
 }
 
 @media (max-width: 960px) {

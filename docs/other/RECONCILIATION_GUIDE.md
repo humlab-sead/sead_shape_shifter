@@ -200,9 +200,10 @@ The workspace keeps the row queue on the left and the target pane on the right.
 | Search | Ranked targets for your own text. Enter searches immediately; typing waits about 300 ms. Ranked results are limited suggestions, not proof that a record is absent. |
 | `id: <number>` | Exact lookup of one record by target ID. Invalid syntax is an input error and is never retried as text search. |
 | Browse | Downloads the complete target list when it fits the service's advertised row and byte limits, then filters and sorts it in the browser. `%`, `_`, and `*` are literal characters. A list that is too large is reported explicitly; no partial list is shown. |
-| Stage selected & next | Records an accepted decision for the selected target and moves on. Staging is not saving. |
-| Stage New & next | Records a local-only decision. This approves later new-record handling; it does not create a record. An empty search result never stages New on its own. |
+| Stage selected | Records an accepted decision for the selected target and moves to the next row. Staging is not saving. |
+| Stage New | Records a local-only decision and moves to the next row. This approves later new-record handling; it does not create a record. An empty search result never stages New on its own. |
 | Skip for now | Moves on without staging anything. A decision already staged for that row is kept. |
+| Clear staged | Removes the unsaved decision staged for the current row. It does not change anything already saved to the catalog. |
 | Save decisions | Saves every staged decision in one batch. |
 
 Notes are kept per row. Keyboard shortcuts are Alt+Enter (stage selected), Alt+Right and Alt+Left (move), and Alt+Down (skip). Typing, including composed characters, never triggers a decision shortcut.
