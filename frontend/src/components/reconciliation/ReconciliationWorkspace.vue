@@ -68,8 +68,17 @@
         </v-card>
 
         <v-card variant="outlined" class="workspace-pane">
-          <v-card-title class="text-subtitle-1 d-flex align-center justify-space-between">
-            <span>{{ activeEntry?.label || 'Select a row' }}</span>
+          <v-card-title
+            class="workspace-pane-header text-subtitle-1 d-flex align-center justify-space-between bg-surface-variant"
+            data-testid="workspace-pane-header"
+          >
+            <div class="workspace-pane-heading">
+              <span class="font-weight-medium">{{ activeEntry?.label || 'Select a row' }}</span>
+              <span v-if="activeEntry" class="text-caption text-medium-emphasis">
+                {{ entityName }}.{{ targetField }} · key: {{ activeEntry.key ?? 'none' }} ·
+                {{ activeEntry.savedStatus ? `saved ${activeEntry.savedStatus}` : 'no saved decision' }}
+              </span>
+            </div>
             <v-tooltip location="bottom">
               <template #activator="{ props: helpButtonProps }">
                 <v-btn
@@ -85,10 +94,6 @@
               Open full help
             </v-tooltip>
           </v-card-title>
-          <v-card-subtitle v-if="activeEntry" class="text-caption">
-            {{ entityName }}.{{ targetField }} · key: {{ activeEntry.key ?? 'none' }} ·
-            {{ activeEntry.savedStatus ? `saved ${activeEntry.savedStatus}` : 'no saved decision' }}
-          </v-card-subtitle>
 
           <v-card-text>
             <v-alert v-if="!activeEntry" type="info" variant="tonal" data-testid="workspace-no-active-row">
@@ -1285,6 +1290,16 @@ watch(
   grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
+}
+
+.workspace-pane-heading {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 4px;
+  min-width: 0;
 }
 
 .workspace-queue-list {
