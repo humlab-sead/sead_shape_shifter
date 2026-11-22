@@ -309,6 +309,21 @@ describe('ReconciliationWorkspace', () => {
     expect(wrapper.find('[data-testid="workspace-mode-unavailable"]').exists()).toBe(false)
   })
 
+  it('shows the active entry label and metadata together in a highlighted pane header', async () => {
+    const wrapper = await mountWorkspace()
+    await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
+    await nextTick()
+
+    const header = wrapper.get('[data-testid="workspace-pane-header"]')
+    const heading = header.get('.workspace-pane-heading')
+
+    expect(header.classes()).toContain('bg-surface-variant')
+    expect(heading.text()).toContain('Label 1')
+    expect(heading.text()).toContain('site.site_name')
+    expect(heading.text()).toContain('key: K1')
+    expect(heading.text()).toContain('no saved decision')
+  })
+
   it('requests the full help view from the pane header', async () => {
     const wrapper = await mountWorkspace()
     await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')

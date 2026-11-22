@@ -1,8 +1,7 @@
 <template>
   <div class="specifications-list">
     <v-card variant="outlined">
-      <v-card-title class="d-flex align-center justify-space-between">
-        <span>Reconciliation Specifications</span>
+      <v-card-title class="d-flex align-center justify-end">
         <v-btn color="primary" prepend-icon="mdi-plus" @click="openAddDialog"> Add Specification </v-btn>
       </v-card-title>
 
