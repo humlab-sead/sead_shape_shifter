@@ -69,11 +69,17 @@
 
         <v-card variant="outlined" class="workspace-pane">
           <v-card-title
-            class="workspace-pane-header text-subtitle-1 d-flex align-center justify-space-between bg-surface-variant"
+            class="workspace-pane-header text-subtitle-1 d-flex align-center justify-space-between"
             data-testid="workspace-pane-header"
           >
             <div class="workspace-pane-heading">
-              <span class="font-weight-medium">{{ activeEntry?.label || 'Select a row' }}</span>
+              <div class="workspace-pane-navigation">
+                <v-btn data-testid="workspace-previous" variant="text" :disabled="!canGoPrevious" @click="previousRow">
+                  Previous
+                </v-btn>
+                <v-btn data-testid="workspace-next" variant="text" :disabled="!canGoNext" @click="nextRow">Next</v-btn>
+              </div>
+              <span class="workspace-pane-label font-weight-medium">{{ activeEntry?.label || 'Select a row' }}</span>
               <span v-if="activeEntry" class="text-caption text-medium-emphasis">
                 {{ entityName }}.{{ targetField }} · key: {{ activeEntry.key ?? 'none' }} ·
                 {{ activeEntry.savedStatus ? `saved ${activeEntry.savedStatus}` : 'no saved decision' }}
@@ -400,10 +406,6 @@
 
           <v-divider />
           <v-card-actions class="flex-wrap">
-            <v-btn data-testid="workspace-previous" variant="text" :disabled="!canGoPrevious" @click="previousRow">
-              Previous
-            </v-btn>
-            <v-btn data-testid="workspace-next" variant="text" :disabled="!canGoNext" @click="nextRow">Next</v-btn>
             <v-spacer />
             <v-btn
               data-testid="workspace-save"
@@ -1285,6 +1287,10 @@ watch(
 </script>
 
 <style scoped>
+.workspace-pane-header {
+  background-color: rgba(var(--v-theme-on-surface), 0.08);
+}
+
 .workspace-layout {
   display: grid;
   grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
@@ -1300,6 +1306,17 @@ watch(
   column-gap: 12px;
   row-gap: 4px;
   min-width: 0;
+}
+
+.workspace-pane-navigation {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.workspace-pane-label {
+  font-size: 1.125rem;
+  line-height: 1.5;
 }
 
 .workspace-queue-list {
