@@ -317,7 +317,7 @@ describe('ReconciliationWorkspace', () => {
     const header = wrapper.get('[data-testid="workspace-pane-header"]')
     const heading = header.get('.workspace-pane-heading')
 
-    expect(header.classes()).toContain('bg-surface-variant')
+    expect(heading.get('.workspace-pane-label').classes()).toContain('workspace-pane-label')
     expect(heading.text()).toContain('Label 1')
     expect(heading.text()).toContain('site.site_name')
     expect(heading.text()).toContain('key: K1')
@@ -348,7 +348,13 @@ describe('ReconciliationWorkspace', () => {
     await nextTick()
     expect(wrapper.text()).toContain('key: K3')
 
-    await wrapper.find('[data-testid="workspace-previous"]').trigger('click')
+    const heading = wrapper.get('.workspace-pane-heading')
+    const navigation = heading.get('.workspace-pane-navigation')
+    expect(heading.find('.workspace-pane-navigation + .workspace-pane-label').exists()).toBe(true)
+    expect(navigation.find('[data-testid="workspace-previous"]').exists()).toBe(true)
+    expect(navigation.find('[data-testid="workspace-next"]').exists()).toBe(true)
+
+    await navigation.find('[data-testid="workspace-previous"]').trigger('click')
     await nextTick()
     expect(wrapper.text()).toContain('key: K2')
 
