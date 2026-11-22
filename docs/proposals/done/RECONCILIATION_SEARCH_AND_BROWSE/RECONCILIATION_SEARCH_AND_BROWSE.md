@@ -2,14 +2,14 @@
 
 ## Status
 
-- **Approved — 2026-11-19.** Approval covers the proposed scope and design, not implementation completion. Source inspection reflects both repositories’ `dev` branches as of 2026-11-18.
-- **Amended — 2026-11-19.** Stale-view detection moved from the Phase 2 save contract to Phase 3. Catalog writes are serialized by the existing project lock and apply per-key changes, so no client-supplied catalog hash is required. `P-AC-6`, `P-AC-8`, and the save design below were updated to match.
-- **Amended — 2026-11-20.** A Saved decisions view within the Search/Browse workspace is deferred to [backlog item R34](../RECONCILIATION_IMPROVEMENTS_BACKLOG.md#r34-inspect-saved-decisions-in-the-searchbrowse-workspace). New-only save and export during an outage remain in scope.
+- **Implemented.** The Search/Browse workspace is implemented and its per-type pilot is complete.
 - **Scope:** One persistent record-selection workspace in Shape Shifter, supported by read-only search, browsing, and record metadata in `sead_authority_service`.
 - **Goal:** Let reviewers find an existing record or deliberately mark a row New without first running batch matching, opening repeated dialogs, or reloading the entity after each decision.
-- **Document home:** Shape Shifter, `docs/proposals/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md`. This document owns the cross-service design; Authority Service work should reference it rather than duplicate the proposal.
+- **Validation:** Per-type pilot checks and Search/Browse measurements for `feature_type` and `country` are recorded in the [Phase 4 baseline](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_4_BASELINE.md); both Browse list limits were exercised and restored without partial results.
+- **Follow-up:** In-workspace Saved decisions inspection remains deferred to [backlog item R34](../../RECONCILIATION_IMPROVEMENTS_BACKLOG.md#r34-inspect-saved-decisions-in-the-searchbrowse-workspace). Pilot capabilities remain disabled in the shipped Authority Service configuration.
+- **Document home:** Shape Shifter, `docs/proposals/done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md`. This document owns the cross-service design; Authority Service work should reference it rather than duplicate the proposal.
 
-Related: [improvement backlog](../RECONCILIATION_IMPROVEMENTS_BACKLOG.md), [proposal backlog disposition](./RECONCILIATION_SEARCH_AND_BROWSE_BACKLOG.md), [concept sketch](https://chatgpt.com/library?file_id=libfile_71ee763abda8819188947370f8458d20&account_id=fa24b0c0-e21b-4786-a140-f1fd02ea3374), [reconciliation MVP](../done/RECONCILIATION_MVP/RECONCILIATION_MVP.md), and [manifest-driven reconciliation](../done/MANIFEST_DRIVEN_RECONCILIATION_INPUTS/MANIFEST_DRIVEN_RECONCILIATION_INPUTS.md). The sketch illustrates the workflow; individual labels and counts are not a fixed UI contract.
+Related: [improvement backlog](../../RECONCILIATION_IMPROVEMENTS_BACKLOG.md), [proposal backlog disposition](./RECONCILIATION_SEARCH_AND_BROWSE_BACKLOG.md), [concept sketch](https://chatgpt.com/library?file_id=libfile_71ee763abda8819188947370f8458d20&account_id=fa24b0c0-e21b-4786-a140-f1fd02ea3374), [reconciliation MVP](../../done/RECONCILIATION_MVP/RECONCILIATION_MVP.md), and [manifest-driven reconciliation](../../done/MANIFEST_DRIVEN_RECONCILIATION_INPUTS/MANIFEST_DRIVEN_RECONCILIATION_INPUTS.md). The sketch illustrates the workflow; individual labels and counts are not a fixed UI contract.
 
 ## Summary
 
@@ -44,7 +44,7 @@ Separate dialogs, mandatory prior matching, and entity-wide reloads make these a
 - Bulk assignment/actions beyond saving individually chosen drafts together, batch matching progress/caching, complete audit history, undo, or rollback of exported links.
 - Measuring improvement against the current workflow. It has never been used in production and is not a suitable baseline; measurements of the new workflow establish the baseline for future improvements.
 - Universal database exploration, arbitrary SQL/columns/joins, advanced wildcard syntax, or a mandatory taxonomy tree browser.
-- A Saved decisions view in the Search/Browse workspace. Saved decisions remain available through the existing legacy review grid; adding in-workspace inspection is deferred to [backlog item R34](../RECONCILIATION_IMPROVEMENTS_BACKLOG.md#r34-inspect-saved-decisions-in-the-searchbrowse-workspace).
+- A Saved decisions view in the Search/Browse workspace. Saved decisions remain available through the existing legacy review grid; adding in-workspace inspection is deferred to [backlog item R34](../../RECONCILIATION_IMPROVEMENTS_BACKLOG.md#r34-inspect-saved-decisions-in-the-searchbrowse-workspace).
 - Redesigning all reconciliation configuration or implementing the whole improvement backlog.
 
 ## Current Behavior

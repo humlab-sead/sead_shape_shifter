@@ -220,7 +220,7 @@ Feature type: `country / location / location_name`
 
 **Objective:** `PH4-AC-3`'s baseline exists in one place and names which capabilities are advertised.
 
-**Affected code:** `NEW` `docs/proposals/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE_PHASE_4_BASELINE.md`; `docs/proposals/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE_PHASE_PLAN.md`.
+**Affected code:** `NEW` `docs/proposals/done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE_PHASE_4_BASELINE.md`; `docs/proposals/done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE_PHASE_PLAN.md`.
 
 **Dependencies:** Areas 1–4.
 
@@ -296,7 +296,7 @@ How each `VM-13` measurement is taken:
 | Browser harness | Pilot environment, supported container | `T4.1` | `V-8` passes |
 | Pilot fixture | Pilot environment project | `T4.2` | `V-9` passes |
 | Paired run record | Baseline document | `T4.3` | `V-10` passes |
-| Baseline document | `docs/proposals/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE_PHASE_4_BASELINE.md` | `T5.1` | `V-11` passes |
+| Baseline document | `docs/proposals/done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE_PHASE_4_BASELINE.md` | `T5.1` | `V-11` passes |
 | Phase plan update | `..._PHASE_PLAN.md`, Phase 4 section | `T5.2` | `V-12` passes |
 
 ## Progress Tracker

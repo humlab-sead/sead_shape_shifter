@@ -852,7 +852,7 @@ R21 provides the persistent pane; R26–R31 add search-specific behaviour. R6 re
 
 **Depends on:** R2 and R24 for saved-row updates and independent saved review.
 
-**Scope note.** This follow-up is deferred from the [Search and Browse proposal](./RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) and is not a Phase 3 acceptance gate.
+**Scope note.** This follow-up is deferred from the [Search and Browse proposal](./done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) and is not a Phase 3 acceptance gate.
 
 ---
 
