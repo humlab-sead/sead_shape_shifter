@@ -376,6 +376,15 @@ describe('ProjectDetailView', () => {
     mockGraphState.setNote.mockReset()
   })
 
+  it('places the entity count beside the project name', async () => {
+    const wrapper = mountProjectDetailView()
+    await flushPromises()
+
+    const titleRow = wrapper.get('h1').element.parentElement
+    expect(titleRow?.classList.contains('d-flex')).toBe(true)
+    expect(titleRow?.textContent).toContain('2 entities')
+  })
+
   it('captures graph options and opens the details drawer on node click', async () => {
     const wrapper = mountProjectDetailView()
 
