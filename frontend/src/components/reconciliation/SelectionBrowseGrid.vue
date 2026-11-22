@@ -6,9 +6,8 @@
     :defaultColDef="defaultColDef"
     :rowHeight="ROW_HEIGHT"
     :headerHeight="36"
-    :rowClassRules="rowClassRules"
+    :rowSelection="rowSelection"
     :getRowId="getRowId"
-    :suppressRowClickSelection="true"
     :animateRows="false"
     :domLayout="'normal'"
     @grid-ready="onGridReady"
@@ -17,10 +16,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useTheme } from 'vuetify'
 import { AgGridVue } from 'ag-grid-vue3'
-import type { ColDef, GridApi, GridReadyEvent, RowClassParams, RowClickedEvent } from 'ag-grid-community'
+import type { ColDef, GridApi, GridReadyEvent, RowClickedEvent, RowSelectionOptions } from 'ag-grid-community'
 import type { SelectionDisplayField, SelectionRecord } from '@/types/reconciliation'
 import { selectionFieldValue } from '@/utils/selectionRecord'
 
@@ -43,7 +42,6 @@ const emit = defineEmits<{
 }>()
 
 const ROW_HEIGHT = 32
-const SELECTED_ROW_CLASS = 'selection-row-selected'
 
 const gridApi = ref<GridApi<SelectionRecord> | null>(null)
 
@@ -87,28 +85,56 @@ const defaultColDef: ColDef<SelectionRecord> = {
   suppressMovable: true,
 }
 
-/** Highlight the selected row without relying on ag-Grid row selection state. */
-const rowClassRules = {
-  [SELECTED_ROW_CLASS]: (params: RowClassParams<SelectionRecord>) =>
-    Boolean(params.data && params.data.id === props.selectedId),
+/**
+ * Select the whole row on a single click.
+ *
+ * `enableSelection` rather than `true`: clicking the current row keeps it
+ * selected instead of toggling the choice off, so the Stage selected action
+ * never loses its target because the reviewer clicked the row twice.
+ */
+const rowSelection: RowSelectionOptions<SelectionRecord> = {
+  mode: 'singleRow',
+  enableClickSelection: 'enableSelection',
+  checkboxes: false,
 }
 
 function getRowId(params: { data: SelectionRecord }): string {
   return params.data.id
 }
 
+/** Mirror the parent's choice into the grid so keyboard and screen-reader state agree. */
+function syncGridSelection(selectedId: string | null) {
+  const api = gridApi.value
+  if (!api) return
+  if (!selectedId) {
+    api.deselectAll()
+    return
+  }
+  const node = api.getRowNode(selectedId)
+  if (node && !node.isSelected()) node.setSelected(true, true)
+}
+
 function onGridReady(event: GridReadyEvent<SelectionRecord>) {
   gridApi.value = event.api
+  syncGridSelection(props.selectedId)
 }
 
 function onRowClicked(event: RowClickedEvent<SelectionRecord>) {
   if (event.data) emit('select', event.data)
 }
 
-// Class rules are re-evaluated only for re-rendered rows, so repaint on change.
 watch(
   () => props.selectedId,
-  () => gridApi.value?.redrawRows()
+  (selectedId) => syncGridSelection(selectedId)
+)
+
+// New row data creates new row nodes, so restore the parent's choice afterwards.
+watch(
+  () => props.items,
+  async () => {
+    await nextTick()
+    syncGridSelection(props.selectedId)
+  }
 )
 </script>
 
@@ -121,10 +147,7 @@ watch(
   width: 100%;
   height: min(56vh, 460px);
   min-height: 260px;
-}
-
-:deep(.selection-browse-grid .ag-row.selection-row-selected) {
-  /* Derived from the theme so the highlight stays readable in both modes. */
-  background-color: rgba(var(--v-theme-primary), 0.16);
+  /* Derived from the theme so the full-row highlight stays readable in both modes. */
+  --ag-selected-row-background-color: rgba(var(--v-theme-primary), 0.16);
 }
 </style>

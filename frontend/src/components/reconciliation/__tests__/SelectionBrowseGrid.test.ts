@@ -10,7 +10,7 @@ import type { SelectionDisplayField, SelectionRecord } from '@/types/reconciliat
 vi.mock('ag-grid-vue3', () => ({
   AgGridVue: {
     name: 'AgGridVue',
-    props: ['rowData', 'columnDefs', 'getRowId', 'rowClassRules'],
+    props: ['rowData', 'columnDefs', 'getRowId', 'rowSelection'],
     emits: ['grid-ready', 'row-clicked'],
     template: '<div data-testid="browse-grid-stub" />',
   },
@@ -85,5 +85,28 @@ describe('SelectionBrowseGrid theme', () => {
     await nextTick()
 
     expect(wrapper.find('[data-testid="browse-grid-stub"]').classes()).toContain('ag-theme-material')
+  })
+})
+
+describe('SelectionBrowseGrid row selection', () => {
+  it('selects a whole row on a single click without checkboxes', async () => {
+    const { wrapper } = await mountThemed()
+    const grid = wrapper.findComponent({ name: 'AgGridVue' })
+
+    expect(grid.props('rowSelection')).toEqual({
+      mode: 'singleRow',
+      enableClickSelection: 'enableSelection',
+      checkboxes: false,
+    })
+  })
+
+  it('reports the clicked record so the reviewer can stage it', async () => {
+    const { wrapper } = await mountThemed()
+    const record = wrapper.findComponent({ name: 'AgGridVue' }).props('rowData')[0]
+
+    wrapper.findComponent({ name: 'AgGridVue' }).vm.$emit('row-clicked', { data: record })
+    await nextTick()
+
+    expect(wrapper.findComponent(SelectionBrowseGrid).emitted('select')).toEqual([[record]])
   })
 })
