@@ -2,7 +2,9 @@
 
 This guide covers the full reconciliation workflow in Shape Shifter: configuring a specification, finding candidates, reviewing decisions, and exporting accepted links so that normalized output carries SEAD IDs.
 
-Reconciliation matches local source values (site names, taxon names, method names) to records in SEAD through an OpenRefine-compatible reconciliation service. The service proposes candidates; a reviewer accepts, rejects, or marks each row local-only. Accepted decisions are exported into the mapping sidecar, and normalization applies them.
+Shape Shifter provides two workflows for finding possible target entities through an OpenRefine-compatible reconciliation service. **Ranked candidate matching** (candidate matching) uses source-row values and a configured matching strategy to return scored candidates for the candidate grid. **Interactive Search/Browse** starts from text entered by the reviewer or a bounded list. Search may also return ranked results; the distinction is how the workflow starts, not the ranking algorithm or protocol.
+
+A reviewer accepts, rejects, or marks each row local-only. Accepted decisions are exported into the mapping sidecar, and normalization applies them.
 
 Candidate scores and thresholds help a reviewer prioritize rows. They never accept a candidate.
 
@@ -41,9 +43,9 @@ The `public_id` column is the only column reconciliation writes. A specification
 ```text
 Configure specification
         ↓
-Find candidates  (optional for keyed rows)
+Ranked candidate matching  (optional for keyed rows)
         ↓
-Review decisions  (grid, or the Review workspace)
+Review decisions  (candidate grid, or Interactive Search/Browse)
         ↓
 Export to mapping
         ↓
@@ -164,7 +166,7 @@ A red alert names the affected entity, field, or column. Fix the specification, 
 
 ---
 
-## 2. Find Candidates
+## 2. Ranked Candidate Matching
 
 1. Confirm the service chip shows **Online**.
 2. Select **Find Candidates** on the specification row.
@@ -188,16 +190,16 @@ Preview failures and matching failures are shown apart from an empty result, so 
 
 ## 3. Review Decisions
 
-### 3.0 Review Without Find Candidates
+### 3.0 Interactive Search/Browse
 
-Select **Review** on a specification row to open the review workspace. It does not run Find Candidates, so rows that were never matched can be reviewed. **Find Candidates** stays available for the grid workflow.
+Select **Review** on a specification row to open the Interactive Search/Browse workspace. It does not run ranked candidate matching, so rows that were never matched can be reviewed. **Find Candidates** stays available for the candidate-grid workflow.
 
 The workspace keeps the row queue on the left and the target pane on the right.
 
 | Part | Behavior |
 |------|----------|
 | Needs review queue | Rows with no saved decision, plus rows that cannot be reviewed. A row without a business key, or one with unresolved source errors, stays visible but cannot be reviewed. |
-| Search | Ranked targets for your own text. Enter searches immediately; typing waits about 300 ms. Ranked results are limited suggestions, not proof that a record is absent. |
+| Search | Searches text and optional context entered by the reviewer; results may be ranked. Enter searches immediately; typing waits about 300 ms. Results are limited suggestions, not proof that a record is absent. |
 | `id: <number>` | Exact lookup of one record by target ID. Invalid syntax is an input error and is never retried as text search. |
 | Browse | Downloads the complete target list when it fits the service's advertised row and byte limits, then filters and sorts it in the browser. `%`, `_`, and `*` are literal characters. A list that is too large is reported explicitly; no partial list is shown. |
 | Stage selected | Records an accepted decision for the selected target and moves to the next row. Staging is not saving. |
@@ -235,7 +237,7 @@ Rows without a decision or candidates are unresolved. Rows without a business ke
 3. Select a candidate, then select **Accept selected candidate**. Use **Reject** or **Local-only** when no candidate applies.
 4. Add notes when the decision needs explanation.
 
-Decisions are saved by encoded business key. Running **Find Candidates** again preserves them. The review workspace in section 3.0 stages decisions for several rows before saving them together.
+Decisions are saved by encoded business key. Running **Find Candidates** again preserves them. The Interactive Search/Browse workspace in section 3.0 stages decisions for several rows before saving them together.
 
 ### 3.3 Re-accept Older Decisions
 
