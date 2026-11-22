@@ -1,30 +1,26 @@
 <template>
-  <v-container fluid class="pa-6">
+  <v-container fluid class="pa-6 pt-3">
     <!-- Header -->
     <v-row>
       <v-col>
-        <div class="d-flex align-center justify-space-between mb-6">
+        <div class="d-flex align-center justify-space-between mb-3">
           <div class="d-flex align-center">
             <v-btn icon="mdi-arrow-left" variant="text" @click="$router.push({ name: 'projects' })" />
             <div class="ml-2">
-              <h1 class="text-h4">{{ projectName }}</h1>
-              <div class="d-flex align-center mt-1">
+              <div class="d-flex align-center">
+                <h1 class="text-h4">{{ projectName }}</h1>
                 <v-chip
                   v-if="entityCount > 0"
                   size="small"
                   variant="outlined"
                   prepend-icon="mdi-cube-outline"
-                  class="mr-2"
+                  class="ml-2"
                 >
                   {{ entityCount }} {{ entityCount === 1 ? 'entity' : 'entities' }}
                 </v-chip>
-                <v-chip
-                  v-if="validationResult"
-                  size="small"
-                  :color="validationChipColor"
-                  variant="tonal"
-                  :prepend-icon="validationChipIcon"
-                >
+              </div>
+              <div v-if="validationResult" class="d-flex align-center mt-1">
+                <v-chip size="small" :color="validationChipColor" variant="tonal" :prepend-icon="validationChipIcon">
                   {{ validationChipText }}
                 </v-chip>
               </div>
