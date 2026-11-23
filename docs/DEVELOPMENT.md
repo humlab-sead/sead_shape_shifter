@@ -331,7 +331,7 @@ AI-assisted work is limited less by file count than by ambiguity, duplication, a
 
 Keep architectural boundaries enforced, docs current, naming consistent across entities and layers, feature logic locally coherent, and changes small and scoped. Add regression tests for bug-prone workflows.
 
-When asking for AI help, include the affected workflow, expected and actual behavior, likely files, and related proposal, phase-plan, or task-plan paths. Use `.venv/bin/graphify query` before broad code searches when exploring relationships, and verify its results in current source and tests.
+When asking for AI help, include the affected workflow, expected and actual behavior, likely files, and related proposal, phase-plan, or task-plan paths. Use `graphify query` before broad code searches when exploring relationships, and verify its results in current source and tests.
 
 ---
 

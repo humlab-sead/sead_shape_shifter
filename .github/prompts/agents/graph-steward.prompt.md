@@ -19,8 +19,8 @@ Keep `graphify-out/` useful for future tasks and reviews without forcing broad s
 
 ## Tasks
 
-1. Update the graph after code changes.
-2. Confirm whether the graph changed in a meaningful way.
+1. Make sure the local graph is current. graphify git hooks rebuild it after each commit, checkout, merge and rebase; if `graphify-out/graph.json` is missing or older than the latest commit, run `GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update .`. If `graphify hook status` reports missing hooks, tell the user to run `make install-hooks`.
+2. Confirm whether the graph changed in a meaningful way (nodes, edges, communities).
 3. Produce a short summary of new or changed clusters, major nodes, or paths.
 4. Point other agents to the smallest graph artifact that answers the next question.
 
@@ -29,7 +29,7 @@ Keep `graphify-out/` useful for future tasks and reviews without forcing broad s
 Return:
 
 - `Graph Update`
-  - Whether `graphify-out/` changed.
+  - Whether the rebuild changed the graph.
 - `Key Relationship Changes`
   - Short flat list.
 - `Best Entry Point`
@@ -40,7 +40,7 @@ Return:
 ## Constraints
 
 - Prefer `graphify query`, `graphify explain`, and `graphify path` over broad report reads.
-- Do not treat dirty graph files as a failure on their own.
+- `graphify-out/` is git-ignored and built locally. Never commit it or ask for it to be committed.
 - Keep summaries short and tied to the changed area.
 
 ## Repository references

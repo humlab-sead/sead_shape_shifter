@@ -16,6 +16,7 @@ import type {
 } from '@/types/reconciliation'
 
 import ReconciliationWorkspace from '../ReconciliationWorkspace.vue'
+import { clearReviewWorkspaceNotices, useReviewWorkspaceHelpState } from '@/composables/useReviewWorkspaceHelp'
 
 vi.mock('pinia', async () => {
   const actual = await vi.importActual<typeof import('pinia')>('pinia')
@@ -25,6 +26,30 @@ vi.mock('pinia', async () => {
     storeToRefs: (store: object) => toRefs(store),
   }
 })
+
+/** Render browse rows as clickable divs so row clicks reach the workspace. */
+vi.mock('ag-grid-vue3', () => ({
+  AgGridVue: {
+    name: 'AgGridVue',
+    props: ['rowData', 'columnDefs'],
+    emits: ['row-clicked', 'grid-ready'],
+    template: `
+      <div data-testid="selection-browse-grid-stub">
+        <div data-testid="workspace-browse-columns">
+          {{ (columnDefs ?? []).map((column) => column.headerName).join('|') }}
+        </div>
+        <div
+          v-for="row in rowData"
+          :key="row.id"
+          :data-testid="'workspace-result-' + row.target_id"
+          @click="$emit('row-clicked', { data: row })"
+        >
+          {{ row.name }} {{ row.description ?? '' }}
+        </div>
+      </div>
+    `,
+  },
+}))
 
 const capabilities: SelectionCapabilities = {
   version: 1,
@@ -197,8 +222,11 @@ async function searchAndSelect(wrapper: Awaited<ReturnType<typeof mountWorkspace
 }
 
 describe('ReconciliationWorkspace', () => {
+  const workspaceHelp = useReviewWorkspaceHelpState()
+
   beforeEach(() => {
     vi.clearAllMocks()
+    clearReviewWorkspaceNotices()
     document.querySelectorAll('.v-overlay-container').forEach((element) => element.remove())
     reconciliationStore.loadSelectionCapabilities.mockImplementation(async () => capabilities)
     reconciliationStore.searchSelection.mockImplementation(async () => ({
@@ -253,6 +281,58 @@ describe('ReconciliationWorkspace', () => {
     expect(wrapper.find('[data-testid="workspace-save-summary"]').exists()).toBe(true)
   })
 
+  it('explains which selection modes the target type does not support', async () => {
+    reconciliationStore.loadSelectionCapabilities.mockImplementation(async () => ({
+      ...capabilities,
+      type: {
+        ...capabilities.type,
+        search_supported: false,
+        identifier_search_supported: false,
+        browse_supported: false,
+      },
+    }))
+
+    const wrapper = await mountWorkspace()
+    await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
+    await nextTick()
+
+    const hint = wrapper.get('[data-testid="workspace-mode-unavailable"]')
+    expect(hint.text()).toContain('Search is unavailable')
+    expect(hint.text()).toContain('Browse is unavailable')
+  })
+
+  it('shows no mode explanation when both modes are supported', async () => {
+    const wrapper = await mountWorkspace()
+    await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="workspace-mode-unavailable"]').exists()).toBe(false)
+  })
+
+  it('shows the active entry label and metadata together in a highlighted pane header', async () => {
+    const wrapper = await mountWorkspace()
+    await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
+    await nextTick()
+
+    const header = wrapper.get('[data-testid="workspace-pane-header"]')
+    const heading = header.get('.workspace-pane-heading')
+
+    expect(heading.get('.workspace-pane-label').classes()).toContain('workspace-pane-label')
+    expect(heading.text()).toContain('Label 1')
+    expect(heading.text()).toContain('site.site_name')
+    expect(heading.text()).toContain('key: K1')
+    expect(heading.text()).toContain('no saved decision')
+  })
+
+  it('requests the full help view from the pane header', async () => {
+    const wrapper = await mountWorkspace()
+    await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
+    await nextTick()
+
+    await wrapper.get('[data-testid="workspace-open-help"]').trigger('click')
+    expect(wrapper.emitted('help')).toHaveLength(1)
+  })
+
   it('stages, skips, and moves rows with labelled controls and modified shortcuts', async () => {
     const wrapper = await mountWorkspace({ rows: previewRows(3) })
 
@@ -268,7 +348,13 @@ describe('ReconciliationWorkspace', () => {
     await nextTick()
     expect(wrapper.text()).toContain('key: K3')
 
-    await wrapper.find('[data-testid="workspace-previous"]').trigger('click')
+    const heading = wrapper.get('.workspace-pane-heading')
+    const navigation = heading.get('.workspace-pane-navigation')
+    expect(heading.find('.workspace-pane-navigation + .workspace-pane-label').exists()).toBe(true)
+    expect(navigation.find('[data-testid="workspace-previous"]').exists()).toBe(true)
+    expect(navigation.find('[data-testid="workspace-next"]').exists()).toBe(true)
+
+    await navigation.find('[data-testid="workspace-previous"]').trigger('click')
     await nextTick()
     expect(wrapper.text()).toContain('key: K2')
 
@@ -439,8 +525,8 @@ describe('ReconciliationWorkspace', () => {
     const wrapper = await mountWorkspace({ rows: previewRows(2) })
     await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
 
-    const browseButton = wrapper.findAll('button').find((button) => button.text() === 'Browse')
-    await browseButton?.trigger('click')
+    const browseButton = wrapper.find('[data-testid="workspace-mode-browse"]')
+    await browseButton.trigger('click')
     await flushPromises()
 
     expect(reconciliationStore.browseSelection).toHaveBeenCalledTimes(1)
@@ -473,21 +559,14 @@ describe('ReconciliationWorkspace', () => {
     const wrapper = await mountWorkspace({ rows: previewRows(2) })
     await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
 
-    const modeButtons = wrapper.find('[data-testid="workspace-mode-toggle"]')
-    await modeButtons
-      .findAll('button')
-      .find((button) => button.text() === 'Browse')
-      ?.trigger('click')
+    await wrapper.find('[data-testid="workspace-mode-browse"]').trigger('click')
     await flushPromises()
 
     const filter = wrapper.find('[data-testid="workspace-browse-filter"] input')
     await filter.setValue('Iron')
     await nextTick()
 
-    await modeButtons
-      .findAll('button')
-      .find((button) => button.text() === 'Search')
-      ?.trigger('click')
+    await wrapper.find('[data-testid="workspace-mode-search"]').trigger('click')
     const searchInput = wrapper.find('[data-testid="workspace-search-input"] input')
     await searchInput.setValue('bronze')
     await searchInput.trigger('keydown', { key: 'Enter' })
@@ -496,10 +575,7 @@ describe('ReconciliationWorkspace', () => {
 
     expect(wrapper.find('[data-testid="workspace-stage-next"]').attributes('disabled')).toBeUndefined()
 
-    await modeButtons
-      .findAll('button')
-      .find((button) => button.text() === 'Browse')
-      ?.trigger('click')
+    await wrapper.find('[data-testid="workspace-mode-browse"]').trigger('click')
     await nextTick()
     expect(wrapper.find('[data-testid="workspace-stage-next"]').attributes('disabled')).toBeDefined()
 
@@ -519,12 +595,45 @@ describe('ReconciliationWorkspace', () => {
     const wrapper = await mountWorkspace({ rows: previewRows(2) })
     await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
 
-    const browseButton = wrapper.findAll('button').find((button) => button.text() === 'Browse')
-    await browseButton?.trigger('click')
+    const browseButton = wrapper.find('[data-testid="workspace-mode-browse"]')
+    await browseButton.trigger('click')
     await flushPromises()
 
     expect(wrapper.find('[data-testid="workspace-browse-too-large"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="workspace-browse-results"]').exists()).toBe(false)
+  })
+
+  it('shows browse columns in the order the service declares them', async () => {
+    reconciliationStore.loadSelectionCapabilities.mockResolvedValueOnce({
+      ...capabilities,
+      type: {
+        ...capabilities.type,
+        display_fields: [
+          { name: 'name', source: 'record', label: 'Name', value_type: 'string', display: true },
+          { name: 'target_id', source: 'record', label: 'ID', value_type: 'integer', display: true },
+          { name: 'description', source: 'record', label: 'Description', value_type: 'string', display: true },
+          { name: 'internal_note', source: 'fields', label: 'Internal note', value_type: 'string', display: false },
+        ],
+      },
+    })
+    reconciliationStore.browseSelection.mockResolvedValueOnce({
+      completeness: 'complete',
+      items: [{ ...record(7, 'Bronze Age'), description: 'A period' }],
+    })
+
+    const wrapper = await mountWorkspace({ rows: previewRows(1) })
+    await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
+    await wrapper.find('[data-testid="workspace-mode-browse"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="workspace-browse-columns"]').text()).toBe('Name|ID|Description')
+    const gridProps = wrapper.findComponent({ name: 'AgGridVue' }).props() as {
+      columnDefs: { colId: string }[]
+      rowData: SelectionRecord[]
+    }
+    expect(gridProps.columnDefs.map((column) => column.colId)).toEqual(['name', 'target_id', 'description'])
+    // The grid follows the local sort, so the row it renders is the record it was given.
+    expect(gridProps.rowData.map((item) => item.target_id)).toEqual([7])
   })
 
   it('keeps every draft when the batch is rejected', async () => {
@@ -672,7 +781,7 @@ describe('ReconciliationWorkspace', () => {
     reconciliationStore.loadWorkspaceDraft.mockImplementation(() => ({ status: 'restored' as const, draft: restored }))
     const wrapper = await mountWorkspace({ rows: previewRows(3) })
 
-    expect(wrapper.find('[data-testid="workspace-restore-notice"]').exists()).toBe(true)
+    expect(workspaceHelp.reviewWorkspaceNotices.value.restoreNotice).toContain('Restored 1 unsaved')
     expect(wrapper.find('[data-testid="workspace-save"]').text()).toContain('1')
     expect(wrapper.text()).toContain('key: K2')
     expect(wrapper.find('[data-testid="workspace-search-results"]').exists()).toBe(false)
@@ -710,7 +819,7 @@ describe('ReconciliationWorkspace', () => {
     reconciliationStore.loadWorkspaceDraft.mockImplementation(() => ({ status: 'invalid' as const, draft: null }))
     const wrapper = await mountWorkspace({ rows: previewRows(2) })
 
-    expect(wrapper.find('[data-testid="workspace-restore-notice"]').text()).toContain('could not be read')
+    expect(workspaceHelp.reviewWorkspaceNotices.value.restoreNotice).toContain('could not be read')
     expect(wrapper.find('[data-testid="workspace-save"]').text()).toContain('0')
   })
 
@@ -721,7 +830,8 @@ describe('ReconciliationWorkspace', () => {
     await wrapper.find('[data-testid="workspace-row-0"]').trigger('click')
     await nextTick()
 
-    expect(wrapper.find('[data-testid="workspace-storage-warning"]').exists()).toBe(true)
+    expect(workspaceHelp.reviewWorkspaceNotices.value.storageError).toBeTruthy()
+    expect(wrapper.find('[data-testid="workspace-storage-warning"]').exists()).toBe(false)
   })
 
   it('falls back to the legacy grid when the service publishes no selection extension', async () => {
@@ -771,12 +881,14 @@ describe('ReconciliationWorkspace', () => {
  */
 describe('ReconciliationWorkspace cross-project scope (VM-9)', () => {
   const scopes = new Map<string, WorkspaceDraft>()
+  const workspaceHelp = useReviewWorkspaceHelpState()
   const scopeId = (projectName: string, entityName: string, targetField: string) =>
     JSON.stringify([projectName, entityName, targetField])
 
   beforeEach(() => {
     vi.clearAllMocks()
     scopes.clear()
+    clearReviewWorkspaceNotices()
     document.querySelectorAll('.v-overlay-container').forEach((element) => element.remove())
     reconciliationStore.loadSelectionCapabilities.mockImplementation(async () => capabilities)
     reconciliationStore.searchSelection.mockImplementation(async () => ({
@@ -828,7 +940,7 @@ describe('ReconciliationWorkspace cross-project scope (VM-9)', () => {
       try {
         expect(reconciliationStore.loadWorkspaceDraft).toHaveBeenCalledWith('vm9-beta', 'site', 'site_name')
         expect(beta.find('[data-testid="workspace-save"]').text()).toContain('0')
-        expect(beta.text()).not.toContain('Restored 1 unsaved decision')
+        expect(workspaceHelp.reviewWorkspaceNotices.value.restoreNotice).toBeNull()
         expect(beta.text()).not.toContain('Bronze Age')
       } finally {
         beta.unmount()
@@ -837,7 +949,7 @@ describe('ReconciliationWorkspace cross-project scope (VM-9)', () => {
       // Returning to the first project restores its own draft.
       const alphaAgain = await mountWorkspace({ rows: previewRows(3), projectName: 'vm9-alpha' })
       try {
-        expect(alphaAgain.text()).toContain('Restored 1 unsaved decision')
+        expect(workspaceHelp.reviewWorkspaceNotices.value.restoreNotice).toContain('Restored 1 unsaved decision')
         expect(alphaAgain.find('[data-testid="workspace-save"]').text()).toContain('1')
         // A restored draft never reinstates the target selection or result list.
         expect(alphaAgain.text()).not.toContain('Bronze Age')

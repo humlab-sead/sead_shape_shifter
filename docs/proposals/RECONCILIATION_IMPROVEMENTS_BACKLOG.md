@@ -1,18 +1,34 @@
 # Reconciliation improvement backlog
 
-**Status:** Working backlog, not yet approved for implementation
+**Status:** Active reconciliation backlog; completed items are indexed below
 
-**Last updated:** 2026-11-20
+**Last updated:** 2026-11-22
 
 **Scope:** The human review workflow in the Reconciliation view, and the matching options that workflow depends on.
+
+## Completed items (reference only)
+
+This compact index preserves the original R numbers used by dependencies. The closed tracking issue and merged pull request are the implementation record when assigned; the linked proposal identifies the Interactive Search/Browse scope. Keep completed requirements out of this backlog.
+
+| ID | Completed item | Scope reference |
+|---|---|---|
+| R2 | Patch a saved decision without reloading the preview | [Interactive Search/Browse](./done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) |
+| R16 | Atomic batch save for Interactive Search/Browse drafts | [Interactive Search/Browse](./done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) |
+| R21 | Keep the review pane open between rows | [Interactive Search/Browse](./done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) |
+| R24 | Open Interactive Search/Browse independently of Find Candidates | [Interactive Search/Browse](./done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) |
+| R26 | Interactive Search/Browse workspace | [Interactive Search/Browse](./done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) |
+| R27 | Responsive, reliable typed search | [Interactive Search/Browse](./done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) |
+| R28 | Keyboard search, decision, and advance | [Interactive Search/Browse](./done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) |
+| R29 | Independent text search with optional context | [Interactive Search/Browse](./done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) |
+| R30 | Save a searched match or New before batch matching | [Interactive Search/Browse](./done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) |
 
 ## Reconciliation ID flow
 
 See [RECONCILIATION_DIAGRAMS.md](./RECONCILIATION_DIAGRAMS.md) for separate sequence diagrams of candidate search, review decisions, export, manual links, targeted removal (R32), and normalization.
 
-Each item below is intended for its own GitHub issue. The `Tracking issue` line gives a suggested title; replace `TBD` with the number when the issue is created. Where one item unblocks another, the dependency is listed and the issue should reference it. R19 and R20 also need issues in the Authority Service repository for their service changes. R29 needs a companion service issue only if interactive-search fixtures demonstrate a retrieval gap.
+Each active item below is intended for its own GitHub issue. The `Tracking issue` line gives a suggested title; replace `TBD` with the number when the issue is created. Where one item unblocks another, the dependency is listed and the issue should reference it. R19 and R20 also need issues in the Authority Service repository for their service changes. When an item is complete, close its tracking issue with links to the merged pull request and validation, remove its detailed entry from this backlog, and retain its R number in the completed-items index. Rewrite partially delivered items to describe only the remaining work.
 
-This is a working backlog under `docs/proposals/`, not an approved phase plan or a description of shipped behavior. Decide its long-term location when the items are accepted.
+The entries below describe open, partial, or deferred work. This is a working backlog under `docs/proposals/`, not an approved phase plan.
 
 ## How to read an item
 
@@ -20,21 +36,23 @@ This is a working backlog under `docs/proposals/`, not an approved phase plan or
 
 - **Effort**, recorded in the summary table: S is a small local change, M is a few days, L is a larger feature or crosses two services. These are estimates, not commitments.
 
+- **Status**, recorded in the summary table: Open means no part of the item is complete; Partial means the remaining scope is described in the item; Deferred means the work is intentionally postponed.
+
 - **Priority**: Early is in the first recommended improvement set; Next follows that foundation or its listed dependencies; Later is deferred until evidence supports the change; Opportunistic is small work that can fit alongside related changes.
 
 - **Depends on**: an item that must ship first.
 
-- The acceptance criteria are observable checks for closing the issue. Validate them with straightforward, ambiguous, empty-result, and failed-save cases where relevant.
+- The acceptance criteria are observable checks for the remaining work. Validate them with straightforward, ambiguous, empty-result, and failed-save cases where relevant.
 
 ## Workflow foundations
 
 1. Reviewer decisions live in the reconciliation catalog (`shapeshifter.reconciliation.yml`). Normalized output does not change until accepted decisions are exported to the mapping sidecar (`shapeshifter.mapping.yml`). The preview endpoint returns decisions together with their candidates; the mapping endpoint returns the sidecar links. Most "the IDs did not change" confusion comes from this split, so several items below make it visible rather than removing it.
 
-2. Candidate matching is an OpenRefine-protocol call to the service at `RECONCILIATION_SERVICE_URL`, normally `sead_authority_service`. SIMS is a different subsystem: it allocates identities and tracks bindings, and takes no part in candidate search. Matching options therefore belong to the authority service and its manifest, not to Shape Shifter core. The two SIMS items in the original draft are retitled accordingly.
+2. **Ranked candidate matching** (short: candidate matching) uses source-row labels and supported properties with the OpenRefine-compatible service at `RECONCILIATION_SERVICE_URL`, normally `sead_authority_service`. It returns scored candidates for review in the candidate grid. A type's matching strategy may use specialized logic, including LLM-based matching where configured. SIMS allocates identities and tracks bindings; it does not take part in candidate matching.
 
-3. For many entities, most rows describe new records. Other rows have abbreviated or non-English labels that require an operator-entered expansion or translation. Search-first review is a primary workflow and does not require batch Find Candidates. Group F owns this improvement area.
+3. **Interactive Search/Browse** is reviewer-directed: Search uses text and supported context entered by the reviewer, while Browse loads a complete list within advertised limits. Search may also return ranked candidates; the distinction is how the query is started, not the result-ranking algorithm or protocol. Interactive Search/Browse complements ranked candidate matching and does not replace the candidate grid.
 
-4. Search text is separate from source data and row identity. Accepting a manually searched result saves a review decision for export. It is different from R6's trusted manual link, which writes directly to the mapping sidecar.
+4. For many entities, most rows describe new records. Other rows have abbreviated or non-English labels that require an operator-entered expansion or translation. Interactive Search/Browse does not require ranked candidate matching. Search text is separate from source data and row identity: accepting a manually searched result saves a review decision for export. This differs from R6's trusted manual link, which writes directly to the mapping sidecar.
 
 ## Non-goals
 
@@ -47,9 +65,9 @@ This is a working backlog under `docs/proposals/`, not an approved phase plan or
 
 R4 needs API support to restore an undecided proposal. R9 and R10 need backend export rules, not browser-only estimates.
 
-### R1. Show the top candidate in the review grid and accept it in one click
+### R1. Show the top ranked candidate in the candidate grid and accept it explicitly
 
-**Tracking issue:** `TBD` — "Reconciliation: show top candidate in the grid and accept it in one click" (labels: `reconciliation`, `frontend`, `ux`)
+**Tracking issue:** `TBD` — "Reconciliation: show top ranked candidate in the candidate grid" (labels: `reconciliation`, `frontend`, `ux`)
 
 **Problem.** To accept a candidate from the grid, a reviewer must open the `Review (n)` dialog and choose a candidate. The grid renders `Selected target ID` (`target_id`), which stays empty until acceptance, even though the preview payload already includes each row's `candidates`.
 
@@ -69,51 +87,16 @@ R4 needs API support to restore an undecided proposal. R9 and R10 need backend e
 
 - A candidate with a non-numeric URI cannot be accepted from the grid; a save failure remains visible.
 
-### R2. Update the row from a saved decision without reloading the preview
+### R3. Add keyboard shortcuts to the candidate grid
 
-**Tracking issue:** `TBD` — "Reconciliation: update saved decisions without reloading the preview" (labels: `reconciliation`, `frontend`, `performance`)
+**Tracking issue:** `TBD` — "Reconciliation: keyboard shortcuts for the candidate grid" (labels: `reconciliation`, `frontend`, `ux`, `accessibility`)
 
-**Problem.** `updateMapping` in `frontend/src/stores/reconciliation.ts` awaits `loadEntityResolutionCatalog` and `loadPreviewData` after every decision. `loadPreviewData` calls the preview endpoint, which resolves the source rows and re-runs normalization for the whole entity. On a large entity, this can make each decision wait on work across all preview rows.
-
-**Change.**
-
-- Save the decision, then patch only the decided row in the stored preview from the server response and request. This is an acknowledged update, not an optimistic one; add optimism only if save latency still warrants it.
-
-- Use the returned catalog to update decision state without an entity-wide preview reload. Keep other rows usable and preserve focus, scroll, filter, and sort.
-
-- Add an explicit `Refresh` control; reload on a detected conflict or inconsistent state and after export or a selection change. Keep the saved catalog authoritative for export, not the patched preview.
+**Remaining scope.** Interactive Search/Browse's keyboard search-and-decision loop is complete under R28. Add focus-scoped shortcuts to the candidate grid for opening a row, explicit decisions, search, and moving through visible rows. Do not trigger grid actions while the reviewer types in a field or dialog.
 
 **Acceptance criteria.**
 
-- The saved status appears without an entity-wide preview request; other rows remain usable during the save.
-
-- A failed save leaves the previous row unchanged and shows the error; focus and scroll remain in place.
-
-- Export results are unchanged compared with the current behaviour.
-
-### R3. Add a keyboard review loop
-
-**Tracking issue:** `TBD` — "Reconciliation: keyboard review loop for accept, reject, new, and search" (labels: `reconciliation`, `frontend`, `ux`, `accessibility`)
-
-**Problem.** Every row action is a mouse target inside a cell renderer, and the grid sets `suppressRowClickSelection`. A reviewer working through hundreds of rows cannot keep their hands on the keyboard, which is the main cost of a long session.
-
-**Change.**
-
-- Bind `Enter` to open review, `A` to accept the displayed candidate explicitly, `R` to reject, `N` to mark New, `S` to search alternatives, and `J` / `K` to move through visible rows.
-
-- Advance to the next row needing review only after a successful save, following the visible filter and sort.
-
-- Ignore the bindings while focus is in a text field, a dialog input, or the quick-search box, and list the bindings in the existing help dialog.
-
-**Acceptance criteria.**
-
-- A full accept-and-advance cycle works without the mouse.
-
-- Enter alone never accepts a candidate, and a failed save does not advance.
-
-- Typing in search or in a dialog does not trigger row actions.
-
-- The help dialog lists the bindings.
+- A reviewer can complete a grid decision-and-advance cycle without the mouse; a failed save does not advance.
+- Typing in search or a dialog does not trigger grid actions, and the help dialog lists the shortcuts.
 
 ### R4. Undo the last decision
 
@@ -139,31 +122,19 @@ R4 needs API support to restore an undecided proposal. R9 and R10 need backend e
 
 **Depends on:** R2 and R9, so the restored row updates without a full preview reload and post-export undo is reported accurately.
 
-### R5. Use a Needs review queue
+### R5. Add advanced Needs review filters and sorting
 
-**Tracking issue:** `TBD` — "Reconciliation: show rows needing review, including proposed matches" (labels: `reconciliation`, `frontend`, `ux`)
+**Tracking issue:** `TBD` — "Reconciliation: add advanced Needs review filters and sorting" (labels: `reconciliation`, `frontend`, `ux`)
 
-**Problem.** `statusFilter` starts at `all`; the existing `Unresolved` filter excludes proposed rows with candidates. Defaulting to it would hide the rows where one-click acceptance is most useful. The displayed decision confidence is not a suitable score for sorting undecided proposals.
-
-**Change.**
-
-- Default to `Needs review`: undecided rows and proposed rows, with or without candidates. Retain access to all decided rows.
-
-- Add `Ready to decide`, `Ambiguous`, `No candidates`, and `Errors` views; show counts and explain which rows have no usable business key.
-
-- Sort by top candidate score (not saved decision confidence). Offer `Best matches first` and `Needs investigation first`, with stable order and a defined place for missing scores; do not impose ascending score by default.
-
-- Add a `Below review threshold` filter driven by `entitySpec.review_threshold`, including rows with no candidate score. Share filter/sort persistence with R8.
+**Remaining scope.** Interactive Search/Browse provides the basic Needs review queue, navigation, and counts. Add candidate-score sorting, category views, threshold filtering, and persistent filter/sort state for the broader review workflow.
 
 **Acceptance criteria.**
 
-- Opening review includes proposed rows with candidates and undecided rows; category counts agree with the rows shown.
+- Candidate sorting uses candidate scores, handles missing scores and ties consistently, and does not use saved decision confidence.
+- Category and threshold filters show counts that match their rows, including rows without candidate scores where required.
+- Filter and sort choices persist across the relevant review navigation.
 
-- Threshold filtering uses candidate scores (not decision confidence) and includes missing scores.
-
-- The selected sort and filter survive a tab switch; ties and missing scores remain in a predictable order.
-
-**Depends on:** R1 for top-candidate score display and sorting only; basic Needs review membership and search-first navigation do not require it. R8 extends the local filter/sort state across visits.
+**Depends on:** R1 for candidate-score display and R8 for broader context persistence.
 
 ### R6. Choose a manual link target by search instead of typing an ID
 
@@ -187,69 +158,44 @@ R4 needs API support to restore an undecided proposal. R9 and R10 need backend e
 
 - The unchecked-link warning remains visible before saving.
 
-Group F extends free-text search as a primary review workflow. R6 shares its picker, but keeps the trusted manual-link save action separate.
+The completed Interactive Search/Browse workspace provides a picker that R6 can reuse, while R6 keeps the trusted manual-link save action separate.
 
-### R7. Record notes and preset reasons on every decision type
+### R7. Add preset reasons and broader note editing
 
-**Tracking issue:** `TBD` — "Reconciliation: record notes and preset reasons on all review decisions" (labels: `reconciliation`, `frontend`, `audit`)
+**Tracking issue:** `TBD` — "Reconciliation: add preset reasons and edit notes across review surfaces" (labels: `reconciliation`, `frontend`, `audit`)
 
-**Problem.** Notes can only be entered in the manual link and New dialogs. `persistDecision` passes no notes when rejecting, so the reason for a rejection is lost even though the request model supports notes. Reviewers who want to record a reason must add a manual link or nothing.
-
-**Change.**
-
-- Accept optional notes for all decisions, including rejection, and allow editing them after a fast decision.
-
-- Offer action-appropriate reasons as text; for example, "record missing from SEAD" belongs with New, not rejection.
-
-- Show existing notes on hover or in an expanded row, without opening a dialog.
+**Remaining scope.** Interactive Search/Browse supports optional inline notes. Add action-appropriate preset reasons and allow reviewers to view and edit saved notes across the other decision surfaces.
 
 **Acceptance criteria.**
 
-- A rejection can carry a note that survives a reload.
+- Preset reasons are stored as readable notes and match the decision action.
+- Notes can be edited without losing existing text unless the reviewer deliberately clears it.
+- The candidate grid identifies rows with notes and makes their text available without opening a decision dialog.
 
-- Preset reasons are stored as readable text; edits preserve existing notes unless deliberately cleared.
+### R8. Restore broader review context between visits
 
-- Rows with notes are identifiable in the grid.
+**Tracking issue:** `TBD` — "Reconciliation: restore candidate-grid review context between visits" (labels: `reconciliation`, `frontend`, `ux`)
 
-### R8. Keep the reviewer's place between visits
-
-**Tracking issue:** `TBD` — "Reconciliation: remember review context between visits" (labels: `reconciliation`, `frontend`, `ux`)
-
-**Problem.** `ReconciliationView` resets state on mount and selects the first reconcilable entity, and the grid's filter and search are local refs. Returning to a half-reviewed entity means finding the same specification, filter, and search text again.
-
-**Change.** Store the active tab, selected entity and target, queue/filter, sort, search text, focused business key, and scroll position per project and specification using the store and `localStorage`. Restore a key only if it still exists; fall back to Needs review when stored selections or filters are invalid. Share the filter/sort mechanism with R5.
+**Remaining scope.** Interactive Search/Browse restores its own mode, row, queries, filters, and sort. Extend context restoration to the broader project and candidate-grid workflow, including the selected specification, target, filter, search, focused row, and scroll position.
 
 **Acceptance criteria.**
 
-- Reloading restores the tab, entity, target, filter, sort, search, focused key, and approximate scroll position.
+- Returning to a project and specification restores valid candidate-grid selections and navigation state.
+- Removed specifications or invalid filters fall back safely, and state from one project is not shown in another.
 
-- A removed specification falls back to the first reconcilable entity without an error.
-
-- Switching project does not carry the previous project's selection.
-
-**Depends on:** R5 for the Needs review filter to restore.
+**Depends on:** R5 for shared filter and sort behavior.
 
 ### R9. Show unapplied changes and verification status
 
 **Tracking issue:** `TBD` — "Reconciliation: show unapplied changes per specification" (labels: `reconciliation`, `frontend`, `backend`, `ux`)
 
-**Problem.** Catalog decisions do not change normalized output until Export to Mapping runs. Counting accepted rows not yet exported misses changed targets, rejected former acceptances, New approvals, and removals. A successful export can still leave skipped, unverified, or failed rows requiring attention.
-
-**Change.**
-
-- Compute the difference on the backend between saved decisions and links/approvals owned by that specification in the sidecar: new and changed targets, links to remove, New approvals to add or remove, and notes that export would update. Do not treat a manual or other protected link as an exported reconciliation link.
-
-- Return counts and affected keys, including blocked/protected links, accepted decisions missing a candidate URI, and links awaiting verification. Expose them in the review header and specification list; distinguish unapplied changes from pending verification.
-
-- Recompute after export and undo. Do not clear the badge merely because the export route returned success; retain skipped, unsuccessful, and unverified rows for follow-up.
+**Remaining scope.** Interactive Search/Browse distinguishes Save decision from Export. Show whether saved decisions are applied to the mapping sidecar and report outstanding changes, verification state, and affected rows.
 
 **Acceptance criteria.**
 
-- New acceptances, changed targets, rejection of an exported acceptance, and New approvals each produce the appropriate outstanding add, change, or removal count.
-
-- An export that fully applies the saved decisions clears their unapplied counts; skipped, blocked, failed, and unverified rows remain visible with the correct reason.
-
-- A manual link on the same key does not make an accepted decision look exported, and undo after export leaves an unapplied change until re-export.
+- New, changed, removed, and New-approval decisions produce accurate outstanding-change counts.
+- Exported, skipped, blocked, failed, and unverified rows show their correct state and reason.
+- Manual or protected links are not mistaken for exported reconciliation decisions.
 
 ### R10. Check export readiness before writing
 
@@ -377,57 +323,24 @@ Candidate headers, from the original draft:
 
 **Tracking issue:** `TBD` — "Reconciliation: make the candidate limit effective per specification" (labels: `reconciliation`, `backend`, `configuration`)
 
-**Problem.** `auto_reconcile_entity` defaults `max_candidates` to 3 and the routes do not provide a per-specification value. The Authority Service may also use its own default rather than the requested query limit, so an effective end-to-end limit must be verified before promising a fixed number of candidates.
-
-**Change.**
-
-- Add an optional candidate count to the specification, with a documented default of 3, a permitted range of 1 to 10, and validation that rejects values outside it.
-
-- Pass the value through both matching routes and the query limit. Coordinate with the Authority Service to honor that limit end to end; consider `Load more candidates for this row` separately.
+**Remaining scope.** Interactive Search/Browse caps and Authority Service per-query limit forwarding are implemented. Add an optional candidate count for batch matching, defaulting to 3 and limited to 1–10, and pass it through both matching routes.
 
 **Acceptance criteria.**
 
-- With at least six available matches, a specification requesting six can display six candidates; default behavior is preserved and the service does not silently cap the result below the requested limit.
+- A specification requesting six candidates can display six when they are available; specifications without the field retain the default.
+- Values outside the allowed range are rejected with a clear validation message.
 
-- A value outside the permitted range is rejected by validation with a clear message.
-
-- Existing specifications without the field keep the current behaviour.
-
-**Depends on:** Authority Service support for honoring the requested query limit.
+**Depends on:** Implemented Authority Service per-query limit support.
 
 ---
 
 ## Group C — Batch decisions
 
-### R16. Add a batch decision endpoint
-
-**Tracking issue:** `TBD` — "Reconciliation: batch decision endpoint" (labels: `reconciliation`, `backend`, `api`)
-
-**Problem.** `update_mapping` takes the project lock, loads the catalog, applies one decision, and saves the catalog. The client also reloads the catalog and the preview after each decision. Any bulk action built on the current route is a loop that is slower than clicking.
-
-**Change.**
-
-- Add a route that accepts a list of decisions for one entity and target field, takes the lock once, loads the catalog once, applies every valid decision, and saves once.
-
-- Reject duplicate keys in a request before writing. Validate remaining entries independently: report unknown keys and invalid accepted-candidate decisions per entry while saving valid entries together. If the catalog write fails, fail the whole write rather than reporting success for unsaved entries.
-
-- Return saved decision data so the UI can patch rows. Detecting a decision changed since selection belongs to R33.
-
-- Keep the single-decision route for compatibility.
-
-**Acceptance criteria.**
-
-- A request with N valid decisions produces one catalog write and returns N saved decisions.
-
-- Duplicate keys reject the request without writing; independently invalid entries are reported per key while valid entries persist.
-
-- A write failure reports no entries as saved; a stale edit is reported as a conflict once R33 adds the expected decision state.
-
-### R17. Add bulk actions to the review grid
+### R17. Add bulk actions to the candidate grid
 
 **Tracking issue:** `TBD` — "Reconciliation: bulk accept, reject, and mark New" (labels: `reconciliation`, `frontend`, `ux`)
 
-**Problem.** The original draft proposed bulk actions, but the grid currently has no row selection. Reviewing many rows with the same clear outcome therefore requires one decision and one request per row.
+**Problem.** The candidate grid has no row selection. Reviewing many rows with the same clear outcome therefore requires one decision and one request per row.
 
 **Change.**
 
@@ -479,77 +392,33 @@ Candidate headers, from the original draft:
 
 These two items are owned by `sead_authority_service`, not by SIMS. They are listed here because they change what the review grid receives and how the specification configures it. Each needs a separate issue in that repository plus the Shape Shifter passthrough described below.
 
-### R19. Partial matching; assess wildcard syntax separately
+### R19. Add partial matching to ranked candidate matching
 
 **Tracking issue:** `TBD` — "Candidate matching: evaluate token and substring matches" (labels: `reconciliation`, `matching`, `configuration`)
 
-**Problem.** A reported search for `Sub-country administrative region` finds the target only when `administrative` is spelled out in full. Token or substring matching may help when the source supplies only part of a value.
-
-**Change.**
-
-- Reproduce the reported failed search with a small fixture; check whether interactive alternative search can solve it before changing matching for an entire specification.
-
-- If partial matching is needed, add an opt-in token or substring strategy in the Authority Service and report the matched text and match kind alongside fuzzy matches. Pass the setting through Shape Shifter with an agreed query parameter/header and manifest capability.
-
-- Treat wildcard patterns as a separate follow-up decision requiring syntax, escaping, and literal-character rules; do not conflate wildcards with partial matching in the first implementation.
-
-**Constraint.** Partial hits must carry a score and match explanation so reviewers can distinguish them from full-label hits.
+**Remaining scope.** Interactive Search/Browse supports literal substring filtering of complete Browse lists. Reproduce remaining failed-search cases and add opt-in token or substring matching to ranked candidate matching only where fixtures show it is needed. Keep wildcard syntax as a separate decision.
 
 **Acceptance criteria.**
 
-- A representative failing search finds the expected target through interactive search or, if needed, opt-in partial matching; disabled matching preserves current results.
+- Partial matches include a score and explanation that identifies the matched text and match kind.
+- The option is rejected when the service manifest does not declare support.
+- Wildcard characters remain literal unless a separate wildcard contract is approved.
 
-- Each candidate from a partial match states its score, matched text, and match kind.
-
-- The option is rejected by validation when the service manifest does not list support.
-
-### R20. Multilingual matching
+### R20. Add curated and automatic multilingual matching
 
 **Tracking issue:** `TBD` — "Candidate matching: multilingual label matching" (labels: `reconciliation`, `matching`, `configuration`)
 
-**Problem.** Matching reportedly fails when the source and stored values express the same concept in different languages.
-
-**Change.**
-
-- Prefer curated, type-specific aliases with a recorded language, because reviewers can inspect the equivalent term that produced a candidate.
-
-- Only then consider runtime translation or language detection. Rank using context and identifiers as well as label similarity; an approved equivalent term need not always rank below an unrelated same-language exact label.
-
-- Keep exceptions explicit: a scientific or archaeological term may have no translation.
+**Remaining scope.** Reviewers can enter translated terms in Interactive Search/Browse. This item covers service-side matching through curated, type-specific aliases and, only if needed, runtime translation or language detection. Keep language exceptions explicit for terms without a translation.
 
 **Acceptance criteria.**
 
-- A value in language A matches a stored value in language B, and the candidate names the alias and language used.
-
-- Ranking fixtures distinguish an approved equivalent term with matching context from a misleading exact-label match.
-
-- Disabling the option restores current results.
+- A cross-language match identifies the alias and language used.
+- Ranking fixtures distinguish an approved equivalent term with matching context from a misleading same-language label.
+- Disabling multilingual matching restores current results.
 
 ---
 
 ## Group E — Review continuity and repair
-
-### R21. Keep the review pane open while moving between rows
-
-**Tracking issue:** `TBD` — "Reconciliation: persistent pane for sequential review" (labels: `reconciliation`, `frontend`, `ux`)
-
-**Problem.** The current dialog requires repeated open/close steps to inspect candidates, source context, notes, and alternative search across consecutive rows. One-click acceptance helps obvious matches but not ambiguous ones.
-
-**Change.**
-
-- Selecting a row opens a side pane with available source context, candidate names/IDs/scores, alternative search, notes, and decision controls. Keep the pane open while moving to another row.
-
-- Start with fields already returned in the preview; richer remote previews are separate work. Reuse the same decision actions as the grid so pane and row stay synchronized.
-
-- Alternative search should discard late responses from older searches, clear an obsolete selection when the query changes, and keep the pane/dialog open if a save fails. R26–R31 define the dedicated search-first workflow within this pane; reuse one search component and request-state mechanism.
-
-**Acceptance criteria.**
-
-- Ten consecutive rows can be reviewed without repeatedly opening and closing a dialog.
-
-- Candidate selection and notes follow the active row; a failed save shows an error without discarding the selection.
-
-- Rapid successive alternative searches cannot show or accept a stale result.
 
 ### R22. Flag changed source inputs on previously reviewed rows
 
@@ -569,37 +438,16 @@ These two items are owned by `sead_authority_service`, not by SIMS. They are lis
 
 **Depends on:** R13.
 
-### R23. Defer difficult rows without making a decision
+### R23. Reuse skip and resume in candidate-grid review
 
-**Tracking issue:** `TBD` — "Reconciliation: skip and resume difficult review rows" (labels: `reconciliation`, `frontend`, `ux`)
+**Tracking issue:** `TBD` — "Reconciliation: reuse skip and resume in candidate-grid review" (labels: `reconciliation`, `frontend`, `ux`)
 
-**Problem.** Rejecting candidates does not approve creating a new record, and marking New is not a suitable way to set a difficult row aside. Reviewers need to continue through easy rows without recording a false decision.
-
-**Change.** Add `Skip for now` as review-session navigation rather than a new catalog decision. Keep skipped rows in Needs review and provide a way to return to them; explain the difference between Reject and New next to those actions.
+**Remaining scope.** Interactive Search/Browse already lets reviewers skip a row without saving a decision and return to it later. Reuse that navigation in candidate-grid review without adding a catalog status.
 
 **Acceptance criteria.**
 
-- Skipping advances the review without changing the catalog or sidecar; the row remains available in Needs review.
-
-- Deferred rows can be resumed later in the session, and no skipped row is shown as accepted, rejected, or New.
-
-- The UI explains that Reject does not approve new-record handling, while New does.
-
-### R24. Open saved review independently of Find Candidates
-
-**Tracking issue:** `TBD` — "Reconciliation: open saved review without starting matching" (labels: `reconciliation`, `frontend`, `ux`)
-
-**Problem.** A navigation action labelled `Find Candidates` can be confused with actually running a search, and compatibility checks may disable it when the remote service is offline. Existing saved decisions should still be inspectable.
-
-**Change.** Provide `Open review` or `Resume review` separately from `Find Candidates`. Only disable the remote search when matching is unavailable; load saved catalog and preview for review independently and show any preview-load error explicitly.
-
-**Acceptance criteria.**
-
-- Saved review opens without issuing a candidate-search request, including when the Authority Service is unavailable.
-
-- A disabled Find Candidates action does not block access to saved decisions.
-
-- Opening review and starting a search have distinct labels and outcomes.
+- Skipping a row leaves its catalog decision and mapping sidecar unchanged and keeps it available in Needs review.
+- Deferred rows can be revisited, and the UI distinguishes Skip from Reject and New.
 
 ### R25. Keep export results available with repair actions
 
@@ -621,153 +469,22 @@ These two items are owned by `sead_authority_service`, not by SIMS. They are lis
 
 ---
 
-## Group F — Fast manual free-text search
+## Group F — Interactive Search/Browse history
 
-For many entities, most source rows describe new records, so reviewing precomputed candidates is not the main task. Other rows use abbreviations or labels in another language, and the reviewer must search using an expanded or translated term. Free-text search is therefore a primary reconciliation workflow, alongside reviewing suggested candidates.
+The Interactive Search/Browse workspace and per-row query drafts are complete; see the completed-items index. This group tracks only bounded recent-query history. Reviewers can already enter expanded or translated search terms without automatic multilingual matching.
 
-The intended loop is: select a source row → type or revise a search term → inspect results → explicitly accept an existing record, mark New, or skip → continue to the next row. Batch Find Candidates is optional. Source labels and business keys remain unchanged when the reviewer edits the search query. “Manual search” means operator-entered search text; accepting its result remains a catalog decision for export, not a trusted manual sidecar link.
+### R31. Remember and reuse recent search terms
 
-R21 provides the persistent pane; R26–R31 add search-specific behaviour. R6 reuses the picker for trusted manual links but retains its separate save action. R19 and R20 may improve retrieval later; expanding abbreviations and typing translated terms must work without waiting for them.
+**Tracking issue:** `TBD` — "Reconciliation: remember and reuse recent search terms" (labels: `reconciliation`, `frontend`, `ux`)
 
-### R26. Add a search-first workspace for rows needing review
-
-**Tracking issue:** `TBD` — "Reconciliation: search-first workspace for manual free-text review" (labels: `reconciliation`, `frontend`, `ux`)
-
-**Area:** frontend. **Effort:** M. **Priority:** Early.
-
-**Problem.** Opening an alternative-search dialog separately for each row treats manual search as an exception. This is slow when most rows are new or their source labels are unsuitable search terms.
-
-**Change.**
-
-- Offer a Search-first review mode in the persistent pane, available for rows with valid business keys even when no batch candidate search has run. Keep source context visible beside the search field and results.
-- Focus the editable search field when entering a row. Offer Use source label as a convenience; allow replacement by an expanded abbreviation, translation, identifier, or arbitrary text without editing project data.
-- Keep results and decision controls in the same pane. Offer Accept selected record, Mark New, and Skip for now, with Previous/Next navigation and remaining-row counts. An ordinary review session must not require repeated dialog opening.
-- In this mode, show the text search prominently and keep batch candidate matching optional. Do not require R1's top-candidate display or score sorting to navigate the queue.
+**Remaining scope.** Offer bounded recent-query history scoped to a project and specification, with explicit reuse and Clear history. Reusing a term triggers a new search for the current row and never copies a decision. Keep query history separate from per-row drafts, catalog decisions, source labels, and curated aliases.
 
 **Acceptance criteria.**
 
-- Ten consecutive rows can be searched and reviewed in one pane without opening individual search dialogs or running Find Candidates.
-- Typing an English expansion for a non-English abbreviation leaves the source label and encoded business key unchanged.
-- Entering another row updates the visible context, clears obsolete results and selection, and places focus in its search field.
+- A recent query can be reused for another row, but results and decisions remain scoped to that row and its current context.
+- History is bounded, can be cleared, and does not leak across projects or specifications.
 
-**Depends on:** R21 for the persistent pane. R30 enables saving decisions before batch matching; R28 provides the complete keyboard loop.
-
-### R27. Make typed search responsive and reliable
-
-**Tracking issue:** `TBD` — "Reconciliation: responsive text search with stale-result protection" (labels: `reconciliation`, `frontend`, `performance`, `ux`)
-
-**Area:** frontend. **Effort:** M. **Priority:** Early.
-
-**Problem.** Reviewers try several terms for the same row. Waiting for obsolete requests, selecting an old result, or mistaking a failed request for no matches adds time and can produce an incorrect decision.
-
-**Change.**
-
-- Debounce typing with an initial target of 250–400 ms; Enter submits immediately without a second duplicate request. Support composition input so unfinished IME text is not submitted.
-- Cancel superseded requests when possible and always discard responses for an older query, row, specification, or project. Clear candidate selection immediately when text or search context changes.
-- Show distinct states for not searched, searching, results, no results, and search failed. A failed request offers Retry and never appears as an empty successful search.
-- Keep the pane usable while searching. Acceptance is available only for a selected result belonging to the current completed search. Prevent duplicate decision submissions.
-
-**Acceptance criteria.**
-
-- If responses arrive in reverse order, only the current row's latest search can be displayed or accepted.
-- Enter submits immediately, pending debounce does not duplicate it, and changing a query invalidates its former selection before the next response arrives.
-- A failed search preserves the query, reports the error, and supports Retry; it does not claim that no existing record was found.
-
-**Depends on:** R26. Consolidate R21's search request handling here rather than implementing a second mechanism.
-
-### R28. Search, decide, and advance without leaving the keyboard
-
-**Tracking issue:** `TBD` — "Reconciliation: keyboard search, accept or New, and advance" (labels: `reconciliation`, `frontend`, `ux`, `accessibility`)
-
-**Area:** frontend. **Effort:** M. **Priority:** Early.
-
-**Problem.** In datasets dominated by new records, repeatedly searching, closing a dialog, opening New, and finding the next row costs more than candidate selection itself.
-
-**Change.**
-
-- Define a focus-scoped loop: type a query; Enter searches; navigate results with the keyboard; explicitly Accept selected record and next, Mark New and next, or Skip for now. Show the shortcuts beside their controls and coordinate them with R3.
-- Plain typing in the search field must never invoke bare-letter grid actions, and Enter in that field must never accept or mark New. Offer explicit modified shortcuts for decisions and equivalent labelled buttons.
-- Make Mark New a deliberate action that explains new-record approval and possible later ID allocation. Permit optional notes inline; do not require an empty search or mandatory repeated confirmation for every row. An empty result never marks New automatically.
-- Advance after a confirmed save only. On failure, retain the active row, query, selected result, and notes for retry. Skip changes neither catalog nor sidecar. Undo uses R4 when available.
-
-**Acceptance criteria.**
-
-- A keyboard-only fixture with 20 rows, including 18 known-new rows and two existing records, can be completed with explicit decisions and no repeated dialog opening.
-- A no-results response alone makes no decision; Mark New remains an operator choice even when candidates exist or no search was run.
-- A failed acceptance or New save does not advance or discard the work; successful saves update the queue without entity-wide preview reloads.
-
-**Depends on:** R26, R27, R30, and R2. Share navigation with R3 and skip semantics with R23 without requiring batch-candidate shortcuts first.
-
-### R29. Search using independent text and optional row context
-
-**Tracking issue:** `TBD` — "Reconciliation: free-text record search with optional source context" (labels: `reconciliation`, `backend`, `matching`, `ux`)
-
-**Area:** frontend, backend; authority service only where retrieval capability needs extending. **Effort:** L. **Priority:** Early.
-
-**Problem.** A reviewer may know an expanded name or translated term that differs completely from the source label. Useful interactive search must accept that text and, when helpful, use context to distinguish similarly named records. Prefix suggestions alone should not be assumed to meet this need.
-
-**Change.**
-
-- Define an interactive search request with operator-entered text, the specification's target service type, optional supported row properties, and a bounded result limit. Keep query text separate from source label and business key.
-- Allow reviewers to inspect and remove context restrictions for a broader retry. Preserve the target type, and distinguish true filters from properties used only to rank matches.
-- First assess the existing suggestion/search route against abbreviated-label and translated-query fixtures. Reuse it where sufficient; extend backend or Authority Service retrieval only for demonstrated gaps. Return the actual query, context used, and whether more results are available when the service can report that.
-- Show names, IDs, and available distinguishing details. Full abbreviation expansion or automatic translation is not required: the operator supplies the alternative text. Explicit wildcard syntax and automatic multilingual matching remain R19/R20 work.
-
-**Acceptance criteria.**
-
-- A source label such as `Sthlm` can be searched as `Stockholm`, and a Swedish source label can be searched using the target's English label, without changing project data.
-- A same-name fixture demonstrates the effect of supported context and allows an explicit broader retry; context not supported by the service is not silently presented as applied.
-- Search results retain exact candidate URIs for normal acceptance and export; truncation or unavailable pagination is described honestly rather than implying an exhaustive search.
-
-**Depends on:** No dependency on R19 or R20. Add an Authority Service issue only if the fixture identifies a required service change.
-
-### R30. Save a searched match or New decision before batch matching
-
-**Tracking issue:** `TBD` — "Reconciliation: save row decisions without prior batch matching" (labels: `reconciliation`, `backend`, `api`)
-
-**Area:** backend. **Effort:** M. **Priority:** Early.
-
-**Problem.** The current decision service rejects keys absent from the reconciliation catalog with “run matching first”. This prevents a complete search-first workflow even when the source row is already visible and the operator has found an existing record or knows it is new.
-
-**Change.**
-
-- Allow an authorized decision for an actual source row with a valid unique business key to create its catalog entry directly. Validate the project, specification, current row, and key on the server; do not trust arbitrary keys or client-supplied source context.
-- Preserve accepted-candidate URI/ID rules, notes, operator provenance, and available selected-result metadata. A manually searched match uses the same accepted-decision/export path as a batch-suggested match; it does not write a trusted manual link.
-- Permit explicit New without a prior candidate search. Keep service reachability requirements specific to actions that need remote search: choosing New does not require the Authority Service to be online.
-- Return enough saved state for R2 to patch the row and R9 to report unapplied changes. Avoid forcing a whole-entity normalization on every save; define reuse and invalidation of validated review-row data, and reject stale or no-longer-valid keys explicitly.
-
-**Acceptance criteria.**
-
-- On a specification with no prior matching entries, an existing searched record can be accepted and another row marked New without running batch matching.
-- Unknown, missing, duplicate, stale, or unauthorized keys do not create decisions; concurrent edits return an actionable conflict.
-- Decisions survive reload and batch reruns, appear as unapplied until export, and affect normalized output or new-record approval only through the existing export rules. Saving New still works while the remote search service is offline.
-
-**Depends on:** None. R26/R28 consume this support; R2/R9 provide the UI update and unapplied-state presentation.
-
-### R31. Remember and reuse operator-entered search terms
-
-**Tracking issue:** `TBD` — "Reconciliation: retain row search terms and reuse recent queries" (labels: `reconciliation`, `frontend`, `ux`)
-
-**Area:** frontend. **Effort:** M. **Priority:** Next.
-
-**Problem.** Reviewers repeatedly expand the same abbreviation, translate a term, or revisit a row after interruption. Reconstructing the useful query each time wastes work.
-
-**Change.**
-
-- Retain the latest query and context settings per project, specification, and business key. Restore the query on return and focus it for editing; never restore an old result as a newly verified match.
-- Offer bounded recent-query history scoped to the specification, with explicit reuse and Clear history. Reusing a term triggers or prepares a new search and never copies a decision across keys.
-- Coordinate persistence with R8. If current source inputs differ, indicate that a restored term came from earlier inputs and offer Reset to source label; use R22's richer comparison when available.
-- Keep drafts and history separate from catalog decisions, source labels, matching fingerprints, and curated aliases. Promoting repeated terms into R20 aliases is separate work.
-
-**Acceptance criteria.**
-
-- Leaving and returning to a row restores its typed expansion or translation without changing source data or submitting a decision.
-- A recent query can be reused for another row, but results and acceptance are scoped to that row and its current context.
-- History is bounded, can be cleared, and does not leak across projects or specifications; a changed source row does not present an old query as newly reviewed input.
-
-**Depends on:** R26. Share state persistence with R8; R22 is an optional enhancement, not a prerequisite for retaining queries.
-
----
+**Depends on:** R26 (complete; see the completed-items index). Share storage conventions with R8 where practical; R22 is not a prerequisite.
 
 ## Group G — Targeted removal
 
@@ -828,13 +545,13 @@ R21 provides the persistent pane; R26–R31 add search-specific behaviour. R6 re
 
 ## Group I — Inspect saved workspace decisions
 
-### R34. Inspect saved decisions in the Search/Browse workspace
+### R34. Inspect saved decisions in the Interactive Search/Browse workspace
 
-**Tracking issue:** `TBD` — "Reconciliation: inspect saved decisions in the Search/Browse workspace" (labels: `reconciliation`, `frontend`, `ux`)
+**Tracking issue:** `TBD` — "Reconciliation: inspect saved decisions in the Interactive Search/Browse workspace" (labels: `reconciliation`, `frontend`, `ux`)
 
 **Area:** frontend. **Effort:** M. **Priority:** Next.
 
-**Problem.** The Search/Browse workspace replaces the legacy grid, and its Needs review queue removes rows with saved decisions. If Authority becomes unavailable after the workspace opens, reviewers cannot inspect saved decisions in the workspace and must switch to the legacy grid.
+**Problem.** The Interactive Search/Browse workspace's Needs review queue excludes rows with saved decisions. Reviewers can inspect those decisions in the candidate grid, but must switch workflows to do so.
 
 **Change.**
 
@@ -845,77 +562,66 @@ R21 provides the persistent pane; R26–R31 add search-specific behaviour. R6 re
 
 **Acceptance criteria.**
 
-- After opening the workspace while Authority is available, a reviewer can inspect previously saved decisions and decisions saved during the session after Authority becomes unavailable, without switching to the legacy grid.
+- After opening the workspace while Authority is available, a reviewer can inspect previously saved decisions and decisions saved during the session after Authority becomes unavailable, without switching to the candidate grid.
 - Inspection uses saved state already loaded or returned by the batch save; it makes no Authority request.
 - The view shows the saved status and available decision details without changing the catalog or mapping sidecar.
 - Saved rows do not appear in Needs review or change its count.
 
-**Depends on:** R2 and R24 for saved-row updates and independent saved review.
+**Depends on:** R2 and R24, both completed by the Interactive Search/Browse implementation.
 
-**Scope note.** This follow-up is deferred from the [Search and Browse proposal](./RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md) and is not a Phase 3 acceptance gate.
+**Scope note.** This remains deferred from the shipped [Interactive Search/Browse proposal](./done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE.md); saved-decision inspection was not part of its completed scope.
 
 ---
 
 ## Summary
 
-| Item | Area | Effort | Priority | Depends on |
-|---------------------------------------------------|----------------------------|--------|---------------|-----------------------|
-| R1 Top candidate and explicit one-click accept | frontend | M | Early | — |
-| R2 Patch saved decision without preview reload | frontend | M | Early | — |
-| R3 Keyboard review loop | frontend | M | Early | R1, R5 |
-| R4 Undo last decision | frontend, backend | M | Early | R2, R9 |
-| R5 Needs review queue and candidate-score sorting | frontend | M | Early | R1 (score features only) |
-| R6 Manual link target by search | frontend | M | Next | — |
-| R7 Notes and preset reasons | frontend | S | Next | — |
-| R8 Remember review context | frontend | M | Early | R5 |
-| R9 Unapplied changes and verification status | frontend, backend | L | Early | — |
-| R10 Pre-export check | frontend, backend | M | Next | — |
-| R11 Two-line column headers | frontend | S | Cosmetic | — |
-| R12 Deduplicate effective queries | backend | M | Early | — |
-| R13 Reuse unchanged matching outcomes | backend | L | Next | — |
-| R14 Async progress and cancel | frontend, backend | L | Early | — |
-| R15 Effective configurable candidate limit | backend, authority service | L | Next | Service limit support |
-| R16 Batch decision endpoint (conflict check owned by R33) | backend | L | Next | — |
-| R17 Bulk actions in the grid | frontend | M | Next | R16 |
-| R18 Review equivalent-query groups | frontend | M | Next | R16 |
-| R19 Partial matching, wildcard follow-up | authority service, backend | L | Later | — |
-| R20 Multilingual matching | authority service | L | Later | — |
-| R21 Review pane stays open | frontend | L | Early | — |
-| R22 Flag changed source inputs | frontend, backend | M | Next | R13 |
-| R23 Defer and resume difficult rows | frontend | S | Next | — |
-| R24 Open saved review independently | frontend | S | Early | — |
-| R25 Retained export results and repair | frontend | M | Next | R5, R9 |
-| R26 Search-first workspace | frontend | M | Early | R21 |
-| R27 Responsive and reliable typed search | frontend | M | Early | R26 |
-| R28 Keyboard search, decision, and advance | frontend | M | Early | R26, R27, R30, R2 |
-| R29 Independent text search with optional context | frontend, backend; authority service if needed | L | Early | — |
-| R30 Decisions without prior batch matching | backend | M | Early | — |
-| R31 Remember and reuse search terms | frontend | M | Next | R26 |
-| R32 Clear decision and/or sidecar entry by key | frontend, backend | M | Next | — |
-| R33 Per-row expected decision state on decision writes | backend | L | Later | — |
-| R34 Saved decisions in Search/Browse workspace | frontend | M | Next | R2, R24 |
+| Item | Area | Effort | Status | Priority | Depends on |
+|---------------------------------------------------|----------------------------|--------|----------|---------------|-----------------------|
+| R1 Ranked candidate matching: top candidate and explicit accept | frontend | M | Open | Early | — |
+| R3 Keyboard shortcuts for the candidate grid | frontend | M | Partial | Early | R1, R5 |
+| R4 Undo last decision | frontend, backend | M | Open | Early | R2, R9 |
+| R5 Advanced Needs review filters and sorting | frontend | M | Partial | Early | R1 (score features only), R8 |
+| R6 Manual link target by search | frontend | M | Open | Next | — |
+| R7 Preset reasons and broader note editing | frontend | S | Partial | Next | — |
+| R8 Restore broader review context | frontend | M | Partial | Early | R5 |
+| R9 Unapplied changes and verification status | frontend, backend | L | Partial | Early | — |
+| R10 Pre-export check | frontend, backend | M | Open | Next | — |
+| R11 Two-line column headers | frontend | S | Open | Opportunistic | — |
+| R12 Deduplicate effective queries | backend | M | Open | Early | — |
+| R13 Reuse unchanged matching outcomes | backend | L | Open | Next | — |
+| R14 Async progress and cancel | frontend, backend | L | Open | Early | — |
+| R15 Per-specification candidate limit | backend, authority service | L | Partial | Next | Authority Service per-query limit support |
+| R17 Bulk actions in the candidate grid | frontend | M | Open | Next | R16 |
+| R18 Review equivalent-query groups | frontend | M | Open | Next | R16 |
+| R19 Partial matching in ranked candidate matching | authority service, backend | L | Partial | Later | — |
+| R20 Curated and automatic multilingual matching | authority service | L | Open | Later | — |
+| R22 Flag changed source inputs | frontend, backend | M | Open | Next | R13 |
+| R23 Reuse skip and resume in candidate-grid review | frontend | S | Partial | Next | — |
+| R25 Retained export results and repair | frontend | M | Open | Next | R5, R9 |
+| R31 Recent search history | frontend | M | Partial | Next | R26 |
+| R32 Clear decision and/or sidecar entry by key | frontend, backend | M | Open | Next | — |
+| R33 Per-row expected decision state on decision writes | backend | L | Open | Later | — |
+| R34 Saved decisions in Interactive Search/Browse workspace | frontend | M | Deferred | Next | R2, R24 |
 
 ## Suggested order
 
-1. Deliver search-first review for mostly-new datasets and labels requiring alternative terms: R30 and R2, then R21, R26, R27, and R28. Assess R29's search fixtures early and extend retrieval only where required. This route does not wait for batch candidates, top-candidate display, R19, or R20. Add R31 next. Bring R9 and R24 alongside it so saved decisions and review access remain clear.
+1. Make candidate review fast and recoverable: R1, R5, R8, R3, and R4. R2 is complete and R9 remains partial; implement R5 and R8 together so their shared persistence has one owner.
 
-   Add R34 after R2/R24 and the initial Search/Browse workspace; it does not block this proposal's Phase 3 acceptance.
+2. Reduce batch matching waits: R14 and R12, followed by R13 and R15. Keep ranked candidate matching optional for Interactive Search/Browse sessions.
 
-2. Make candidate review fast and recoverable: R1, R5, R8, R3, and R4, supported by R2/R9/R24 above. Implement R5 and R8 together so their shared persistence has one owner; coordinate R3's grid shortcuts with R28's search-field shortcuts.
+3. Enable deliberate batch decisions: build R17 and R18 on the completed R16 atomic save endpoint where its contract fits. Add R22 after R13 and before encouraging reuse of old decisions.
 
-3. Reduce batch matching waits: R14 and R12, followed by R13 and R15. Keep batch Find Candidates optional for search-first sessions.
+4. Fit R6, the remaining R7 work, R10, R23, R25, and R32 around the workflow they support. Reuse the Interactive Search/Browse picker and skip behavior rather than building parallel implementations. Make R11 opportunistic.
 
-4. Enable deliberate batch decisions: R16, R17, then R18. Add R22 after R13 and before encouraging reuse of old decisions.
+5. Improve automatic matching through R19 and R20 after representative failed-search fixtures show what needs to change. Decide wildcard syntax separately from partial matching. R31's recent-query history is a separate frontend follow-up.
 
-5. Fit R6, R7, R10, R23, R25, and R32 around the workflow they support. Reuse the search picker and skip behaviour rather than building parallel implementations. Make R11 opportunistic.
+R34 remains deferred. R33 can proceed now that the workspace is shipped; it replaces the advisory pre-save warning with a server-enforced check and removes the last-writer-wins window.
 
-6. Improve automatic matching through R19 and R20 after representative failed-search fixtures show what needs to change. Decide wildcard syntax separately from partial matching; manual expanded or translated query text is already supported by the earlier search-first work.
+The Interactive Search/Browse workspace is shipped. R33 remains a follow-up that replaces its advisory pre-save warning with a server-enforced check and removes the last-writer-wins window.
 
-Add R33 once the workspace ships. It turns the advisory pre-save warning into a server-enforced check, and it is the only item here that removes the last-writer-wins window rather than warning about it.
+Assess the shipped Interactive Search/Browse workflow by measuring time and interactions per saved decision, preview requests per decision, time to resume review, and time to locate and repair an export problem. Also measure time per explicit New decision, time from entering a query to a usable result (median and 95th percentile), and query attempts per completed decision. Record the fixture size and environment before setting latency targets.
 
-Assess improvements by measuring time and interactions per saved decision, preview requests per decision, time to resume review, and time to locate and repair an export problem. For Group F, also measure time per explicit New decision, time from entering a query to a usable result (median and 95th percentile), and query attempts per completed decision. Record the fixture size and environment before setting latency targets.
-
-Validate Group F with a dataset dominated by known-new records (for example, 90 of 100 rows), abbreviated and non-English source labels searched with manually supplied expansions/translations, and a session with no prior batch matching. Include ambiguous results, successful empty searches, unavailable service, out-of-order responses, changed source rows, and failed saves. Empty results must never mark New automatically; unavailable search must not prevent a deliberate New decision when local row validation succeeds.
+Keep regression coverage for Interactive Search/Browse with a dataset dominated by known-new records (for example, 90 of 100 rows), abbreviated and non-English source labels searched with manually supplied expansions/translations, and a session with no prior ranked candidate matching. Include ambiguous results, successful empty searches, unavailable service, out-of-order responses, changed source rows, and failed saves. Empty results must never mark New automatically; unavailable search must not prevent a deliberate New decision when local row validation succeeds.
 
 ## Open decisions
 
@@ -923,11 +629,8 @@ Validate Group F with a dataset dominated by known-new records (for example, 90 
 
 - R13/R22: decide where matching-input fingerprints and the previous reviewed-input snapshot are stored and how existing catalog entries without them are shown.
 
-- R15: confirm how the Authority Service honors the requested candidate limit before selecting the configuration contract.
+- R15: decide whether to add per-specification batch candidate-count configuration and select its allowed range; Authority Service per-query limit forwarding is implemented.
 
 - R19: agree on the option channel between services; handle wildcard syntax in separate follow-up work if partial matching proves useful.
 
-- R29: establish which interactive-search behaviours the existing route already provides, whether optional context filters or only ranks results, and how result truncation can be reported. Automatic translation and wildcard syntax are separate decisions.
-- R30: choose how validated source-row data is reused and invalidated so a first-time decision is checked against current data without normalizing the whole entity per save. Define an actionable stale-row conflict.
-- R28: choose explicit modified decision shortcuts that coexist with text editing, composition input, and R3; plain Enter in the query field runs search only.
 - R33: decide whether an expected state becomes required once Shape Shifter sends it, and how a rejected batch is recovered by reapplying the preserved drafts.
