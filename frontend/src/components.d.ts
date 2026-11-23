@@ -65,6 +65,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SchemaTreeView: typeof import('./components/SchemaTreeView.vue')['default']
+    SelectionBrowseGrid: typeof import('./components/reconciliation/SelectionBrowseGrid.vue')['default']
     SessionIndicator: typeof import('./components/SessionIndicator.vue')['default']
     SessionManager: typeof import('./components/SessionManager.vue')['default']
     SpecificationEditor: typeof import('./components/reconciliation/SpecificationEditor.vue')['default']
