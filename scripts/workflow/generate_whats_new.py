@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib import error, request
 
+from scripts._shared.commit_map import translate_commit
 from scripts._shared.env import load_local_env as load_local_env_file
 
 CHANGELOG_VERSION_PATTERN = re.compile(
@@ -268,7 +269,8 @@ def list_merged_pull_requests_for_base(
                 url=f"https://github.com/{github_repository}/pull/{number}",
                 base_ref_name=base_ref_name,
                 head_ref_name=head_ref_name,
-                merge_commit_oid=merge_commit_oid,
+                # GitHub reports pre-rewrite merge commits under their old hashes.
+                merge_commit_oid=translate_commit(merge_commit_oid),
             )
         )
     return pull_requests
