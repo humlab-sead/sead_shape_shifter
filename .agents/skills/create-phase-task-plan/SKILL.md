@@ -38,7 +38,7 @@ Before writing or revising a task plan, read:
 
 1. Read the source proposal and phase plan. Confirm the selected phase is marked ready and identify its `PH*-AC-*` criteria, source `P-AC-*` criteria, fixed decisions, constraints, dependencies, and validation milestones.
 2. If the phase is not ready, produce a Blocked task plan that names the blocking decision. Do not create a Validated plan.
-3. When `graphify-out/graph.json` exists, begin exploration with a scoped `.venv/bin/graphify query "<phase question>"`. Use `path` or `explain` for relationships, then verify findings in project instructions, code, tests, configuration, and documentation. Trace affected callers, consumers, contracts, schemas, and data flows.
+3. When `graphify-out/graph.json` exists, begin exploration with a scoped `graphify query "<phase question>"`. Use `path` or `explain` for relationships, then verify findings in project instructions, code, tests, configuration, and documentation. Trace affected callers, consumers, contracts, schemas, and data flows.
 4. Produce one task plan with repository basis, findings, task IDs, validation IDs, exact targets, planned files marked `NEW`, baseline results, deliverables, and acceptance-criteria coverage.
 5. Set readiness to Validated only when the plan has executable validation methods and no unresolved placeholder or decision can change implementation.
 

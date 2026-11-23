@@ -611,7 +611,7 @@ Rules of thumb: keep files small, make them operational not encyclopedic, follow
 - **Semantic rules catalog** (`docs/rules/`, `semantic-rules.instructions.md`): AI-readable YAML rules (`id`, `severity`, `when`, `require`, `fix`) that complement JSON Schema for project YAML — so agents can explain and repair configs.
 - **`docs/` is authoritative; `docs/features/` is backlog.** This single rule stops agents from implementing roadmap prose as if it were shipped behavior.
 - **Instruction docs are reference, not policy**: comparison and agent notes live in `docs/ai/` (e.g. `copilot-codex-instruction-comparison.md`) as reference notes, not authoritative rules.
-- **Makefile as the agent control surface** — `make lint`, `make tidy`, `make test`, plus `rtk-install`, `install-graphify`, `update-graphify`, `commit-graphify` — one command set every agent is pointed at.
+- **Makefile as the agent control surface** — `make lint`, `make tidy`, `make test`, plus `rtk-install`, `install-graphify`, `update-graphify`, `semantic-graphify` — one command set every agent is pointed at.
 
 ---
 
