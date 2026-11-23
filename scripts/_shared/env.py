@@ -16,8 +16,6 @@ import os
 from collections.abc import Container, Sequence
 from pathlib import Path
 
-from dotenv import dotenv_values
-
 
 def apply_env_files(files: Sequence[tuple[Path, bool]]) -> None:
     """Merge environment files into ``os.environ``.
@@ -26,7 +24,13 @@ def apply_env_files(files: Sequence[tuple[Path, bool]]) -> None:
     file replace values already in the environment; without it, an existing
     value wins. Entries are applied in order, so a later file overrides an
     earlier one. Missing files contribute nothing.
+
+    Imports python-dotenv only when called, so :func:`load_local_env` keeps
+    working on a plain Python without project dependencies, such as the
+    release workflow's runner.
     """
+    from dotenv import dotenv_values  # pylint: disable=import-outside-toplevel
+
     for path, override in files:
         for name, value in dotenv_values(path).items():
             if value is not None and (override or name not in os.environ):
