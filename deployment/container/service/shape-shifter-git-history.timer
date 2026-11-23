@@ -1,0 +1,14 @@
+[Unit]
+Description=Periodic git history snapshot of the Shape Shifter deployment home
+
+[Timer]
+# OnUnitInactiveSec measures from the end of the previous run, so a slow run
+# delays the next one instead of overlapping it.
+OnBootSec=10min
+OnUnitInactiveSec=15min
+AccuracySec=1min
+RandomizedDelaySec=60
+Unit=shape-shifter-git-history.service
+
+[Install]
+WantedBy=timers.target

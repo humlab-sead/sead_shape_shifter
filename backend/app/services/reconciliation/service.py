@@ -1,20 +1,29 @@
 """Service for entity reconciliation against SEAD database."""
 
+import json
+import math
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 import httpx
 from loguru import logger
 from pydantic import ValidationError as PydanticValidationError
+from pydantic_core import to_jsonable_python
 
 from backend.app.clients.reconciliation_client import (
     CandidateVerificationProtocolError,
     CandidateVerificationUnavailableError,
     ReconciliationClient,
     ReconciliationQuery,
+    RecordSelectionInvalidRequestError,
+    RecordSelectionNotFoundError,
+    RecordSelectionServiceError,
+    RecordSelectionTooLargeError,
+    RecordSelectionUnavailableError,
+    RecordSelectionUnsupportedError,
 )
 from backend.app.core.operation_manager import OperationStatus, operation_manager
 from backend.app.exceptions import (
@@ -32,14 +41,30 @@ from backend.app.models import AutoReconcileResult, Project, ReconciliationCandi
 from backend.app.models.reconciliation import (
     CandidateVerificationRequestItem,
     CandidateVerificationResult,
+    DecisionBatchCounts,
+    DecisionBatchResult,
+    DecisionDraft,
     ExportToMappingOutcome,
     ExportToMappingResult,
+    ReconciliationIssue,
+    ReconciliationRecord,
     ReconciliationRowError,
+    RecordSelectionBrowseResult,
+    RecordSelectionCapabilities,
+    RecordSelectionSearchRequest,
+    RecordSelectionSearchResult,
+    SavedDecision,
+    SpecificationDecisionCounts,
 )
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services import ProjectService, ShapeShiftService
 from backend.app.services.mapping_service import MappingService
 from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
+from backend.app.services.reconciliation.reference_validation import (
+    POSTGRES_INTEGER_MAX,
+    accepted_reference_error,
+    parse_record_uri,
+)
 from backend.app.services.reconciliation.resolvers import ReconciliationSourceResolver
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.model import ShapeShiftProject
@@ -66,6 +91,36 @@ class ResolvedSourceRows:
     rows: list[dict[str, Any]]
     local_key: str | list[str]
     errors: list[ReconciliationRowError] = field(default_factory=list)
+
+
+# Operator text that starts with ``id:`` always means an exact target-ID lookup.
+_EXACT_IDENTIFIER_PATTERN = re.compile(r"^id:\s*(.*)$", re.IGNORECASE | re.DOTALL)
+
+
+def _canonical_value(value: Any) -> str:
+    """Return a comparable representation used to detect changed source values.
+
+    Preview rows reach the browser as JSON, so the value the operator saw is
+    already JSON-safe while the freshly resolved row still holds native values
+    such as ``datetime``. Both copies are converted with the same JSON
+    conversion, so an unchanged date, time, or duration compares equal after
+    that round trip.
+    """
+    item = getattr(value, "item", None)
+    if callable(item) and not isinstance(value, (str, bytes, bytearray)):
+        try:
+            value = item()
+        except (TypeError, ValueError):
+            pass
+    if value is None:
+        return "null"
+    if isinstance(value, float) and not math.isfinite(value):
+        return "null"
+    try:
+        converted = to_jsonable_python(value)
+    except (TypeError, ValueError):
+        converted = str(value)
+    return json.dumps(converted, sort_keys=True, default=str)
 
 
 @dataclass
@@ -327,9 +382,15 @@ class ReconciliationService:
             errors.setdefault(error.row_index, []).append(error.message)
 
         enriched_data: list[dict] = []
+        service_type = entity_mapping.metadata.remote.service_type
         for index, row in enumerate(source_data.rows):
             key = row_keys.get(index)
             mapping = entity_mapping.get(key) if key else None
+            row_errors = list(errors.get(index, []))
+            if mapping is not None and mapping.status == core.DecisionStatus.ACCEPTED:
+                reference_error = accepted_reference_error(mapping.candidate_id, mapping.target_id, service_type)
+                if reference_error is not None:
+                    row_errors.append(reference_error)
             enriched_row = {
                 **row,
                 "local_key_value": key,
@@ -341,7 +402,7 @@ class ReconciliationService:
                 "candidates": (
                     [ReconciliationMapper.candidate_to_dto(candidate).model_dump() for candidate in mapping.candidates] if mapping else []
                 ),
-                "errors": errors.get(index, []),
+                "errors": row_errors,
             }
             enriched_data.append(enriched_row)
 
@@ -349,7 +410,7 @@ class ReconciliationService:
         return enriched_data
 
     async def get_resolved_source_data(
-        self, project_name: str, entity_name: str, entity_mapping: core.EntityResolutionSet
+        self, project_name: str, entity_name: str, entity_mapping: core.EntityResolutionSet, *, fresh: bool = False
     ) -> ResolvedSourceRows:
         """
         Resolve source data based on source in entity.
@@ -360,6 +421,8 @@ class ReconciliationService:
             project_name: Project name
             entity_name: Entity to reconcile
             entity_mapping: Entity mapping specification (domain model)
+            fresh: When true, preview-based sources bypass warm and cached rows so
+                current external source data is validated.
 
         Returns:
             Normalized target rows, optionally enriched with keyed search data.
@@ -375,12 +438,12 @@ class ReconciliationService:
         target_resolver = ReconciliationSourceResolver.get_resolver_cls_for_strategy(SourceStrategyType.TARGET_ENTITY)(
             project_name, project, self.project_service
         )
-        target_rows = await target_resolver.resolve(entity_name, entity_mapping)
+        target_rows = await target_resolver.resolve(entity_name, entity_mapping, fresh=fresh)
         if strategy == SourceStrategyType.TARGET_ENTITY:
             return ResolvedSourceRows(rows=target_rows, local_key=local_key)
 
         resolver_cls = ReconciliationSourceResolver.get_resolver_cls_for_strategy(strategy)
-        search_rows = await resolver_cls(project_name, project, self.project_service).resolve(entity_name, entity_mapping)
+        search_rows = await resolver_cls(project_name, project, self.project_service).resolve(entity_name, entity_mapping, fresh=fresh)
         search_keys, search_errors = self.query_builder.index_rows(search_rows, local_key)
         if search_errors:
             indices = [error.row_index for error in search_errors]
@@ -408,21 +471,54 @@ class ReconciliationService:
             )
         return ResolvedSourceRows(rows=rows, local_key=local_key, errors=errors)
 
-    def _extract_id_from_uri(self, uri: str) -> int:
-        """
-        Extract integer ID at the end of the SEAD URI
+    @staticmethod
+    def _reference_issue(
+        decision: core.ResolvedEntityPair, entity_type: str | None, row_index: int | None = None
+    ) -> ReconciliationIssue | None:
+        """Return a row-specific issue when an accepted reference is invalid."""
+        error = accepted_reference_error(decision.candidate_id, decision.target_id, entity_type)
+        if error is None:
+            return None
+        return ReconciliationIssue(
+            row_index=row_index,
+            local_key_value=decision.local_key_value,
+            field="candidate_id",
+            code="invalid_reference",
+            message=error,
+        )
 
-        Args:
-            uri: Entity URI like 'https://w3id.org/sead/id/site/123'
-
-        Returns:
-            SEAD numeric ID
-        """
-        # Extract integer at the end of the URI
-        match: re.Match[str] | None = re.search(r"/(\d+)/?$", uri)
-        if match:
-            return int(match.group(1))
-        raise BadRequestError(f"Cannot extract numeric ID from URI: {uri}")
+    @staticmethod
+    def _catalog_reference_issues(catalog: core.EntityResolutionCatalog) -> list[ReconciliationIssue]:
+        """Return one issue for every decision that cannot be saved as written."""
+        issues: list[ReconciliationIssue] = []
+        for target_mappings in catalog.entities.values():
+            for resolution_set in target_mappings.values():
+                entity_type = resolution_set.metadata.remote.service_type
+                for decision in resolution_set.links:
+                    if decision.status == core.DecisionStatus.ACCEPTED:
+                        issue = ReconciliationService._reference_issue(decision, entity_type)
+                        if issue is not None:
+                            issues.append(issue)
+                        continue
+                    if decision.target_id is not None:
+                        issues.append(
+                            ReconciliationIssue(
+                                local_key_value=decision.local_key_value,
+                                field="target_id",
+                                code="invalid_decision",
+                                message="Only an accepted decision may have a target ID",
+                            )
+                        )
+                    if decision.candidate_id is not None:
+                        issues.append(
+                            ReconciliationIssue(
+                                local_key_value=decision.local_key_value,
+                                field="candidate_id",
+                                code="invalid_decision",
+                                message="Only an accepted decision may have a candidate URI",
+                            )
+                        )
+        return issues
 
     @staticmethod
     def _read_optional_file(path: Path) -> bytes | None:
@@ -552,6 +648,10 @@ class ReconciliationService:
             elif local_key_value in accepted:
                 exportable[local_key_value] = accepted[local_key_value]
 
+        service_type = resolution_set.metadata.remote.service_type
+        if exportable and not service_type:
+            raise ConfigurationError(f"Entity '{entity_name}' has no reconciliation service type configured")
+
         missing_candidate_keys = [key for key, decision in exportable.items() if not decision.candidate_id]
         if missing_candidate_keys:
             keys = ", ".join(repr(key) for key in missing_candidate_keys)
@@ -559,9 +659,15 @@ class ReconciliationService:
                 f"Accepted decisions need to be re-accepted with their selected candidate before export. Business key(s): {keys}"
             )
 
-        service_type = resolution_set.metadata.remote.service_type
-        if exportable and not service_type:
-            raise ConfigurationError(f"Entity '{entity_name}' has no reconciliation service type configured")
+        reference_issues = [
+            issue for decision in exportable.values() if (issue := self._reference_issue(decision, service_type)) is not None
+        ]
+        if reference_issues:
+            raise ValidationError(
+                "Accepted decisions contain invalid target references. No mapping links were changed.",
+                issues=[issue.model_dump() for issue in reference_issues],
+            )
+
         verification_items = {
             key: CandidateVerificationRequestItem(type=service_type.lower(), id=decision.candidate_id)
             for key, decision in exportable.items()
@@ -639,7 +745,12 @@ class ReconciliationService:
                 raise CandidateVerificationProtocolError("The Authority Service returned candidate results in a different order")
             if result.outcome == "unsupported_type":
                 raise CandidateVerificationProtocolError(f"The Authority Service does not support candidate type {result.type!r}")
-            if result.outcome == "exists" and result.aggregate_id != preflight.exportable[local_key_value].target_id:
+            if result.outcome != "exists":
+                raise DependencyError(
+                    f"The Authority Service could not verify candidate {result.id!r} for business key "
+                    f"{local_key_value!r}; no mapping links were changed."
+                )
+            if result.aggregate_id != preflight.exportable[local_key_value].target_id:
                 raise CandidateVerificationProtocolError(
                     f"The Authority Service resolved a different target ID for business key {local_key_value!r}"
                 )
@@ -649,59 +760,35 @@ class ReconciliationService:
         with self.project_service._get_lock(project_name):
             preflight = self._prepare_export_to_mapping_locked(project_name, entity_name, target_field)
             if not preflight.verification_items:
-                return self._export_to_mapping_locked(preflight, None, unavailable=False)
+                return self._export_to_mapping_locked(preflight, None)
 
-        verification_results: list[CandidateVerificationResult] | None = None
-        unavailable = False
         try:
             verification_results = await self.reconciliation_client.verify_candidates(list(preflight.verification_items.values()))
-        except CandidateVerificationUnavailableError:
-            unavailable = True
+        except CandidateVerificationUnavailableError as exc:
+            raise DependencyError(
+                "The Authority Service is unavailable; no mapping links were changed. Retry export when it is available."
+            ) from exc
         except CandidateVerificationProtocolError as exc:
             raise DependencyError(f"Candidate verification failed; no mapping links were changed: {exc}") from exc
 
         with self.project_service._get_lock(project_name):
             current = self._refresh_export_preflight_locked(preflight)
-            if verification_results is not None:
-                try:
-                    self._validate_candidate_verification_results(current, verification_results)
-                except CandidateVerificationProtocolError as exc:
-                    raise DependencyError(f"Candidate verification failed; no mapping links were changed: {exc}") from exc
-            return self._export_to_mapping_locked(current, verification_results, unavailable=unavailable)
+            try:
+                self._validate_candidate_verification_results(current, verification_results)
+            except CandidateVerificationProtocolError as exc:
+                raise DependencyError(f"Candidate verification failed; no mapping links were changed: {exc}") from exc
+            return self._export_to_mapping_locked(current, verification_results)
 
     def _export_to_mapping_locked(
         self,
         preflight: ReconciliationExportPreflight,
         verification_results: list[CandidateVerificationResult] | None,
-        *,
-        unavailable: bool,
     ) -> ExportToMappingResult:
         """Apply verified outcomes to the captured sidecar and save with its version."""
         outcomes: dict[str, ExportToMappingOutcome] = {}
-        if unavailable:
-            for local_key_value in preflight.verification_items:
-                outcomes[local_key_value] = ExportToMappingOutcome(
-                    local_key_value=local_key_value,
-                    outcome="unverified",
-                    reason="The Authority Service is unavailable; this link was exported without verification. "
-                    "Retry export when it is available.",
-                )
-        elif verification_results is not None:
-            for (local_key_value, _), result in zip(preflight.verification_items.items(), verification_results, strict=True):
-                if result.outcome == "exists":
-                    outcomes[local_key_value] = ExportToMappingOutcome(local_key_value=local_key_value, outcome="verified")
-                elif result.outcome == "not_found":
-                    outcomes[local_key_value] = ExportToMappingOutcome(
-                        local_key_value=local_key_value,
-                        outcome="not_found",
-                        reason="The candidate was not found in SEAD.",
-                    )
-                elif result.outcome == "invalid_candidate":
-                    outcomes[local_key_value] = ExportToMappingOutcome(
-                        local_key_value=local_key_value,
-                        outcome="invalid_candidate",
-                        reason="The selected candidate URI is invalid for this entity type.",
-                    )
+        if verification_results is not None:
+            for local_key_value, _ in preflight.verification_items.items():
+                outcomes[local_key_value] = ExportToMappingOutcome(local_key_value=local_key_value, outcome="verified")
 
         sidecar: MappingCatalog = preflight.sidecar_snapshot.catalog
         entity_mapping = sidecar.entities.get(preflight.entity_name) or EntityMapping(
@@ -709,10 +796,9 @@ class ReconciliationService:
             public_id=preflight.expected_public_id,
             entity_type=EntityType.PRIMARY,
         )
-        failed_keys = {key for key, outcome in outcomes.items() if outcome.outcome in {"not_found", "invalid_candidate"}}
         removed = 0
         for local_key_value, link in list(entity_mapping.links.items()):
-            if link.owner == preflight.owner and (local_key_value not in preflight.accepted or local_key_value in failed_keys):
+            if link.owner == preflight.owner and local_key_value not in preflight.accepted:
                 del entity_mapping.links[local_key_value]
                 removed += 1
 
@@ -727,7 +813,7 @@ class ReconciliationService:
         committed_at = datetime.now(timezone.utc)
         for local_key_value, decision in preflight.exportable.items():
             outcome = outcomes.get(local_key_value)
-            if outcome is None or outcome.outcome in {"not_found", "invalid_candidate"}:
+            if outcome is None:
                 continue
 
             verified_at = committed_at if outcome.outcome == "verified" else None
@@ -740,10 +826,7 @@ class ReconciliationService:
                 and existing_link.confidence == decision.confidence
                 and existing_link.notes == decision.notes
                 and existing_link.committed_at is not None
-                and (
-                    (outcome.outcome == "verified" and existing_link.verified_at is not None)
-                    or (outcome.outcome == "unverified" and existing_link.verified_at is None)
-                )
+                and existing_link.verified_at is not None
             )
             if same_link:
                 continue
@@ -796,10 +879,47 @@ class ReconciliationService:
             outcomes=list(outcomes.values()),
         )
 
+    def create_specification(
+        self, project_name: str, entity_name: str, target_field: str, entity_mapping: core.EntityResolutionSet
+    ) -> core.EntityResolutionCatalog:
+        """Create a specification with its catalog read-modify-write under the project lock."""
+        with self.project_service._get_lock(project_name):
+            return self.catalog_manager.create_entity_mapping(project_name, entity_name, target_field, entity_mapping)
+
+    def update_specification(
+        self,
+        project_name: str,
+        entity_name: str,
+        target_field: str,
+        source: "str | core.ResolutionSource | None",
+        property_mappings: dict[str, str],
+        remote: core.ResolutionTarget,
+        auto_accept_threshold: float,
+        review_threshold: float,
+    ) -> core.EntityResolutionCatalog:
+        """Update specification metadata with its catalog read-modify-write under the project lock."""
+        with self.project_service._get_lock(project_name):
+            return self.catalog_manager.update_entity_mapping(
+                project_name,
+                entity_name,
+                target_field,
+                source,
+                property_mappings,
+                remote,
+                auto_accept_threshold,
+                review_threshold,
+            )
+
     def replace_catalog(self, project_name: str, catalog: core.EntityResolutionCatalog) -> None:
         """Save a whole catalog and remove links owned by specifications it removes."""
         with self.project_service._get_lock(project_name):
             self.catalog_manager.validate_catalog_business_keys(project_name, catalog)
+            issues = self._catalog_reference_issues(catalog)
+            if issues:
+                raise ValidationError(
+                    "The reconciliation catalog contains invalid accepted references. No catalog or mapping change was saved.",
+                    issues=[issue.model_dump() for issue in issues],
+                )
             previous = self.catalog_manager.load_catalog(project_name)
             removed_owners = {
                 (entity_name, target_field)
@@ -943,7 +1063,17 @@ class ReconciliationService:
 
         if not service_type:
             if thresholds_updated:
-                self.catalog_manager.save_catalog(project_name, registry)
+                with self.project_service._get_lock(project_name):
+                    latest_catalog = self.catalog_manager.load_catalog(project_name)
+                    latest_mapping = latest_catalog.get(entity_name, target_field)
+                    if latest_mapping is None:
+                        latest_catalog.add(entity_name, target_field, entity_mapping)
+                    else:
+                        latest_mapping.metadata.update_thresholds(
+                            entity_mapping.metadata.auto_accept_threshold,
+                            entity_mapping.metadata.review_threshold,
+                        )
+                    self.catalog_manager.save_catalog(project_name, latest_catalog)
             logger.info(f"Reconciliation disabled for entity '{entity_name}' (no service_type configured)")
             return AutoReconcileResult(proposed=0, unmatched=0, total=0, candidates={}, errors=[])
 
@@ -1103,8 +1233,9 @@ class ReconciliationService:
             if status == core.DecisionStatus.ACCEPTED:
                 if target_id is None or candidate_id is None or not candidate_id.strip():
                     raise ValidationError("Accepting a candidate requires its URI and numeric target ID")
-                if self._extract_id_from_uri(candidate_id) != target_id:
-                    raise ValidationError("The selected candidate URI does not match the supplied target ID")
+                reference_error = accepted_reference_error(candidate_id, target_id, entity_mapping.metadata.remote.service_type)
+                if reference_error is not None:
+                    raise ValidationError(reference_error)
             elif candidate_id is not None:
                 raise ValidationError("Only accepted decisions may include a candidate URI")
 
@@ -1131,6 +1262,251 @@ class ReconciliationService:
             self.catalog_manager.save_catalog(project_name, recon_config)
             return recon_config
 
+    async def save_decision_batch(
+        self,
+        project_name: str,
+        entity_name: str,
+        target_field: str,
+        drafts: list[DecisionDraft],
+    ) -> DecisionBatchResult:
+        """Save first-time accepted and local-only decisions in one catalog write.
+
+        Source rows are resolved once, before the project lock is taken. Every draft
+        is validated against the current source rows, so a changed, missing, or
+        repeated row rejects the whole batch without touching the catalog.
+        """
+        catalog = self.catalog_manager.load_catalog(project_name)
+        resolution_set = catalog.get(entity_name, target_field)
+        if resolution_set is None:
+            raise ResourceNotFoundError(
+                f"No reconciliation registry for entity '{entity_name}' target '{target_field}'",
+                resource_type="entity_mapping",
+                resource_id=f"{entity_name}.{target_field}",
+            )
+
+        # Steps 1-2: resolve current source rows once, before the project lock.
+        try:
+            source_data = await self.get_resolved_source_data(project_name, entity_name, resolution_set, fresh=True)
+        except ValidationError as exc:
+            raise ValidationError(
+                "The source rows could not be resolved; no decisions were saved.",
+                issues=[
+                    ReconciliationIssue(code="source_resolution_failed", message=str(exc.message)).model_dump(),
+                ],
+            ) from exc
+        row_keys, key_errors = self.query_builder.index_rows(source_data.rows, source_data.local_key)
+        resolution_errors = list(key_errors) + list(source_data.errors)
+        if resolution_errors:
+            raise ValidationError(
+                "The source rows contain missing or duplicate business keys; no decisions were saved.",
+                issues=[
+                    ReconciliationIssue(
+                        row_index=error.row_index,
+                        local_key_value=error.local_key_value,
+                        code="source_resolution_failed",
+                        message=error.message,
+                    ).model_dump()
+                    for error in resolution_errors
+                ],
+            )
+
+        key_to_index = {key: index for index, key in row_keys.items()}
+        service_type = resolution_set.metadata.remote.service_type
+        issues: list[ReconciliationIssue] = []
+        valid: list[tuple[DecisionDraft, int]] = []
+
+        # Step 3: reject malformed, repeated, or absent drafts.
+        if not drafts:
+            issues.append(ReconciliationIssue(code="invalid_draft", message="At least one decision draft is required."))
+        seen_keys: set[str] = set()
+        for draft in drafts:
+            if not draft.local_key_value or not draft.local_key_value.strip():
+                issues.append(ReconciliationIssue(code="invalid_draft", message="Each draft requires an encoded business key."))
+                continue
+            if draft.local_key_value in seen_keys:
+                issues.append(
+                    ReconciliationIssue(
+                        local_key_value=draft.local_key_value,
+                        code="duplicate_draft",
+                        message="The batch contains more than one draft for this business key.",
+                    )
+                )
+                continue
+            seen_keys.add(draft.local_key_value)
+            row_index = key_to_index.get(draft.local_key_value)
+            if row_index is None:
+                issues.append(
+                    ReconciliationIssue(
+                        local_key_value=draft.local_key_value,
+                        code="row_not_found",
+                        message="The business key is not present in the resolved source rows.",
+                    )
+                )
+                continue
+            valid.append((draft, row_index))
+
+        # Step 4: compare every displayed column with the resolved row.
+        for draft, row_index in valid:
+            resolved_row = source_data.rows[row_index]
+            for column, displayed in draft.displayed_values.items():
+                if column not in resolved_row:
+                    issues.append(
+                        ReconciliationIssue(
+                            row_index=row_index,
+                            local_key_value=draft.local_key_value,
+                            field=column,
+                            code="row_changed",
+                            message=f"Column '{column}' is not present in the current source row.",
+                        )
+                    )
+                    continue
+                if _canonical_value(displayed) != _canonical_value(resolved_row[column]):
+                    issues.append(
+                        ReconciliationIssue(
+                            row_index=row_index,
+                            local_key_value=draft.local_key_value,
+                            field=column,
+                            code="row_changed",
+                            message=f"Column '{column}' changed since it was displayed.",
+                        )
+                    )
+
+        # Step 5: validate the accepted references introduced by this batch.
+        for draft, row_index in valid:
+            if draft.status == "accepted":
+                error = accepted_reference_error(draft.candidate_id, draft.target_id, service_type)
+                if error is not None:
+                    issues.append(
+                        ReconciliationIssue(
+                            row_index=row_index,
+                            local_key_value=draft.local_key_value,
+                            field="candidate_id",
+                            code="invalid_reference",
+                            message=error,
+                        )
+                    )
+            elif draft.target_id is not None or draft.candidate_id is not None:
+                issues.append(
+                    ReconciliationIssue(
+                        row_index=row_index,
+                        local_key_value=draft.local_key_value,
+                        field="candidate_id" if draft.candidate_id is not None else "target_id",
+                        code="invalid_draft",
+                        message="A local-only decision must not include a target ID or candidate URI.",
+                    )
+                )
+
+        if issues:
+            raise ValidationError(
+                "The decision batch was rejected; no catalog change was saved.",
+                issues=[issue.model_dump() for issue in issues],
+            )
+
+        # Steps 6-8: apply every decision to the catalog loaded under the project lock.
+        with self.project_service._get_lock(project_name):
+            latest_catalog = self.catalog_manager.load_catalog(project_name)
+            latest_set = latest_catalog.get(entity_name, target_field)
+            if latest_set is None:
+                raise ResourceNotFoundError(
+                    f"No reconciliation registry for entity '{entity_name}' target '{target_field}'",
+                    resource_type="entity_mapping",
+                    resource_id=f"{entity_name}.{target_field}",
+                )
+
+            owner = LinkOwner(entity_name=entity_name, target_field=target_field)
+            if any(draft.status == "local-only" for draft, _ in valid):
+                sidecar_entity = self.mapping_service.get_entity_mapping(project_name, entity_name)
+                for draft, row_index in valid:
+                    if draft.status != "local-only":
+                        continue
+                    existing_link = sidecar_entity.links.get(draft.local_key_value)
+                    if existing_link is not None and (
+                        existing_link.source != LinkSource.RECONCILIATION or existing_link.owner is None or existing_link.owner != owner
+                    ):
+                        issues.append(
+                            ReconciliationIssue(
+                                row_index=row_index,
+                                local_key_value=draft.local_key_value,
+                                code="protected_link",
+                                message="A manual or other-owner mapping link already claims this business key.",
+                            )
+                        )
+                if issues:
+                    raise ValidationError(
+                        "The decision batch was rejected; no catalog change was saved.",
+                        issues=[issue.model_dump() for issue in issues],
+                    )
+
+            last_modified = datetime.now(timezone.utc).isoformat()
+            saved: list[SavedDecision] = []
+            batch_accepted = 0
+            batch_local_only = 0
+            for draft, row_index in valid:
+                previous = latest_set.get(draft.local_key_value)
+                source_value = source_data.rows[row_index].get(target_field)
+                status = core.DecisionStatus.ACCEPTED if draft.status == "accepted" else core.DecisionStatus.LOCAL_ONLY
+                confidence = None
+                if status == core.DecisionStatus.ACCEPTED and previous is not None and draft.candidate_id is not None:
+                    for candidate in previous.candidates:
+                        if candidate.id == draft.candidate_id and candidate.score is not None:
+                            confidence = candidate.score / 100
+                            break
+                decision = core.ResolvedEntityPair(
+                    local_key_value=draft.local_key_value,
+                    source_value=source_value,
+                    status=status,
+                    target_id=draft.target_id,
+                    candidate_id=draft.candidate_id,
+                    confidence=confidence,
+                    notes=draft.notes if draft.notes is not None else (previous.notes if previous else None),
+                    candidates=previous.candidates if previous else [],
+                    created_at=previous.created_at if previous else last_modified,
+                    created_by=previous.created_by if previous else "user",
+                    last_modified=last_modified,
+                )
+                latest_set.add(decision)
+                if status == core.DecisionStatus.ACCEPTED:
+                    batch_accepted += 1
+                else:
+                    batch_local_only += 1
+                saved.append(
+                    SavedDecision(
+                        local_key_value=draft.local_key_value,
+                        status=draft.status,
+                        target_id=draft.target_id,
+                        candidate_id=draft.candidate_id,
+                        notes=decision.notes,
+                        last_modified=last_modified,
+                    )
+                )
+
+            # save_catalog writes through a temporary file and os.replace, so a failed
+            # write leaves the previous catalog intact and every draft unsaved.
+            self.catalog_manager.save_catalog(project_name, latest_catalog)
+
+            specification_counts = {"accepted": 0, "local_only": 0, "proposed": 0, "rejected": 0}
+            for link in latest_set.links:
+                if link.status == core.DecisionStatus.ACCEPTED:
+                    specification_counts["accepted"] += 1
+                elif link.status == core.DecisionStatus.LOCAL_ONLY:
+                    specification_counts["local_only"] += 1
+                elif link.status == core.DecisionStatus.PROPOSED:
+                    specification_counts["proposed"] += 1
+                elif link.status == core.DecisionStatus.REJECTED:
+                    specification_counts["rejected"] += 1
+            specification_total = len(latest_set.links)
+
+        logger.info(f"Saved {len(saved)} reconciliation decision(s) for {entity_name}.{target_field}")
+        return DecisionBatchResult(
+            saved=saved,
+            counts=DecisionBatchCounts(
+                saved=len(saved),
+                accepted=batch_accepted,
+                local_only=batch_local_only,
+                specification=SpecificationDecisionCounts(total=specification_total, **specification_counts),
+            ),
+        )
+
     def delete_decision(self, project_name: str, entity_name: str, target_field: str, local_key_value: str) -> core.EntityResolutionCatalog:
         """Delete a decision by encoded business key."""
         with self.project_service._get_lock(project_name):
@@ -1153,6 +1529,216 @@ class ReconciliationService:
     ) -> core.EntityResolutionCatalog:
         """Mark an existing keyed row as local-only."""
         return self.update_mapping(project_name, entity_name, target_field, local_key_value, core.DecisionStatus.LOCAL_ONLY, None, notes)
+
+    def _selection_resolution_set(self, project_name: str, entity_name: str, target_field: str) -> tuple[core.EntityResolutionSet, str]:
+        """Return the specification and its fixed record type for selection calls."""
+        catalog = self.catalog_manager.load_catalog(project_name)
+        resolution_set = catalog.get(entity_name, target_field)
+        if resolution_set is None:
+            raise ResourceNotFoundError(
+                f"No reconciliation registry for entity '{entity_name}' target '{target_field}'",
+                resource_type="entity_mapping",
+                resource_id=f"{entity_name}.{target_field}",
+            )
+        service_type = resolution_set.metadata.remote.service_type
+        if not service_type or not service_type.strip():
+            raise ValidationError(
+                f"Entity '{entity_name}' has no remote service type configured, so record selection is unavailable.",
+                error_code="RECORD_SELECTION_UNSUPPORTED",
+            )
+        return resolution_set, service_type.strip().lower()
+
+    @staticmethod
+    def _raise_selection_failure(exc: RecordSelectionServiceError) -> NoReturn:
+        """Translate an Authority Service selection failure into a domain exception."""
+        if isinstance(exc, RecordSelectionUnsupportedError):
+            raise ValidationError(str(exc), error_code="RECORD_SELECTION_UNSUPPORTED") from exc
+        if isinstance(exc, RecordSelectionInvalidRequestError):
+            raise ValidationError(str(exc), error_code="RECORD_SELECTION_INVALID_INPUT") from exc
+        if isinstance(exc, RecordSelectionTooLargeError):
+            raise ResourceConflictError(
+                str(exc) or "The complete record list is too large to browse.",
+                error_code="RECORD_SELECTION_TOO_LARGE",
+            ) from exc
+        if isinstance(exc, RecordSelectionUnavailableError):
+            raise ReconciliationManifestError(
+                f"The reconciliation service cannot be reached, so record selection was not completed: {exc}",
+                error_code="RECORD_SELECTION_UNAVAILABLE",
+            ) from exc
+        raise DependencyError(
+            f"The reconciliation service returned an invalid record-selection response: {exc}",
+            error_code="RECORD_SELECTION_INVALID_RESPONSE",
+        ) from exc
+
+    async def get_selection_capabilities(
+        self, project_name: str, entity_name: str, target_field: str, *, fresh: bool = True
+    ) -> RecordSelectionCapabilities:
+        """Return the versioned selection capabilities advertised for the specification's type."""
+        _, service_type = self._selection_resolution_set(project_name, entity_name, target_field)
+        try:
+            version, descriptors = await self.reconciliation_client.get_record_selection_capabilities(fresh=fresh)
+        except RecordSelectionServiceError as exc:
+            self._raise_selection_failure(exc)
+
+        for descriptor in descriptors:
+            if descriptor.type == service_type:
+                return RecordSelectionCapabilities(version=version, type=descriptor)
+
+        raise ValidationError(
+            f"Record selection is not available for remote type '{service_type}'.",
+            error_code="RECORD_SELECTION_UNSUPPORTED",
+        )
+
+    @staticmethod
+    def _selection_record(record: ReconciliationRecord, service_type: str) -> ReconciliationRecord:
+        """Validate that a service-supplied record belongs to the fixed type and ID space."""
+        if record.type != service_type:
+            raise DependencyError(
+                f"The reconciliation service returned a '{record.type}' record for type '{service_type}'.",
+                error_code="RECORD_SELECTION_INVALID_RESPONSE",
+            )
+        if record.target_id is None:
+            raise DependencyError(
+                "The reconciliation service returned a record without a numeric target ID.",
+                error_code="RECORD_SELECTION_INVALID_RESPONSE",
+            )
+        if parse_record_uri(record.id, service_type) != record.target_id:
+            raise DependencyError(
+                f"The reconciliation service returned a record URI that does not match "
+                f"type '{service_type}' and target ID {record.target_id}.",
+                error_code="RECORD_SELECTION_INVALID_RESPONSE",
+            )
+        return record
+
+    @staticmethod
+    def _exact_identifier(text: str) -> int | None:
+        """Return the positive ID of an ``id:`` query, or ``None`` when the text is not one.
+
+        Text that starts with ``id:`` is always treated as an exact-identifier query,
+        so malformed values are rejected instead of falling back to ranked search.
+        """
+        match = _EXACT_IDENTIFIER_PATTERN.match(text)
+        if match is None:
+            return None
+        digits = match.group(1).strip()
+        if not digits.isascii() or not digits.isdecimal():
+            raise ValidationError(
+                "Enter 'id:' followed by a positive whole-number target ID, for example 'id: 42'.",
+                error_code="RECORD_SELECTION_INVALID_INPUT",
+            )
+        identifier = int(digits)
+        if identifier <= 0 or identifier > POSTGRES_INTEGER_MAX:
+            raise ValidationError(
+                "The target ID after 'id:' must be a positive whole number within the supported integer range.",
+                error_code="RECORD_SELECTION_INVALID_INPUT",
+            )
+        return identifier
+
+    async def search_selection(
+        self,
+        project_name: str,
+        entity_name: str,
+        target_field: str,
+        request: RecordSelectionSearchRequest,
+    ) -> RecordSelectionSearchResult:
+        """Run a bounded ranked search, or an exact type-scoped lookup for ``id:`` text."""
+        _, service_type = self._selection_resolution_set(project_name, entity_name, target_field)
+        capabilities = await self.get_selection_capabilities(project_name, entity_name, target_field)
+
+        text = request.query.strip()
+        if not text:
+            raise ValidationError(
+                "Enter search text or 'id: <positive integer>' before searching.",
+                error_code="RECORD_SELECTION_INVALID_INPUT",
+            )
+
+        identifier = self._exact_identifier(text)
+        if identifier is not None:
+            if not capabilities.type.identifier_search_supported:
+                raise ValidationError(
+                    f"Exact identifier lookup is not enabled for remote type '{service_type}'.",
+                    error_code="RECORD_SELECTION_UNSUPPORTED",
+                )
+            try:
+                record = await self.reconciliation_client.get_record_details(service_type, identifier)
+            except RecordSelectionServiceError as exc:
+                if isinstance(exc, RecordSelectionNotFoundError):
+                    logger.info(f"Record selection found no {service_type} record for target ID {identifier}")
+                    return RecordSelectionSearchResult(mode="exact", items=[])
+                self._raise_selection_failure(exc)
+            return RecordSelectionSearchResult(mode="exact", items=[self._selection_record(record, service_type)])
+
+        if not capabilities.type.search_supported:
+            raise ValidationError(
+                f"Interactive search is not enabled for remote type '{service_type}'.",
+                error_code="RECORD_SELECTION_UNSUPPORTED",
+            )
+
+        cap = capabilities.type.interactive_search_max_results
+        if cap is None:
+            raise ValidationError(
+                f"Remote type '{service_type}' does not advertise an interactive search limit.",
+                error_code="RECORD_SELECTION_UNSUPPORTED",
+            )
+        if request.limit is not None and request.limit <= 0:
+            raise ValidationError(
+                "The requested search limit must be a positive whole number.",
+                error_code="RECORD_SELECTION_INVALID_INPUT",
+            )
+        limit = min(request.limit or cap, cap)
+
+        # Declared property IDs are ranking hints only; they never restrict results.
+        if request.context:
+            await self.ensure_reconciliation_eligibility(service_type, request.context)
+
+        try:
+            candidates = await self.reconciliation_client.search_records(service_type, text, limit, request.context or None)
+        except RecordSelectionServiceError as exc:
+            self._raise_selection_failure(exc)
+
+        items: list[ReconciliationRecord] = []
+        for candidate in candidates:
+            target_id = parse_record_uri(candidate.id, service_type)
+            if target_id is None:
+                logger.warning(f"Dropping search candidate whose URI does not match '{service_type}': {candidate.id}")
+                continue
+            items.append(
+                ReconciliationRecord(
+                    id=candidate.id,
+                    target_id=target_id,
+                    type=service_type,
+                    name=candidate.name,
+                    description=candidate.description,
+                    fields={},
+                    score=candidate.score,
+                )
+            )
+        return RecordSelectionSearchResult(mode="ranked", items=items)
+
+    async def browse_selection(self, project_name: str, entity_name: str, target_field: str) -> RecordSelectionBrowseResult:
+        """Return the complete record list for the specification's type, or a too-large error."""
+        _, service_type = self._selection_resolution_set(project_name, entity_name, target_field)
+        capabilities = await self.get_selection_capabilities(project_name, entity_name, target_field)
+        if not capabilities.type.browse_supported:
+            raise ValidationError(
+                f"Browse is not enabled for remote type '{service_type}'.",
+                error_code="RECORD_SELECTION_UNSUPPORTED",
+            )
+
+        try:
+            records, completeness = await self.reconciliation_client.list_records(service_type)
+        except RecordSelectionServiceError as exc:
+            self._raise_selection_failure(exc)
+
+        if completeness != "complete":
+            raise DependencyError(
+                "The reconciliation service returned a record list that it did not mark complete.",
+                error_code="RECORD_SELECTION_INVALID_RESPONSE",
+            )
+        return RecordSelectionBrowseResult(
+            items=[self._selection_record(record, service_type) for record in records],
+            completeness="complete",
+        )
 
     async def get_available_target_fields(self, project_name: str, entity_name: str) -> list[str]:
         """

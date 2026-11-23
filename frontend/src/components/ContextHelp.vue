@@ -2,7 +2,7 @@
   <div v-if="!rail" class="context-help">
     <v-expansion-panels variant="accordion" :model-value="expanded ? [0] : []">
       <v-expansion-panel>
-        <v-expansion-panel-title @click="expanded = !expanded">
+        <v-expansion-panel-title @click="toggleExpanded">
           <div class="d-flex align-center">
             <v-icon size="small" class="mr-2">mdi-help-circle-outline</v-icon>
             <span class="text-body-2 font-weight-medium">Context Help</span>
@@ -17,6 +17,46 @@
 
             <div v-if="helpContent.description" class="text-caption mb-3">
               {{ helpContent.description }}
+            </div>
+
+            <div
+              v-if="workspaceStatusVisible"
+              class="workspace-status mt-3"
+              data-testid="context-help-workspace-status"
+            >
+              <div class="text-caption font-weight-medium mb-1 text-medium-emphasis">Workspace status</div>
+              <div
+                v-if="reviewWorkspaceNotices.storageError"
+                class="help-notice help-notice--warning"
+                data-testid="context-help-storage-warning"
+              >
+                {{ reviewWorkspaceNotices.storageError }}
+              </div>
+              <div
+                v-if="reviewWorkspaceNotices.restoreNotice"
+                class="help-notice help-notice--info"
+                data-testid="context-help-restore-notice"
+              >
+                <span>{{ reviewWorkspaceNotices.restoreNotice }}</span>
+                <button
+                  type="button"
+                  class="help-notice-dismiss"
+                  data-testid="context-help-restore-dismiss"
+                  @click="dismissReviewWorkspaceRestoreNotice"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+
+            <div v-if="helpContent.groups && helpContent.groups.length > 0" class="groups-section mt-3">
+              <div v-for="group in helpContent.groups" :key="group.title" class="help-group">
+                <div class="text-caption font-weight-medium mb-1 text-medium-emphasis">{{ group.title }}</div>
+                <div v-for="(tip, index) in group.tips" :key="index" class="tip-item">
+                  <span class="tip-bullet">•</span>
+                  <span class="tip-text" v-html="tip" />
+                </div>
+              </div>
             </div>
 
             <div v-if="helpContent.tips && helpContent.tips.length > 0" class="tips-section mt-3">
@@ -61,17 +101,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { reconciliationHelp, type ReconciliationHelpItem } from './reconciliation/reconciliationHelp'
-
-interface HelpContent {
-  title: string
-  description?: string
-  tips?: string[]
-  shortcuts?: Array<{ keys: string; action: string }>
-  rowActions?: ReconciliationHelpItem[]
-}
+import { dismissReviewWorkspaceRestoreNotice, useReviewWorkspaceHelpState } from '@/composables/useReviewWorkspaceHelp'
+import { resolveHelpTopic } from '@/help/helpRegistry'
 
 interface Props {
   rail?: boolean
@@ -80,141 +113,55 @@ interface Props {
 defineProps<Props>()
 
 const route = useRoute()
-const expanded = ref(true)
+const { reviewWorkspaceHelpActive, reviewWorkspaceHelpMode, reviewWorkspaceNotices } = useReviewWorkspaceHelpState()
 
-// Help content for different contexts
-const helpContentMap: Record<string, HelpContent> = {
-  home: {
-    title: 'Welcome to SEAD Shape Shifter',
-    description: 'A tool for transforming and normalizing data for the SEAD database.',
-    tips: ['Create a new project to get started'],
-  },
-  projects: {
-    title: 'Project Management',
-    description: 'Manage your data transformation projects.',
-    tips: ['Click a project to open it', 'Use the search bar to filter projects', 'Projects are stored as YAML files'],
-    shortcuts: [
-      { keys: 'Ctrl+N', action: 'New Project' },
-      { keys: 'Ctrl+S', action: 'Save Changes' },
-    ],
-  },
-  'project-detail-dependencies': {
-    title: 'Dependency Graph',
-    description: 'Visualize entity dependencies, source lineage, and task status.',
-    tips: [
-      'Click an entity node to open the quick Task Note/YAML drawer.',
-      'Double-click an entity node to open the full editor overlay.',
-      'Use Ctrl/Cmd + double-click to jump straight to the YAML tab in the editor.',
-      'Right-click a node for preview, verify, duplicate, delete, task-status actions, and task notes.',
-      'Use <strong>Layout</strong> to switch between hierarchical, force-directed, and saved custom positions.',
-      'Drag nodes only when using a custom layout, then save the layout to preserve positions.',
-      'Use <strong>Display</strong> to toggle node labels, edge labels, sources, and source entities.',
-      '<em>Show Sources</em> adds databases and files; <em>Show Source Entities</em> adds tables and sheets between sources and entities.',
-      'Use <strong>Color By</strong> to switch between entity type and task status. In task mode, a centered dot marks entities with notes.',
-      'The floating buttons on the right let you fit, zoom, reset the view, create a new entity, and export PNG.',
-      'Solid edges show entity dependencies, dotted edges show source lineage, and dashed green edges show frozen dependencies from materialized entities.',
-      '<span style="color: #4CAF50; font-weight: 600;">Double green borders</span> mark materialized entities with cached data.',
-    ],
-    shortcuts: [
-      { keys: 'Click', action: 'Open quick YAML drawer' },
-      { keys: 'Double-click', action: 'Open full entity editor' },
-      { keys: 'Ctrl/Cmd + Double-click', action: 'Open YAML tab in editor' },
-      { keys: 'Right-click', action: 'Open context menu and task actions' },
-      { keys: 'Drag', action: 'Move node in custom layout mode' },
-    ],
-  },
-  'project-detail-entities': {
-    title: 'Entity Configuration',
-    description: 'Create entities, define transformations, and inspect results while you edit.',
-    tips: [
-      'Use the search box and type filter to narrow large entity lists quickly.',
-      'Use <strong>Add Entity</strong> to create a new entity, or the pencil button to edit an existing one.',
-      'The editor supports form view, split view, and preview view so you can compare configuration and output side by side.',
-      'Use the <strong>YAML</strong> tab when you need direct control over the raw entity configuration.',
-      'Set identity fields carefully: <em>system_id</em> is always local, <em>public_id</em> defines exported and FK column names, and <em>business keys</em> control matching and deduplication.',
-      'Use the <strong>Foreign Keys</strong>, <strong>Filters</strong>, <strong>Unnest</strong>, <strong>Append</strong>, <strong>Extra Columns</strong>, and <strong>Replace</strong> tabs to model each transformation step explicitly.',
-      'Use preview to verify columns, row shape, and source data before saving larger changes.',
-      'Fixed entities can be edited as grid values, and some entities may load values from external storage instead of inline YAML.',
-      'Materialized badges indicate cached entity data; materialize or unmaterialize from the editor when you need to freeze or refresh derived output.',
-    ],
-    shortcuts: [
-      { keys: 'Esc', action: 'Close the entity editor' },
-      { keys: 'Ctrl+Shift+P', action: 'Toggle split preview view in the entity editor' },
-    ],
-  },
-  'project-detail-validation': {
-    title: 'Validation',
-    description: 'Check project configuration for errors.',
-    tips: [
-      'Red errors must be fixed before execution',
-      'Yellow warnings should be reviewed',
-      'Click errors to see details and fixes',
-      'Validate data to check actual values',
-    ],
-  },
-  'project-detail-reconciliation': {
-    title: reconciliationHelp.title,
-    description: reconciliationHelp.description,
-    tips: reconciliationHelp.quickTips,
-    rowActions: reconciliationHelp.rowActions.filter((action) => action.icon),
-  },
-  'project-detail-data-sources': {
-    title: 'Data Sources',
-    description: 'Configure database connections and files.',
-    tips: [
-      'Add multiple data sources',
-      'Test connections before use',
-      'Use environment variables for credentials',
-      'Supported: PostgreSQL, SQLite, MS Access, CSV, Excel',
-    ],
-  },
-  'data-sources': {
-    title: 'Data Source Management',
-    description: 'Manage database connections across projects.',
-    tips: ['Shared data sources available to all projects', 'Test connections to verify settings'],
-  },
-  'schema-explorer': {
-    title: 'Schema Explorer',
-    description: 'Browse database schemas and tables.',
-    tips: [
-      'Select a data source to explore',
-      'View table structures and columns',
-      'Use this to plan your entities',
-      'Check data types and constraints',
-    ],
-  },
-  'query-tester': {
-    title: 'Query Tester',
-    description: 'Test SQL queries before using them.',
-    tips: [
-      'Write and test queries safely',
-      'Preview results before adding to entities',
-      'Use this to debug query issues',
-      'Check column names and data',
-    ],
-  },
-  'whats-new': {
-    title: "What's New",
-    description: 'Browse recent user-facing updates and workflow improvements.',
-    tips: [
-      'Open the latest release first for the most relevant changes.',
-      'Use this archive to scan feature additions, improvements, and fixes by version.',
-      'The home page and startup dialog both link back here if you dismiss them.',
-    ],
-  },
+/** Show the status block only while the workspace is open and has something to report. */
+const workspaceStatusVisible = computed(
+  () =>
+    reviewWorkspaceHelpActive.value &&
+    Boolean(reviewWorkspaceNotices.value.storageError || reviewWorkspaceNotices.value.restoreNotice)
+)
+
+/** Browser key that remembers whether the reviewer keeps the panel open. */
+const HELP_EXPANDED_STORAGE_KEY = 'shapeshifter.contextHelp.expanded'
+
+function readStoredExpanded(): boolean {
+  try {
+    const stored = globalThis.localStorage?.getItem(HELP_EXPANDED_STORAGE_KEY)
+    return stored === null || stored === undefined ? true : stored === 'true'
+  } catch {
+    return true
+  }
 }
 
-const helpContent = computed(() => {
-  const routeName = route.name as string
-
-  // For project detail views, include the active tab
-  if (routeName === 'project-detail' && route.query.tab) {
-    const tabKey = `project-detail-${route.query.tab}`
-    return helpContentMap[tabKey] || null
+function storeExpanded(value: boolean): void {
+  try {
+    globalThis.localStorage?.setItem(HELP_EXPANDED_STORAGE_KEY, String(value))
+  } catch {
+    // Blocked storage keeps the panel usable for this session only.
   }
+}
 
-  return helpContentMap[routeName] || null
+const expanded = ref(readStoredExpanded() || reviewWorkspaceHelpActive.value)
+
+function toggleExpanded() {
+  expanded.value = !expanded.value
+  storeExpanded(expanded.value)
+}
+
+watch(reviewWorkspaceHelpActive, (active) => {
+  // Opening the workspace is when workspace help matters most.
+  if (active) expanded.value = true
 })
+
+const helpContent = computed(() =>
+  resolveHelpTopic({
+    routeName: route.name as string,
+    tab: typeof route.query.tab === 'string' ? route.query.tab : null,
+    workspaceActive: reviewWorkspaceHelpActive.value,
+    workspaceMode: reviewWorkspaceHelpMode.value,
+  })
+)
 </script>
 
 <style scoped>
@@ -231,6 +178,38 @@ const helpContent = computed(() => {
 .shortcuts-section,
 .row-actions-section {
   margin-top: 0.75rem;
+}
+
+.help-group + .help-group {
+  margin-top: 0.75rem;
+}
+
+.help-notice {
+  margin-bottom: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.help-notice--info {
+  background: rgba(var(--v-theme-info), 0.12);
+}
+
+.help-notice--warning {
+  background: rgba(var(--v-theme-warning), 0.16);
+}
+
+.help-notice-dismiss {
+  display: block;
+  margin-top: 0.25rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: rgb(var(--v-theme-primary));
+  font-size: 0.6875rem;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .row-action-item {

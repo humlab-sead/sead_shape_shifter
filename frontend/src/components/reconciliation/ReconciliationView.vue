@@ -62,6 +62,7 @@
                 :project-name="projectName"
                 :manifest-result="manifestResult"
                 @reconcile="handleReconcileSpec"
+                @review="handleReviewSpec"
               />
             </div>
           </v-window-item>
@@ -169,19 +170,40 @@
                   Add Manual Link
                 </v-btn>
 
-                <v-btn
-                  v-if="selectedEntity && selectedTarget && entitySpec"
-                  data-testid="export-to-mapping-button"
-                  variant="tonal"
-                  color="primary"
-                  prepend-icon="mdi-export"
-                  :loading="loading"
-                  :disabled="loading || !selectedEntityHasBusinessKeys"
-                  class="ml-2"
-                  @click="handleExportToMapping"
-                >
-                  Export to Mapping
-                </v-btn>
+                <div v-if="selectedEntity && selectedTarget && entitySpec" class="d-flex align-center ml-2">
+                  <v-btn
+                    data-testid="export-to-mapping-button"
+                    variant="tonal"
+                    color="primary"
+                    prepend-icon="mdi-export"
+                    :loading="loading"
+                    :disabled="loading || !selectedEntityHasBusinessKeys"
+                    @click="handleExportToMapping"
+                  >
+                    Export to Mapping
+                  </v-btn>
+                  <v-tooltip location="bottom" max-width="360">
+                    <template #activator="{ props: exportHelpProps }">
+                      <v-btn
+                        v-bind="exportHelpProps"
+                        icon="mdi-lightbulb-on-outline"
+                        variant="text"
+                        size="small"
+                        class="ml-1"
+                        data-testid="export-help"
+                        aria-label="Export guidance"
+                      />
+                    </template>
+                    <div class="font-weight-bold mb-1">Export</div>
+                    <div class="mb-1">
+                      Accepted links are checked against SEAD before they are written; New decisions are recorded
+                      separately.
+                    </div>
+                    <div class="mb-1">A failed check leaves accepted links unexported.</div>
+                    <div class="mb-1">Saving a decision does not export a link.</div>
+                    <div>Manual and unowned links are protected.</div>
+                  </v-tooltip>
+                </div>
               </div>
 
               <v-alert
@@ -192,20 +214,6 @@
                 class="mb-4"
               >
                 Candidate search is blocked: {{ matchEligibility.message }}
-              </v-alert>
-
-              <v-alert
-                v-if="showExportGuidance"
-                data-testid="reconciliation-export-info"
-                type="info"
-                variant="tonal"
-                class="mb-4"
-                closable
-                @click:close="showExportGuidance = false"
-              >
-                Export checks accepted candidates against SEAD and records New decisions separately. Missing or invalid
-                candidates are not exported; links exported while the service is unavailable remain unverified until you
-                export again. Manual and unowned links are protected.
               </v-alert>
 
               <v-alert v-if="previewError" data-testid="preview-error" type="error" variant="tonal" class="mb-4">
@@ -225,14 +233,29 @@
                 data-testid="matching-result"
                 type="success"
                 variant="tonal"
+                density="compact"
                 class="mb-4"
                 closable
                 @click:close="showCandidateSearchSummary = false"
               >
-                Candidate search considered {{ autoReconcileResult.total }} rows, updated
-                {{ autoReconcileResult.proposed }} proposed decisions, and found no candidates for
-                {{ autoReconcileResult.unmatched }} rows. {{ autoReconcileResult.errors.length }} rows need attention.
-                <ul v-if="autoReconcileResult.errors.length" class="mt-2">
+                <div class="d-flex align-center flex-wrap ga-2">
+                  <span data-testid="matching-result-summary">{{ candidateSearchSummary }}</span>
+                  <v-btn
+                    v-if="autoReconcileResult.errors.length"
+                    data-testid="matching-result-details-toggle"
+                    variant="text"
+                    size="x-small"
+                    :append-icon="showCandidateSearchDetails ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+                    @click="showCandidateSearchDetails = !showCandidateSearchDetails"
+                  >
+                    Details
+                  </v-btn>
+                </div>
+                <ul
+                  v-if="showCandidateSearchDetails && autoReconcileResult.errors.length"
+                  class="mt-2"
+                  data-testid="matching-result-details"
+                >
                   <li v-for="(rowError, index) in autoReconcileResult.errors" :key="`${rowError.row_index}-${index}`">
                     Row {{ rowError.row_index + 1
                     }}{{ rowError.local_key_value ? ` (${rowError.local_key_value})` : '' }}:
@@ -241,9 +264,23 @@
                 </ul>
               </v-alert>
 
+              <!-- Persistent review workspace: search or browse without Find Candidates -->
+              <reconciliation-workspace
+                v-if="reviewWorkspaceVisible"
+                :key="workspaceKey"
+                :project-name="projectName"
+                :entity-name="selectedEntity ?? ''"
+                :target-field="selectedTarget ?? ''"
+                :service-type="entitySpec?.remote?.service_type ?? null"
+                :preview-rows="entityPreviewData"
+                :selection-descriptor="manifestResult?.status === 'valid' ? manifestResult.manifest.selection : null"
+                @fallback="reviewMode = false"
+                @help="reconciliationHelpDialog = true"
+              />
+
               <!-- Reconciliation Grid -->
               <reconciliation-grid
-                v-if="
+                v-else-if="
                   selectedEntity &&
                   selectedTarget &&
                   entitySpec &&
@@ -259,6 +296,7 @@
                 :target-field="selectedTarget"
                 :submit-decision="handleUpdateMapping"
                 @manual-link="openManualLinkDialog"
+                @remove-saved-entry="openRemoveSavedEntryDialog"
               />
 
               <!-- Loading State - Preview Requested -->
@@ -294,7 +332,7 @@
       </v-card-text>
     </v-card>
 
-    <ReconciliationHelpDialog v-model="reconciliationHelpDialog" />
+    <ReconciliationHelpDialog v-model="reconciliationHelpDialog" :workspace-mode="workspaceHelpMode" />
 
     <v-dialog v-model="manualLinkDialog" max-width="600">
       <v-card>
@@ -339,6 +377,107 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog v-model="removeSavedEntryDialog" max-width="680">
+      <v-card>
+        <v-card-title>Remove saved row data</v-card-title>
+        <v-card-subtitle v-if="removeSavedEntryRow">
+          {{ selectedEntity }}.{{ selectedTarget }} · Key: {{ removeSavedEntryRow.local_key_value }}
+        </v-card-subtitle>
+        <v-card-text v-if="removeSavedEntryRow">
+          <div class="mb-3" data-testid="remove-decision-details">
+            <strong>Reconciliation catalog (`shapeshifter.reconciliation.yml`)</strong>
+            <div v-if="removeDecisionExists">
+              {{ removeSavedEntryRow.status
+              }}<span v-if="removeSavedEntryRow.target_id"> · Target ID {{ removeSavedEntryRow.target_id }}</span>
+              <span v-if="removeSavedEntryRow.candidate_id"> · {{ removeSavedEntryRow.candidate_id }}</span>
+            </div>
+            <div v-else>No decision is saved for this key.</div>
+          </div>
+          <div class="mb-3" data-testid="remove-sidecar-details">
+            <strong>Mapping sidecar (`shapeshifter.mapping.yml`)</strong>
+            <div v-if="removeSidecarLink">
+              Link: target ID {{ removeSidecarLink.target_id ?? 'none' }}, source {{ removeSidecarLink.source }}, owner
+              {{
+                removeSidecarLink.owner
+                  ? `${removeSidecarLink.owner.entity_name}.${removeSidecarLink.owner.target_field}`
+                  : 'none'
+              }}
+            </div>
+            <div v-if="removeLocalOnlyApproval">
+              New approval owned by {{ removeLocalOnlyApproval.owner.entity_name }}.{{
+                removeLocalOnlyApproval.owner.target_field
+              }}
+              <span v-if="removeLocalOnlyApproval.committed_at">
+                · committed {{ removeLocalOnlyApproval.committed_at }}</span
+              >
+            </div>
+            <div v-if="!removeSidecarExists">No sidecar entry is saved for this key.</div>
+          </div>
+          <p class="text-body-2 mb-3">
+            Clearing a decision leaves the sidecar unchanged. Deleting a sidecar entry leaves the decision unchanged; a
+            later export may recreate it.
+          </p>
+          <v-alert v-if="removeSidecarProtected" type="warning" variant="tonal" class="mb-3">
+            <template v-if="removeSidecarProtectionStatusKnown">
+              This sidecar entry is protected under the server's deletion rules. Confirm its direct deletion.
+            </template>
+            <template v-else>
+              Protection status has not loaded for this target. Confirm direct deletion; the server will still enforce
+              its rules.
+            </template>
+          </v-alert>
+          <v-checkbox
+            v-if="removeSidecarProtected"
+            v-model="confirmProtectedSidecarDeletion"
+            data-testid="confirm-protected-sidecar"
+            density="compact"
+            hide-details
+            label="Confirm deletion of the protected sidecar entry"
+          />
+        </v-card-text>
+        <v-card-actions class="flex-wrap">
+          <v-btn variant="text" :disabled="removingSavedEntry" @click="removeSavedEntryDialog = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn
+            data-testid="clear-review-decision"
+            variant="tonal"
+            :disabled="removingSavedEntry || !removeDecisionExists"
+            :loading="removingSavedEntry"
+            @click="removeSavedEntry('decision')"
+          >
+            Clear decision
+          </v-btn>
+          <v-btn
+            data-testid="delete-sidecar-entry"
+            variant="tonal"
+            color="warning"
+            :disabled="
+              removingSavedEntry || !removeSidecarExists || (removeSidecarProtected && !confirmProtectedSidecarDeletion)
+            "
+            :loading="removingSavedEntry"
+            @click="removeSavedEntry('sidecar')"
+          >
+            Delete sidecar mapping
+          </v-btn>
+          <v-btn
+            data-testid="clear-both-entries"
+            variant="tonal"
+            color="error"
+            :disabled="
+              removingSavedEntry ||
+              !removeDecisionExists ||
+              !removeSidecarExists ||
+              (removeSidecarProtected && !confirmProtectedSidecarDeletion)
+            "
+            :loading="removingSavedEntry"
+            @click="removeSavedEntry('both')"
+          >
+            Clear both
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Result Snackbar -->
     <v-snackbar v-model="showResultSnackbar" :color="resultColor" timeout="5000">
       {{ resultMessage }}
@@ -355,16 +494,20 @@ import { useReconciliationStore } from '@/stores/reconciliation'
 import { storeToRefs } from 'pinia'
 import ReconciliationGrid from './ReconciliationGrid.vue'
 import ReconciliationHelpDialog from './ReconciliationHelpDialog.vue'
+import ReconciliationWorkspace from './ReconciliationWorkspace.vue'
 import SpecificationsList from './SpecificationsList.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
 import type {
   AutoReconcileResult,
   DecisionUpdateRequest,
   MappingEntityResponse,
+  MappingLink,
+  MappingLocalOnlyApproval,
   ReconciliationManifestResult,
   ReconciliationPreviewRow,
 } from '@/types/reconciliation'
 import { getReconciliationCompatibility, parseReconciliationManifest } from '@/utils/reconciliationManifest'
+import { useReviewWorkspaceHelpState } from '@/composables/useReviewWorkspaceHelp'
 import yaml from 'js-yaml'
 
 interface Props {
@@ -401,8 +544,8 @@ const manifestResult = ref<ReconciliationManifestResult | null>(null)
 const availableEntityTypes = ref<number>(0)
 const autoReconcileResult = ref<AutoReconcileResult | null>(null)
 const autoReconcileError = ref<string | null>(null)
-const showExportGuidance = ref(true)
 const showCandidateSearchSummary = ref(false)
+const showCandidateSearchDetails = ref(false)
 const reconciliationHelpDialog = ref(false)
 const manualLinkDialog = ref(false)
 const manualLocalKeyValue = ref('')
@@ -411,6 +554,13 @@ const manualNotes = ref('')
 const manualLinkError = ref<string | null>(null)
 const savingManualLink = ref(false)
 const previewLoadingKey = ref<string | null>(null)
+const removeSavedEntryDialog = ref(false)
+const removeSavedEntryRow = ref<ReconciliationPreviewRow | null>(null)
+const confirmProtectedSidecarDeletion = ref(false)
+const removingSavedEntry = ref(false)
+// The review workspace replaces the grid for the current specification until the
+// reviewer falls back to the legacy grid.
+const reviewMode = ref(false)
 
 // YAML Editor state
 const yamlContent = ref('')
@@ -467,6 +617,39 @@ const entityPreviewData = computed(() => {
   return previewData.value[props.projectName]?.[selectedEntity.value]?.[selectedTarget.value] || []
 })
 
+/** One-line candidate-search result; row errors stay behind the Details toggle. */
+const candidateSearchSummary = computed(() => {
+  const result = autoReconcileResult.value
+  if (!result) return ''
+  const parts = [
+    `${result.total} rows considered`,
+    `${result.proposed} ${result.proposed === 1 ? 'proposal' : 'proposals'} updated`,
+    `${result.unmatched} with no candidates`,
+  ]
+  if (result.errors.length) {
+    parts.push(`${result.errors.length} ${result.errors.length === 1 ? 'row needs' : 'rows need'} attention`)
+  }
+  return `Candidate search: ${parts.join(', ')}.`
+})
+
+const { reviewWorkspaceHelpMode } = useReviewWorkspaceHelpState()
+
+/** The workspace needs a reviewable specification and loaded preview rows. */
+const reviewWorkspaceVisible = computed(
+  () =>
+    reviewMode.value &&
+    Boolean(selectedEntity.value) &&
+    Boolean(selectedTarget.value) &&
+    Boolean(entitySpec.value) &&
+    selectedEntityHasBusinessKeys.value &&
+    entityPreviewData.value.length > 0
+)
+
+const workspaceKey = computed(() => JSON.stringify([props.projectName, selectedEntity.value, selectedTarget.value]))
+
+/** The dialog shows workspace guidance only while the workspace is on screen. */
+const workspaceHelpMode = computed(() => (reviewWorkspaceVisible.value ? reviewWorkspaceHelpMode.value : null))
+
 const previewError = computed(() => {
   if (!selectedEntity.value || !selectedTarget.value) return null
   return previewErrors.value[props.projectName]?.[selectedEntity.value]?.[selectedTarget.value] ?? null
@@ -492,10 +675,35 @@ const mappingIsLoading = computed(() => {
   return mappingLoading.value[props.projectName]?.[selectedEntity.value] ?? false
 })
 
+const removeDecisionExists = computed(() => removeSavedEntryRow.value?.status != null)
+
+const removeSidecarLink = computed<MappingLink | undefined>(() => {
+  const key = removeSavedEntryRow.value?.local_key_value
+  return key ? entityMappingData.value?.links[key] : undefined
+})
+
+const removeLocalOnlyApproval = computed<MappingLocalOnlyApproval | undefined>(() => {
+  const key = removeSavedEntryRow.value?.local_key_value
+  return key ? entityMappingData.value?.local_only_approvals?.[key] : undefined
+})
+
+const removeSidecarExists = computed(() => Boolean(removeSidecarLink.value || removeLocalOnlyApproval.value))
+
+const removeSidecarProtectionStatusKnown = computed(() =>
+  Boolean(selectedTarget.value && entityMappingData.value?.protection_target_field === selectedTarget.value)
+)
+
+const removeSidecarProtected = computed(() => {
+  if (!removeSidecarExists.value) return false
+  if (!removeSidecarProtectionStatusKnown.value) return true
+  return Boolean(removeSidecarLink.value?.protected || removeLocalOnlyApproval.value?.protected)
+})
+
 // Methods
 function handleReconcileSpec(entityName: string, targetField: string) {
   selectedEntity.value = entityName
   selectedTarget.value = targetField
+  reviewMode.value = false
   activeTab.value = 'reconcile'
 }
 
@@ -518,6 +726,7 @@ async function handleAutoReconcile() {
   autoReconcileError.value = null
   autoReconcileResult.value = null
   showCandidateSearchSummary.value = false
+  showCandidateSearchDetails.value = false
   if (!matchEligibility.value.canMatch) {
     autoReconcileError.value = matchEligibility.value.message ?? 'Reconciliation compatibility could not be verified.'
     return
@@ -573,7 +782,7 @@ async function handleExportToMapping() {
       `${result.skipped_manual} protected link(s) skipped.`
 
     try {
-      await reconciliationStore.loadMappingData(props.projectName, entityName)
+      await reconciliationStore.loadMappingData(props.projectName, entityName, targetField)
     } catch (refreshError) {
       resultMessage.value =
         `${summary} Export succeeded, but mapping status could not be refreshed: ` +
@@ -610,12 +819,94 @@ async function handleUpdateMapping(request: DecisionUpdateRequest): Promise<void
   await reconciliationStore.updateMapping(props.projectName, selectedEntity.value, selectedTarget.value, request)
 }
 
+/** Open the review workspace without running candidate matching. */
+function handleReviewSpec(entityName: string, targetField: string) {
+  selectedEntity.value = entityName
+  selectedTarget.value = targetField
+  reviewMode.value = true
+  activeTab.value = 'reconcile'
+}
+
 function openManualLinkDialog(row?: ReconciliationPreviewRow) {
   manualLocalKeyValue.value = row?.local_key_value ?? ''
   manualTargetId.value = ''
   manualNotes.value = ''
   manualLinkError.value = null
   manualLinkDialog.value = true
+}
+
+function openRemoveSavedEntryDialog(row: ReconciliationPreviewRow) {
+  removeSavedEntryRow.value = row
+  confirmProtectedSidecarDeletion.value = false
+  removeSavedEntryDialog.value = true
+}
+
+type SavedEntryRemoval = 'decision' | 'sidecar' | 'both'
+
+async function removeSavedEntry(action: SavedEntryRemoval) {
+  const row = removeSavedEntryRow.value
+  const entityName = selectedEntity.value
+  const targetField = selectedTarget.value
+  const key = row?.local_key_value
+  if (!row || !entityName || !targetField || !key || removingSavedEntry.value) return
+
+  const removeDecision = action === 'decision' || action === 'both'
+  const removeSidecar = action === 'sidecar' || action === 'both'
+  if (removeDecision && !removeDecisionExists.value) return
+  if (removeSidecar && !removeSidecarExists.value) return
+  if (removeSidecar && removeSidecarProtected.value && !confirmProtectedSidecarDeletion.value) return
+
+  removingSavedEntry.value = true
+  const failures: string[] = []
+  let decisionDeleted = false
+  let sidecarDeleted = false
+  try {
+    if (removeDecision) {
+      try {
+        await reconciliationStore.deleteReviewDecision(props.projectName, entityName, targetField, key)
+        decisionDeleted = true
+      } catch (error) {
+        failures.push(`Decision remains: ${getApiErrorMessage(error, 'the decision could not be cleared')}`)
+      }
+    }
+    if (removeSidecar) {
+      try {
+        const result = await reconciliationStore.deleteMappingEntry(
+          props.projectName,
+          entityName,
+          key,
+          targetField,
+          confirmProtectedSidecarDeletion.value
+        )
+        sidecarDeleted = result.deleted_link || result.deleted_local_only_approval
+        if (!sidecarDeleted) failures.push('Sidecar mapping remains: no entry was deleted.')
+      } catch (error) {
+        failures.push(`Sidecar mapping remains: ${getApiErrorMessage(error, 'the entry could not be deleted')}`)
+      }
+    }
+
+    const refreshes: Promise<unknown>[] = []
+    if (decisionDeleted) {
+      refreshes.push(reconciliationStore.loadEntityResolutionCatalog(props.projectName))
+      refreshes.push(reconciliationStore.loadPreviewData(props.projectName, entityName, targetField))
+    }
+    if (sidecarDeleted) refreshes.push(reconciliationStore.loadMappingData(props.projectName, entityName, targetField))
+    if (refreshes.length) {
+      const results = await Promise.allSettled(refreshes)
+      if (results.some((result) => result.status === 'rejected')) {
+        failures.push('Saved changes were made, but the row could not be fully refreshed.')
+      }
+    }
+
+    const decisionResult = removeDecision ? (decisionDeleted ? 'cleared' : 'remains') : 'unchanged'
+    const sidecarResult = removeSidecar ? (sidecarDeleted ? 'deleted' : 'remains') : 'unchanged'
+    resultMessage.value = `Review decision ${decisionResult}; sidecar mapping ${sidecarResult}.${failures.length ? ` ${failures.join(' ')}` : ''}`
+    resultColor.value = failures.length ? 'warning' : 'success'
+    showResultSnackbar.value = true
+    removeSavedEntryDialog.value = false
+  } finally {
+    removingSavedEntry.value = false
+  }
 }
 
 async function saveManualLink() {
@@ -647,7 +938,8 @@ async function saveManualLink() {
       selectedEntity.value,
       key,
       targetId,
-      manualNotes.value.trim() || undefined
+      manualNotes.value.trim() || undefined,
+      selectedTarget.value ?? undefined
     )
     manualLinkDialog.value = false
     resultMessage.value = `Manual link saved for key ${key}; target ID ${targetId} is effective after normalization.`
@@ -790,22 +1082,24 @@ watch(activeTab, async (newTab) => {
 watch(
   selectedEntity,
   (newEntity) => {
-    if (newEntity && entityTargets.value.length > 0) {
-      // Auto-select the first target
-      selectedTarget.value = entityTargets.value[0] || null
-    } else {
+    if (!newEntity) {
       selectedTarget.value = null
+      return
     }
+    // Keep a target that belongs to this entity. The review entry point selects an
+    // entity and a target together, so the first target must not overwrite it.
+    if (selectedTarget.value && entityTargets.value.includes(selectedTarget.value)) return
+    selectedTarget.value = entityTargets.value[0] || null
   },
   { immediate: true }
 )
 
 watch(
-  [() => props.projectName, selectedEntity, selectedEntityHasBusinessKeys],
-  async ([projectName, entityName, hasBusinessKeys]) => {
+  [() => props.projectName, selectedEntity, selectedTarget, selectedEntityHasBusinessKeys],
+  async ([projectName, entityName, targetField, hasBusinessKeys]) => {
     if (!projectName || !entityName || !hasBusinessKeys) return
     try {
-      await reconciliationStore.loadMappingData(projectName, entityName)
+      await reconciliationStore.loadMappingData(projectName, entityName, targetField ?? undefined)
     } catch (e) {
       console.error('[ReconciliationView] Failed to load mapping sidecar:', e)
     }

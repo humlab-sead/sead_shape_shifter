@@ -26,7 +26,11 @@ export default createVuetify({
         dark: true,
         colors: {
           primary: '#2196F3',
-          secondary: '#424242',
+          // Do not reuse the light-theme secondary (#424242) here. In dark mode this colour
+          // is painted on a near-black surface, where #424242 reaches only about 1.9:1 and
+          // makes secondary icons, chips, and text look disabled. #78909C reaches 5.6:1 on
+          // the page background and 4.8:1 on an elevated surface.
+          secondary: '#78909C',
           accent: '#FF4081',
           error: '#FF5252',
           info: '#2196F3',

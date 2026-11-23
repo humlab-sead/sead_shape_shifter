@@ -49,6 +49,7 @@ const validManifestResult = {
       { id: 'feature_type', name: 'Feature type' },
     ],
     propertiesByType: { site: ['place_name'], feature_type: [] },
+    selection: null,
   },
 }
 
@@ -207,6 +208,14 @@ describe('SpecificationsList', () => {
     expect(wrapper.text()).toContain('site (unknown)')
     expect(wrapper.text()).toContain('Reconciliation service metadata has not been checked.')
     expect(wrapper.text()).not.toContain('Valid Configuration')
+  })
+
+  it('reviews the specification when the review action is used', async () => {
+    const wrapper = await mountList(validManifestResult)
+    await flushPromises()
+
+    await wrapper.get('[data-testid="review-specification-button"]').trigger('click')
+    expect(wrapper.emitted('review')).toEqual([['site', 'site_code']])
   })
 
   it.each([

@@ -1,0 +1,19 @@
+[Unit]
+Description=Record the Shape Shifter deployment home directory in git
+Documentation=https://github.com/humlab-sead/sead_shape_shifter
+
+[Service]
+# One run records a snapshot through the same script an operator runs by hand,
+# so a manual run and a scheduled run produce the same commits.
+Type=oneshot
+WorkingDirectory=%h
+ExecStart=%h/container/scripts/git-history.sh
+
+# Recording is background work: keep it out of the way of the running service.
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=30min
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=shape-shifter-git-history

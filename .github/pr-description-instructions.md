@@ -40,7 +40,12 @@ A promotion pull request moves one branch into the next stage of the pipeline: `
 4. `## Upgrade notes`
 5. `## Validation`
 
-Treat any request for a PR message, title, or description that says `dev` is being promoted to `staging` as a promotion request, even if the user does not call it a promotion. Use `.github/promotion_pr_template.md`, not the general PR template. If the user asks only for a message and provides no title, use `Promote dev to staging` as the title and provide the promotion-template body.
+For a current pull request, determine the promotion direction from its branch refs: the head branch is the source, and the base branch is the target. Use these routes and titles:
+
+- Head `dev`, base `staging`: title `Promote dev to staging`; start the Summary with `Promotes \`dev\` into \`staging\`.`
+- Head `staging`, base `main`: title `Promote staging to main`; start the Summary with `Promotes \`staging\` into \`main\`.`
+
+Use `.github/promotion_pr_template.md` for either route, even when the request does not call it a promotion. Copy the current pull request's actual head and base names into the title and Summary. Do not reuse branch names or a title from another promotion. If the refs are unavailable or do not match a supported route, ask for the correct branches instead of guessing.
 
 Keep promotion bodies compact: put `## Summary` immediately after the marker, use at most one blank line between Markdown blocks, and keep `Included PRs` list items consecutive without blank lines.
 

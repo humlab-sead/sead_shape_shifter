@@ -1,14 +1,18 @@
 # Reconciliation Future Improvements Proposal
 
 **Author**: TBD
-**Status**: Placeholder
-**Scope**: Deferred reconciliation workflow improvements beyond explicit export-to-mapping
+
+## Status
+
+- **On hold; deferred items do not yet have a finalized scope or delivery decision.**
+- **Scope:** Reconciliation workflow improvements beyond explicit export-to-mapping.
+- **Goal:** Define which deferred reconciliation lifecycle improvements need a separate proposal after the explicit-export workflow.
 
 ---
 
 ## Summary
 
-This placeholder proposal tracks reconciliation workflow improvements that are intentionally out of scope for [RECONCILIATION_PERSISTENCE_CONSOLIDATION.md](done/RECONCILIATION_PERSISTENCE_CONSOLIDATION.md).
+This placeholder proposal tracks reconciliation workflow improvements that are intentionally out of scope for [RECONCILIATION_PERSISTENCE_CONSOLIDATION.md](../done/RECONCILIATION_PERSISTENCE_CONSOLIDATION.md).
 
 The consolidation proposal keeps REQ #5 to explicit "Export to Mapping" copy only. This document captures the next-stage enhancements.
 
