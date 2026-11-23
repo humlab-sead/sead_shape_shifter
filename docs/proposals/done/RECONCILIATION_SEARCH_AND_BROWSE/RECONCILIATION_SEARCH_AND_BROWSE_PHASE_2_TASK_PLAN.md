@@ -163,7 +163,7 @@
 	- **Constraints:** Keep the guides aligned with implemented behavior only.
 	- **Validation:** `V-8` checks documentation links and consistency.
 - [x] `T5.3` **Change:** Record implementation and verification results in this task plan.
-	- **Target:** `docs/proposals/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE_PHASE_2_TASK_PLAN.md`.
+	- **Target:** `docs/proposals/done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE_PHASE_2_TASK_PLAN.md`.
 	- **Current -> required:** Work and acceptance criteria are not started; completed work must have a current tracker and test results.
 	- **Implementation:** Record completed task IDs, actual commands and results, remaining risks, and any deviations as each area lands.
 	- **Constraints:** Do not mark the phase done while a required check remains open.
@@ -204,7 +204,7 @@ Run Shape Shifter Python commands from its repository root and the Authority com
 | Decision, validation, and export logic | `backend/app/services/reconciliation/service.py`, `backend/app/services/reconciliation/resolvers.py`, `backend/app/services/shapeshift_service.py`, `backend/app/clients/reconciliation_client.py`, `backend/app/exceptions.py`, and `src/reconciliation/model.py` if needed for tolerant reads | `T1.1`, `T1.2`, `T2.1`, `T2.2`, `T2.3`, `T3.2`, `T3.3`, `T4.1`, `T4.2` | Serialized writes, fresh source validation, repairable diagnostics, one-write batches, and verification-gated export. |
 | Backend regressions | `backend/tests/services/test_reconciliation_service.py`, `backend/tests/services/test_shapeshift_service.py`, `backend/tests/api/v1/test_reconciliation_decisions.py`, `backend/tests/api/v1/test_reconciliation_decisions_batch.py` (NEW), `backend/tests/api/v1/test_reconciliation_specifications.py`, `backend/tests/api/v1/test_reconciliation_export.py`, `backend/tests/test_reconciliation_client.py` | `T1.1`, `T1.2`, `T2.1`, `T2.2`, `T2.3`, `T3.1`, `T3.2`, `T3.3`, `T4.1`, `T4.2` | Focused serialization, source freshness, batch, authorization, reference, and export cases pass. |
 | Workflow regressions | `backend/tests/integration/test_feature_type_reconciliation_workflow.py`, `backend/tests/integration/test_location_reconciliation_workflow.py` | `T4.2`, `T5.1` | Authorized mocked-service workflows verify IDs, New approvals, offline normalization, and foreign keys. |
-| Guidance and tracker | `docs/USER_GUIDE.md`, `docs/other/RECONCILIATION_GUIDE.md`, `docs/proposals/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE_PHASE_2_TASK_PLAN.md` | `T5.2`, `T5.3` | Guidance matches the released behavior and the tracker records actual validation. |
+| Guidance and tracker | `docs/USER_GUIDE.md`, `docs/other/RECONCILIATION_GUIDE.md`, `docs/proposals/done/RECONCILIATION_SEARCH_AND_BROWSE/RECONCILIATION_SEARCH_AND_BROWSE_PHASE_2_TASK_PLAN.md` | `T5.2`, `T5.3` | Guidance matches the released behavior and the tracker records actual validation. |
 
 ## Progress Tracker
 

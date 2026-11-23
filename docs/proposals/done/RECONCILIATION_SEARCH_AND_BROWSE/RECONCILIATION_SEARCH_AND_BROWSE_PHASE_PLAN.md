@@ -184,7 +184,7 @@ Let reviewers search or browse, stage explicit decisions, and continue through t
 
 - Source criteria: `P-AC-1`–`P-AC-5`, `P-AC-7`–`P-AC-12`.
 - Use the approved 300 ms initial typeahead debounce, immediate Enter submission, explicit decision shortcuts, and versioned browser storage. Never restore a target result as a confirmed selection or persist full target collections as fresh.
-- The batch decision endpoint and error shapes come from [the Phase 2 frozen contract](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_2_CONTRACT.md); Phase 3 consumes them without redesigning the save path. The browser draft format and the advisory pre-save comparison against loaded decisions are Phase 3 decisions. Do not add a catalog precondition, an expected-state request field, or per-row version storage; server-enforced per-row expected state on every decision writer is deferred to [backlog R33](../RECONCILIATION_IMPROVEMENTS_BACKLOG.md).
+- The batch decision endpoint and error shapes come from [the Phase 2 frozen contract](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_2_CONTRACT.md); Phase 3 consumes them without redesigning the save path. The browser draft format and the advisory pre-save comparison against loaded decisions are Phase 3 decisions. Do not add a catalog precondition, an expected-state request field, or per-row version storage; server-enforced per-row expected state on every decision writer is deferred to [backlog R33](../../RECONCILIATION_IMPROVEMENTS_BACKLOG.md).
 - Phase 1 retrieval outputs and Phase 2 save and export outputs are prerequisites; the save-contract decisions are already frozen, and no additional workspace design is implied by this plan.
 
 **Readiness**

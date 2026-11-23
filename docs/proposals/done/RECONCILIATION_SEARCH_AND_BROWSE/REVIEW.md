@@ -12,7 +12,7 @@ Those changes address several concerns from this review. Exact identifier search
 
 **Status.** The revised proposal specifies one type-aware local validator for all decision writes, whole-catalog replacements, existing catalog entries, and export preflight. It checks the exact type-specific URI format and saved type, requires a positive `target_id`, and verifies that the URI's parsed ID equals `target_id`. Invalid existing entries remain visible with row-specific issues; replacements containing invalid accepted references fail atomically and report all issues. Valid prior manual reconciliations remain reusable.
 
-**Implementation check.** The current [catalog model](../../../backend/app/models/reconciliation.py#L25) checks decision status and fields, but does not establish that a URI belongs to the saved type or matches the numeric ID. Both [JSON and raw YAML routes](../../../backend/app/api/v1/endpoints/reconciliation.py#L89) can replace a catalog. The proposed shared validation and repair behavior must be applied to those existing paths.
+**Implementation check.** The current [catalog model](../../../../backend/app/models/reconciliation.py#L25) checks decision status and fields, but does not establish that a URI belongs to the saved type or matches the numeric ID. Both [JSON and raw YAML routes](../../../../backend/app/api/v1/endpoints/reconciliation.py#L89) can replace a catalog. The proposed shared validation and repair behavior must be applied to those existing paths.
 
 **Decision.** Keep the no-unverified-export policy. Local syntax checks do not prove existence; successful Authority verification remains required before export. Invalid catalog entries must not be silently dropped or changed.
 

@@ -30,28 +30,6 @@
     </v-alert>
 
     <template v-else>
-      <v-alert
-        v-if="draftStorageError"
-        type="warning"
-        variant="tonal"
-        class="mb-4"
-        data-testid="workspace-storage-warning"
-      >
-        {{ draftStorageError }}
-      </v-alert>
-
-      <v-alert
-        v-if="restoreNotice"
-        type="info"
-        variant="tonal"
-        class="mb-4"
-        closable
-        data-testid="workspace-restore-notice"
-        @click:close="restoreNotice = null"
-      >
-        {{ restoreNotice }}
-      </v-alert>
-
       <div class="workspace-layout">
         <v-card variant="outlined" class="workspace-queue">
           <v-card-title class="text-subtitle-1 d-flex align-center justify-space-between">
@@ -90,13 +68,38 @@
         </v-card>
 
         <v-card variant="outlined" class="workspace-pane">
-          <v-card-title class="text-subtitle-1">
-            {{ activeEntry?.label || 'Select a row' }}
+          <v-card-title
+            class="workspace-pane-header text-subtitle-1 d-flex align-center justify-space-between"
+            data-testid="workspace-pane-header"
+          >
+            <div class="workspace-pane-heading">
+              <div class="workspace-pane-navigation">
+                <v-btn data-testid="workspace-previous" variant="text" :disabled="!canGoPrevious" @click="previousRow">
+                  Previous
+                </v-btn>
+                <v-btn data-testid="workspace-next" variant="text" :disabled="!canGoNext" @click="nextRow">Next</v-btn>
+              </div>
+              <span class="workspace-pane-label font-weight-medium">{{ activeEntry?.label || 'Select a row' }}</span>
+              <span v-if="activeEntry" class="text-caption text-medium-emphasis">
+                {{ entityName }}.{{ targetField }} · key: {{ activeEntry.key ?? 'none' }} ·
+                {{ activeEntry.savedStatus ? `saved ${activeEntry.savedStatus}` : 'no saved decision' }}
+              </span>
+            </div>
+            <v-tooltip location="bottom">
+              <template #activator="{ props: helpButtonProps }">
+                <v-btn
+                  v-bind="helpButtonProps"
+                  icon="mdi-help-circle-outline"
+                  variant="text"
+                  size="small"
+                  data-testid="workspace-open-help"
+                  aria-label="Open full help"
+                  @click="emit('help')"
+                />
+              </template>
+              Open full help
+            </v-tooltip>
           </v-card-title>
-          <v-card-subtitle v-if="activeEntry" class="text-caption">
-            {{ entityName }}.{{ targetField }} · key: {{ activeEntry.key ?? 'none' }} ·
-            {{ activeEntry.savedStatus ? `saved ${activeEntry.savedStatus}` : 'no saved decision' }}
-          </v-card-subtitle>
 
           <v-card-text>
             <v-alert v-if="!activeEntry" type="info" variant="tonal" data-testid="workspace-no-active-row">
@@ -116,27 +119,56 @@
                 </div>
               </div>
 
-              <v-btn-toggle
-                v-model="mode"
-                mandatory
-                density="compact"
-                class="mb-4"
-                data-testid="workspace-mode-toggle"
-                @update:model-value="onModeChange"
-              >
-                <v-btn
-                  value="search"
-                  size="small"
-                  :disabled="!capabilities?.type.search_supported && !capabilities?.type.identifier_search_supported"
+              <div class="d-flex align-center mb-4">
+                <v-tabs
+                  v-model="mode"
+                  density="compact"
+                  bg-color="transparent"
+                  class="workspace-mode-tabs"
+                  data-testid="workspace-mode-toggle"
+                  @update:model-value="onModeChange"
                 >
-                  <v-icon start size="small">mdi-magnify</v-icon>
-                  Search
-                </v-btn>
-                <v-btn value="browse" size="small" :disabled="!capabilities?.type.browse_supported">
-                  <v-icon start size="small">mdi-format-list-bulleted</v-icon>
-                  Browse
-                </v-btn>
-              </v-btn-toggle>
+                  <v-tab
+                    value="search"
+                    data-testid="workspace-mode-search"
+                    :disabled="!capabilities?.type.search_supported && !capabilities?.type.identifier_search_supported"
+                  >
+                    <v-icon start size="small">mdi-magnify</v-icon>
+                    Search
+                  </v-tab>
+                  <v-tab
+                    value="browse"
+                    data-testid="workspace-mode-browse"
+                    :disabled="!capabilities?.type.browse_supported"
+                  >
+                    <v-icon start size="small">mdi-format-list-bulleted</v-icon>
+                    Browse
+                  </v-tab>
+                </v-tabs>
+                <v-tooltip location="top" max-width="320">
+                  <template #activator="{ props: helpProps }">
+                    <v-btn
+                      v-bind="helpProps"
+                      icon="mdi-lightbulb-on-outline"
+                      variant="text"
+                      size="small"
+                      class="ml-2"
+                      data-testid="workspace-mode-help"
+                      :aria-label="`${activeModeHelp.label} help`"
+                    />
+                  </template>
+                  <div class="font-weight-bold mb-1">{{ activeModeHelp.label }}</div>
+                  <div v-for="tip in activeModeHelp.tips" :key="tip" class="mb-1">• {{ tip }}</div>
+                </v-tooltip>
+              </div>
+
+              <div
+                v-if="modeAvailabilityHint"
+                class="text-caption text-medium-emphasis mb-2"
+                data-testid="workspace-mode-unavailable"
+              >
+                {{ modeAvailabilityHint }}
+              </div>
 
               <div v-if="mode === 'search'">
                 <v-text-field
@@ -151,9 +183,6 @@
                   @compositionstart="composing = true"
                   @compositionend="composing = false"
                 />
-                <div class="text-caption mt-1">
-                  Enter searches immediately. Ranked results are limited suggestions, not proof of absence.
-                </div>
 
                 <v-alert
                   v-if="searchState === 'loading'"
@@ -262,7 +291,7 @@
                 </v-alert>
 
                 <template v-else>
-                  <div class="d-flex align-center gap-2 mb-2">
+                  <div class="d-flex align-center mb-2 workspace-gap">
                     <v-text-field
                       v-model="browseText"
                       data-testid="workspace-browse-filter"
@@ -290,18 +319,14 @@
                     }}
                   </div>
 
-                  <v-list v-if="visibleBrowseItems.length" density="compact" data-testid="workspace-browse-results">
-                    <v-list-item
-                      v-for="record in visibleBrowseItems"
-                      :key="record.id"
-                      :data-testid="`workspace-result-${record.target_id}`"
-                      :active="selectedRecord?.id === record.id"
-                      @click="selectRecord(record)"
-                    >
-                      <v-list-item-title>{{ record.name || '(no label)' }}</v-list-item-title>
-                      <v-list-item-subtitle class="text-caption">{{ record.id }}</v-list-item-subtitle>
-                    </v-list-item>
-                  </v-list>
+                  <div v-if="visibleBrowseItems.length" data-testid="workspace-browse-results">
+                    <SelectionBrowseGrid
+                      :items="visibleBrowseItems"
+                      :columns="browseColumns"
+                      :selected-id="selectedRecord?.id ?? null"
+                      @select="selectRecord"
+                    />
+                  </div>
                   <div
                     v-else-if="browseState === 'ready'"
                     class="text-caption text-medium-emphasis"
@@ -335,19 +360,37 @@
                 <div v-else class="text-caption text-medium-emphasis">Nothing staged for this row.</div>
               </div>
 
-              <div class="d-flex flex-wrap gap-2 mt-4">
-                <v-btn
-                  data-testid="workspace-stage-next"
-                  variant="tonal"
-                  color="primary"
-                  :disabled="!selectedRecord || selectedRecord.target_id === null"
-                  @click="stageSelected"
-                >
-                  Stage selected &amp; next
-                </v-btn>
-                <v-btn data-testid="workspace-stage-new" variant="tonal" color="secondary" @click="stageNew">
-                  Stage New &amp; next
-                </v-btn>
+              <div class="d-flex flex-wrap align-center mt-4 workspace-gap" data-testid="workspace-actions">
+                <v-tooltip location="top" max-width="280">
+                  <template #activator="{ props: stageProps }">
+                    <v-btn
+                      v-bind="stageProps"
+                      data-testid="workspace-stage-next"
+                      variant="elevated"
+                      color="primary"
+                      :disabled="!selectedRecord || selectedRecord.target_id === null"
+                      @click="stageSelected"
+                    >
+                      Stage selected
+                    </v-btn>
+                  </template>
+                  Stages the selected target and moves to the next row. Saving is separate.
+                </v-tooltip>
+                <v-tooltip location="top" max-width="280">
+                  <template #activator="{ props: newProps }">
+                    <v-btn
+                      v-bind="newProps"
+                      data-testid="workspace-stage-new"
+                      variant="tonal"
+                      color="primary"
+                      @click="stageNew"
+                    >
+                      Stage New
+                    </v-btn>
+                  </template>
+                  Approves later new-record handling for this row and moves to the next row. It does not create a
+                  record.
+                </v-tooltip>
                 <v-btn data-testid="workspace-skip" variant="text" @click="skipRow">Skip for now</v-btn>
                 <v-btn
                   data-testid="workspace-clear-draft"
@@ -355,22 +398,14 @@
                   :disabled="!activeDraft.decision"
                   @click="clearDraft"
                 >
-                  Clear staged decision
+                  Clear staged
                 </v-btn>
-              </div>
-              <div class="text-caption mt-2">
-                Shortcuts: Alt+Enter stages, Alt+Right/Left moves, Alt+Down skips. New approves later new-record
-                handling; it does not create a record.
               </div>
             </template>
           </v-card-text>
 
           <v-divider />
           <v-card-actions class="flex-wrap">
-            <v-btn data-testid="workspace-previous" variant="text" :disabled="!canGoPrevious" @click="previousRow">
-              Previous
-            </v-btn>
-            <v-btn data-testid="workspace-next" variant="text" :disabled="!canGoNext" @click="nextRow">Next</v-btn>
             <v-spacer />
             <v-btn
               data-testid="workspace-save"
@@ -449,8 +484,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useReconciliationStore } from '@/stores/reconciliation'
+import {
+  activateReviewWorkspaceHelp,
+  clearReviewWorkspaceNotices,
+  setReviewWorkspaceHelpMode,
+  setReviewWorkspaceNotices,
+} from '@/composables/useReviewWorkspaceHelp'
+import { reconciliationWorkspaceHelp } from './reconciliationHelp'
+import SelectionBrowseGrid from './SelectionBrowseGrid.vue'
+import { displayedSelectionFields, selectionFieldValue } from '@/utils/selectionRecord'
 import type {
   DecisionBatchIssue,
   DecisionBatchResult,
@@ -487,6 +531,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   fallback: []
+  help: []
   saved: [result: DecisionBatchResult]
 }>()
 
@@ -509,11 +554,30 @@ const composing = ref(false)
 const capabilities = ref<SelectionCapabilities | null>(null)
 const capabilityState = ref<'loading' | 'ready' | 'fallback'>('loading')
 const fallbackMessage = ref<string | null>(null)
-const restoreNotice = ref<string | null>(null)
-const draftStorageError = ref<string | null>(null)
 
 const activeKey = ref<string | null>(null)
 const mode = ref<SelectionMode>('search')
+const activeModeHelp = computed(() => reconciliationWorkspaceHelp.modes[mode.value])
+let releaseWorkspaceHelp: (() => void) | null = null
+
+/**
+ * Explain a disabled mode instead of leaving two greyed-out buttons.
+ *
+ * Vuetify disabled buttons ignore pointer events, so a tooltip on the button
+ * itself never opens. A caption is always readable.
+ */
+const modeAvailabilityHint = computed(() => {
+  const flags = capabilities.value?.type
+  if (!flags) return ''
+  const reasons: string[] = []
+  if (!flags.search_supported && !flags.identifier_search_supported) {
+    reasons.push('Search is unavailable because this target type does not support text or identifier search.')
+  }
+  if (!flags.browse_supported) {
+    reasons.push('Browse is unavailable because this target type cannot list its complete record set.')
+  }
+  return reasons.join(' ')
+})
 const searchQuery = ref('')
 const searchState = ref<'idle' | 'loading' | 'ready' | 'empty' | 'invalid' | 'unsupported' | 'error'>('idle')
 const searchError = ref('')
@@ -715,9 +779,11 @@ function persistDraft() {
     props.targetField,
     currentDraft()
   )
-  draftStorageError.value = stored
-    ? null
-    : 'This browser could not store the draft, so the staged decisions are not durable. Save them before reloading or leaving this page.'
+  setReviewWorkspaceNotices({
+    storageError: stored
+      ? null
+      : 'This browser could not store the draft, so the staged decisions are not durable. Save them before reloading or leaving this page.',
+  })
 }
 
 function restoreDraft() {
@@ -728,8 +794,10 @@ function restoreDraft() {
   )
 
   if (status === 'invalid') {
-    restoreNotice.value =
-      'The stored draft for this specification could not be read and was cleared. Nothing was reused from another specification.'
+    setReviewWorkspaceNotices({
+      restoreNotice:
+        'The stored draft for this specification could not be read and was cleared. Nothing was reused from another specification.',
+    })
     return
   }
   if (!draft) return
@@ -752,7 +820,9 @@ function restoreDraft() {
 
   const restoredCount = Object.values(restored).filter((row) => row.decision !== null).length
   if (restoredCount > 0) {
-    restoreNotice.value = `Restored ${restoredCount} unsaved ${restoredCount === 1 ? 'decision' : 'decisions'}. No target selection or result list was restored.`
+    setReviewWorkspaceNotices({
+      restoreNotice: `Restored ${restoredCount} unsaved ${restoredCount === 1 ? 'decision' : 'decisions'}. No target selection or result list was restored.`,
+    })
   }
 
   if (draft.focusedKey && reviewableQueue.value.some((entry) => entry.key === draft.focusedKey)) {
@@ -902,12 +972,8 @@ function selectRecord(record: SelectionRecord) {
 
 // ---------- Complete-list browse ----------
 
-function browseField(record: SelectionRecord, field: string): unknown {
-  if (field === 'name') return record.name
-  if (field === 'target_id') return record.target_id
-  if (field === 'description') return record.description ?? null
-  return record.fields?.[field] ?? null
-}
+/** Columns to show, in the order the reconciliation service declares them. */
+const browseColumns = computed(() => displayedSelectionFields(capabilities.value?.type.display_fields))
 
 const browseTextFields = computed(() => capabilities.value?.type.text_filter_fields ?? [])
 const browseFieldFilterDeclarations = computed(() => capabilities.value?.type.field_filters ?? [])
@@ -917,7 +983,7 @@ const filteredBrowseItems = computed(() => {
   return browseItems.value.filter((record) => {
     if (needle) {
       const matchesText = browseTextFields.value.some((field) =>
-        String(browseField(record, field) ?? '')
+        String(selectionFieldValue(record, field) ?? '')
           .toLowerCase()
           .includes(needle)
       )
@@ -926,7 +992,7 @@ const filteredBrowseItems = computed(() => {
     return browseFieldFilterDeclarations.value.every((filter) => {
       const expected = (browseFieldFilters[filter.field] ?? '').trim()
       if (!expected) return true
-      const actual = browseField(record, filter.field)
+      const actual = selectionFieldValue(record, filter.field)
       if (filter.operator === 'contains_ci') {
         return String(actual ?? '')
           .toLowerCase()
@@ -947,8 +1013,8 @@ const sortedBrowseItems = computed(() => {
   const field = sortField.value
   const direction = sortDirection.value === 'asc' ? 1 : -1
   return items.sort((left, right) => {
-    const leftValue = browseField(left, field)
-    const rightValue = browseField(right, field)
+    const leftValue = selectionFieldValue(left, field)
+    const rightValue = selectionFieldValue(right, field)
     const leftMissing = leftValue === null || leftValue === undefined
     const rightMissing = rightValue === null || rightValue === undefined
     if (leftMissing && rightMissing) return compareIds(left, right)
@@ -1187,15 +1253,26 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 onMounted(async () => {
+  releaseWorkspaceHelp = activateReviewWorkspaceHelp(mode.value)
+  clearReviewWorkspaceNotices()
   loadedStates.value = reconciliationStore.decisionStatesFromPreview(props.previewRows)
   restoreDraft()
   await loadCapabilities()
 })
 
+onUnmounted(() => {
+  clearReviewWorkspaceNotices()
+  releaseWorkspaceHelp?.()
+  releaseWorkspaceHelp = null
+})
+
+watch(mode, (next) => setReviewWorkspaceHelpMode(next))
+
 watch(
   () => [props.projectName, props.entityName, props.targetField],
   () => {
     // A different specification is a different scope: drop in-memory state and reload.
+    clearReviewWorkspaceNotices()
     rowsByKey.value = {}
     loadedStates.value = reconciliationStore.decisionStatesFromPreview(props.previewRows)
     activeKey.value = null
@@ -1210,6 +1287,10 @@ watch(
 </script>
 
 <style scoped>
+.workspace-pane-header {
+  background-color: rgba(var(--v-theme-on-surface), 0.08);
+}
+
 .workspace-layout {
   display: grid;
   grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
@@ -1217,9 +1298,41 @@ watch(
   align-items: start;
 }
 
+.workspace-pane-heading {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 4px;
+  min-width: 0;
+}
+
+.workspace-pane-navigation {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.workspace-pane-label {
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+
 .workspace-queue-list {
   max-height: 520px;
   overflow-y: auto;
+}
+
+/* Keep the mode tabs compact instead of stretching across the pane. */
+.workspace-mode-tabs {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Vuetify has no base gap utility, so `gap-2` alone leaves rows flush. */
+.workspace-gap {
+  gap: 8px;
 }
 
 @media (max-width: 960px) {
