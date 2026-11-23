@@ -21,6 +21,8 @@ from typing import Any
 
 from dotenv import dotenv_values
 
+from scripts._shared.commit_map import translate_commit
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 INSTRUCTIONS_PATH = REPO_ROOT / ".github" / "pr-description-instructions.md"
 TEMPLATE_PATH = REPO_ROOT / ".github" / "pull_request_template.md"
@@ -744,10 +746,14 @@ def parse_github_timestamp(value: Any) -> dt.datetime | None:
 
 
 def merge_commit_oid(record: dict[str, Any]) -> str | None:
-    """Return the merge commit SHA recorded for a pull request."""
+    """Return the merge commit SHA recorded for a pull request.
+
+    GitHub reports merge commits from before the 2026-11-23 history rewrite under
+    their old hashes, so the SHA is translated to the current history.
+    """
     merge_commit = record.get("mergeCommit")
     oid = merge_commit.get("oid") if isinstance(merge_commit, dict) else None
-    return oid if isinstance(oid, str) and oid else None
+    return translate_commit(oid) if isinstance(oid, str) and oid else None
 
 
 def resolve_repository_slug(repo: str | None) -> str | None:

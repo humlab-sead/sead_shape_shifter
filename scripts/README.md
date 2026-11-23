@@ -533,7 +533,7 @@ Promotion pull requests carry the `<!-- promotion-pr -->` marker and contribute 
 Generate a release draft manually with:
 
 ```bash
-python3 scripts/workflow/generate_whats_new.py --version X.Y.Z
+python3 -m scripts.workflow.generate_whats_new --version X.Y.Z
 ```
 
 Use `--current-ref`, `--previous-tag`, or `--source-branches` when you need a custom release window.
@@ -720,7 +720,7 @@ make release-notes VERSION=2.5.0
 make release-notes-ai VERSION=2.5.0
 
 # Direct usage
-python3 scripts/workflow/generate_whats_new.py --version 2.5.0
+python3 -m scripts.workflow.generate_whats_new --version 2.5.0
 ```
 
 The script requires authenticated `gh` access to merged PRs. It replaces the versioned output file and refreshes `PENDING.md` on each run. See [the What's New workflow](../docs/whats-new/README.md).

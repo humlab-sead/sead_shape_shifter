@@ -51,7 +51,7 @@ flowchart TB
    To generate a draft manually:
 
    ```bash
-   python3 scripts/workflow/generate_whats_new.py --version X.Y.Z
+   python3 -m scripts.workflow.generate_whats_new --version X.Y.Z
    ```
 
    See [the scripts guide](../../scripts/README.md) for prerequisites and options.
