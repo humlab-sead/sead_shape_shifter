@@ -13,6 +13,25 @@ install:
 .PHONY: install-hooks
 install-hooks:
 	@uv run --extra all pre-commit install
+	@$(MAKE) --no-print-directory install-graphify-hooks
+
+# Installs graphify's post-commit, post-checkout, post-merge and post-rewrite hooks, which
+# rebuild the local knowledge graph in graphify-out/ in the background (code only, no LLM).
+# Skipped with a notice when graphify is not installed (see install-graphify).
+# `graphify hook install` also writes a .gitattributes merge driver for graph.json. That only
+# matters when graph.json is committed, and graphify-out/ is git-ignored here, so an untracked
+# .gitattributes holding nothing but that line is removed again.
+.PHONY: install-graphify-hooks
+install-graphify-hooks:
+	@if ! command -v graphify >/dev/null 2>&1; then \
+		echo "graphify not found on PATH; skipping graphify git hooks (run make install-graphify)"; \
+		exit 0; \
+	fi; \
+	graphify hook install; \
+	if [ -f .gitattributes ] && ! git ls-files --error-unmatch .gitattributes >/dev/null 2>&1 \
+		&& ! grep -qv 'merge=graphify' .gitattributes; then \
+		rm -f .gitattributes; \
+	fi
 
 # Re-sync the shared .venv/ from uv.lock without pruning the api/dev extras.
 # Plain `uv sync` syncs to base + dependency-group dev only and silently
@@ -347,37 +366,70 @@ create-graphify:
 	@graphify cluster-only $(HOME)/source/sead_shape_shifter
 	@graphify export callflow-html
 
-# graphify comes from brew (~/.local/bin), not the project .venv.
+# Rebuilds the code part of the local graph (AST only, no LLM). The git hooks normally do
+# this after each commit, checkout, merge and rebase; graphify-out/ is not committed.
+# graphify is a uv tool (~/.local/bin), not part of the project .venv.
 # GRAPHIFY_VIZ_NODE_LIMIT=0 blocks graph.html generation and removes any stale
 # file (graph is far above the 5000-node viz limit and the HTML is unused).
-# graphify reads this limit only from the environment, not from .graphifyrc.
 update-graphify:
-	@GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update $(HOME)/source/sead_shape_shifter --force
-	@git add graphify-out
-	@if git diff --cached --quiet -- graphify-out; then \
-		echo "No changes in graphify-out"; \
-	else \
-		git commit -m "chore: updated graphify graph"; \
-	fi
+	@GRAPHIFY_VIZ_NODE_LIMIT=0 GRAPHIFY_NO_BACKUP=1 graphify update $(CURDIR) --force
+
+# Rebuilds the graph including the LLM-based (semantic) results: document/paper/image
+# extraction and community names. Code is still parsed locally (AST).
+#
+# Uses the same LLM settings as the repo scripts (scripts/workflow/*). Each value is
+# taken from the environment if set, otherwise from its KEY = "value" line in .env:
+#   REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE       must be "openai" (any server with the OpenAI chat API)
+#   REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL   server base URL, usually ending in /v1
+#   REPO_SCRIPTS_DEFAULT_MODEL               model id as the server names it
+#   REPO_SCRIPTS_DEFAULT_PROVIDER_KEY        API key; "none" is sent if empty
+# They are passed to graphify's "openai" backend as OPENAI_BASE_URL, GRAPHIFY_OPENAI_MODEL
+# and OPENAI_API_KEY for these two commands only. The values are read by the shell at run
+# time, so make never prints the API key, not even with make -n.
+#
+# Unchanged files are skipped via graphify's cache unless GRAPHIFY_REEXTRACT=1.
+#   make semantic-graphify                          # incremental
+#   make semantic-graphify GRAPHIFY_REEXTRACT=1     # re-extract everything, ignore the cache
+#   make semantic-graphify GRAPHIFY_MODE=deep       # more aggressive inferred-edge extraction
+#   make semantic-graphify GRAPHIFY_RELABEL=1       # rename all communities, not only unnamed ones
+#   make semantic-graphify GRAPHIFY_CONCURRENCY=1   # parallel LLM requests (graphify default: 4)
+# Make variable names avoid BACKEND (used further down in this Makefile) and names graphify
+# itself reads from the environment (GRAPHIFY_FORCE, GRAPHIFY_LLM_*).
+.PHONY: semantic-graphify
+semantic-graphify:
+	@set -e; \
+	setting() { \
+		v=$$(printenv "$$1" || true); \
+		if [ -z "$$v" ] && [ -f .env ]; then \
+			v=$$(sed -nE "s/^[[:space:]]*(export[[:space:]]+)?$$1[[:space:]]*=[[:space:]]*(.*)$$/\2/p" .env | tail -n 1); \
+		fi; \
+		printf '%s' "$$v" | sed -E 's/[[:space:]]+$$//; s/^"(.*)"$$/\1/'; \
+	}; \
+	provider=$$(setting REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE); \
+	base_url=$$(setting REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL); \
+	model=$$(setting REPO_SCRIPTS_DEFAULT_MODEL); \
+	api_key=$$(setting REPO_SCRIPTS_DEFAULT_PROVIDER_KEY); \
+	if [ "$$provider" != "openai" ]; then \
+		echo "error: REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE is '$$provider'; semantic-graphify only supports 'openai'" >&2; exit 1; \
+	fi; \
+	if [ -z "$$base_url" ] || [ -z "$$model" ]; then \
+		echo "error: set REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL and REPO_SCRIPTS_DEFAULT_MODEL (environment or .env)" >&2; exit 1; \
+	fi; \
+	export GRAPHIFY_VIZ_NODE_LIMIT=0 OPENAI_BASE_URL="$$base_url" GRAPHIFY_OPENAI_MODEL="$$model" \
+		OPENAI_API_KEY="$${api_key:-none}"; \
+	echo "Using $$model at $$base_url"; \
+	graphify extract $(CURDIR) --backend openai $(if $(GRAPHIFY_CONCURRENCY),--max-concurrency $(GRAPHIFY_CONCURRENCY)) \
+		$(if $(GRAPHIFY_MODE),--mode $(GRAPHIFY_MODE)) $(if $(GRAPHIFY_REEXTRACT),--force); \
+	graphify label $(CURDIR) --backend openai $(if $(GRAPHIFY_CONCURRENCY),--max-concurrency $(GRAPHIFY_CONCURRENCY)) \
+		$(if $(GRAPHIFY_RELABEL),,--missing-only); \
+	echo "✓ Semantic graph rebuilt in graphify-out/"
 
 install-graphify:
 	@uv tool install "graphifyy[all]" --force
-	@graphify hook install
+	@$(MAKE) --no-print-directory install-graphify-hooks
 	@graphify vscode install
 	@graphify codex install
-	@echo "✓ Graphify installed and pre-commit hook set up"
-
-# 	@graphify extract . --project
-# 	@graphify cluster-only $(HOME)/source/sead_shape_shifter
-# 	@graphify export callflow-html
-
-commit-graphify:
-	@git add graphify-out
-	@if git diff --cached --quiet -- graphify-out; then \
-		echo "No changes in graphify-out"; \
-	else \
-		git commit -m "chore: updated graphify graph"; \
-	fi
+	@echo "✓ Graphify installed and git hooks set up"
 
 ################################################################################
 # Project Editor UI
