@@ -63,7 +63,7 @@ The prompt files live in `.github/prompts/agents/`. Each prompt is narrow on pur
 
 - Codex: run after merges, file moves, large refactors, or architecture changes.
 - Copilot: not the best fit unless a user explicitly asks for graph-oriented navigation.
-- GitHub Actions: run on `push` to `main` or on a nightly schedule if you want `graphify-out/` to stay current.
+- GitHub Actions: not needed. `graphify-out/` is not committed; graphify git hooks rebuild it locally after each commit, checkout, merge and rebase.
 
 ## Recommended Execution Order
 

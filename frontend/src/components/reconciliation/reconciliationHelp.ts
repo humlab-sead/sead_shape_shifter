@@ -127,7 +127,7 @@ export const reconciliationHelp: ReconciliationHelpContent = {
     {
       label: 'Export to Mapping',
       description:
-        'Check and export accepted candidates; export New approvals separately. Manual and unowned links are protected.',
+        'Check and export accepted candidates; export New approvals separately. Saving a decision does not export a link. A failed check leaves accepted links unexported. Manual and unowned links are protected.',
     },
     {
       label: 'Preview',
@@ -167,5 +167,59 @@ export const reconciliationHelp: ReconciliationHelpContent = {
       description:
         'Open the manual-link form with this row’s key filled in. The saved ID is trusted and is not checked against SEAD.',
     },
+  ],
+}
+
+export interface ReconciliationWorkspaceHelpContent {
+  title: string
+  description: string
+  modes: Record<'search' | 'browse', { label: string; tips: string[] }>
+  saving: { label: string; tips: string[] }
+  shortcuts: Array<{ keys: string; action: string }>
+}
+
+/**
+ * Sidebar help shown while the review workspace is open.
+ *
+ * Mode tips switch with the Search/Browse toggle; the saving notes and
+ * shortcuts are always available.
+ */
+export const reconciliationWorkspaceHelp: ReconciliationWorkspaceHelpContent = {
+  title: 'Review workspace',
+  description:
+    'Review rows one at a time, search or browse the target records, and stage decisions to save in one batch.',
+  modes: {
+    search: {
+      label: 'Search',
+      tips: [
+        'Enter searches immediately. Typing without Enter waits for a short pause before the ranked search runs.',
+        'Use id: 42 for an exact identifier lookup instead of a ranked search.',
+        'Ranked results are limited suggestions, not proof that no match exists.',
+        'Select a result, then stage it with the button or Alt+Enter.',
+      ],
+    },
+    browse: {
+      label: 'Browse',
+      tips: [
+        'Browse loads the complete target list for this type once, then filters and sorts it in the browser.',
+        'A list larger than the configured row or size limit is not shown in part; use Search instead.',
+        'Select a record, then stage it with the button or Alt+Enter.',
+      ],
+    },
+  },
+  saving: {
+    label: 'Saving and export',
+    tips: [
+      'Saving a decision stores the choice; it does not export a link.',
+      'Export checks accepted candidates against SEAD and records New decisions separately.',
+      'A failed export check leaves accepted links unexported. Manual and unowned links are protected.',
+      'After a workspace opens, valid New-only saves and exports still work if the service becomes unavailable.',
+    ],
+  },
+  shortcuts: [
+    { keys: 'Alt+Enter', action: 'Stage the selected record' },
+    { keys: 'Alt+Right / Alt+Left', action: 'Move to the next or previous row' },
+    { keys: 'Alt+Down', action: 'Skip the current row' },
+    { keys: 'Alt+Backspace', action: 'Stage New for the current row' },
   ],
 }

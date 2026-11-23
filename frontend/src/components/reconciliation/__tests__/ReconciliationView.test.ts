@@ -135,7 +135,10 @@ async function mountView() {
         ReconciliationWorkspace: {
           props: ['previewRows', 'selectionDescriptor', 'serviceType'],
           template:
-            '<div data-testid="workspace-stub"><button data-testid="workspace-stub-fallback" @click="$emit(\'fallback\')">Fallback</button></div>',
+            '<div data-testid="workspace-stub">' +
+            '<button data-testid="workspace-stub-fallback" @click="$emit(\'fallback\')">Fallback</button>' +
+            '<button data-testid="workspace-stub-help" @click="$emit(\'help\')">Help</button>' +
+            '</div>',
         },
         YamlEditor: {
           props: ['mode'],
@@ -235,7 +238,7 @@ describe('ReconciliationView', () => {
     )
   })
 
-  it('allows dismissing the export guidance and candidate search summary', async () => {
+  it('allows dismissing the candidate search summary', async () => {
     reconciliationStore.autoReconcile = vi.fn().mockResolvedValue({
       proposed: 3,
       unmatched: 1,
@@ -247,10 +250,6 @@ describe('ReconciliationView', () => {
 
     await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
     await nextTick()
-
-    const exportGuidance = wrapper.get('[data-testid="reconciliation-export-info"]')
-    await exportGuidance.get('button').trigger('click')
-    expect(wrapper.find('[data-testid="reconciliation-export-info"]').exists()).toBe(false)
 
     await wrapper.get('[data-testid="find-candidates-button"]').trigger('click')
     await flushPromises()
@@ -548,7 +547,7 @@ describe('ReconciliationView', () => {
     expect(wrapper.find('[data-testid="matching-result"]').exists()).toBe(false)
   })
 
-  it('reports candidate-search counts and row-specific matching errors', async () => {
+  it('summarizes candidate-search counts in one line and reveals row errors on demand', async () => {
     reconciliationStore.autoReconcile = vi.fn().mockResolvedValue({
       proposed: 1,
       unmatched: 2,
@@ -562,9 +561,35 @@ describe('ReconciliationView', () => {
     await wrapper.get('[data-testid="find-candidates-button"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.get('[data-testid="matching-result"]').text()).toContain('considered 4 rows')
-    expect(wrapper.get('[data-testid="matching-result"]').text()).toContain('found no candidates for 2 rows')
-    expect(wrapper.get('[data-testid="matching-result"]').text()).toContain('Row 3 (A): Missing required key')
+    const summary = wrapper.get('[data-testid="matching-result-summary"]').text()
+    expect(summary).toContain('4 rows considered')
+    expect(summary).toContain('1 proposal updated')
+    expect(summary).toContain('2 with no candidates')
+    expect(summary).toContain('1 row needs attention')
+    expect(wrapper.find('[data-testid="matching-result-details"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="matching-result-details-toggle"]').trigger('click')
+    expect(wrapper.get('[data-testid="matching-result-details"]').text()).toContain('Row 3 (A): Missing required key')
+  })
+
+  it('hides the details toggle when no row needs attention', async () => {
+    reconciliationStore.autoReconcile = vi.fn().mockResolvedValue({
+      proposed: 4,
+      unmatched: 0,
+      total: 4,
+      candidates: {},
+      errors: [],
+    })
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await wrapper.get('[data-testid="find-candidates-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="matching-result-summary"]').text()).toContain(
+      'Candidate search: 4 rows considered'
+    )
+    expect(wrapper.find('[data-testid="matching-result-details-toggle"]').exists()).toBe(false)
   })
 
   it('blocks saved mappings that the current manifest does not declare', async () => {
@@ -716,16 +741,33 @@ describe('ReconciliationView', () => {
     expect(wrapper.find('[data-testid="open-remove-saved-entry"]').exists()).toBe(true)
   })
 
-  it('states that accepted exports are verified and saving is separate from exporting', async () => {
+  it('opens the full help dialog with workspace guidance from the workspace', async () => {
+    reconciliationStore.previewData = {
+      test_project: {
+        site: { site_code: [{ local_key_value: 'A', site_code: 'Same', status: null, errors: [] }] },
+      },
+    }
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-review"]').trigger('click')
+    await nextTick()
+
+    await wrapper.get('[data-testid="workspace-stub-help"]').trigger('click')
+    await nextTick()
+
+    const workspaceHelp = wrapper.get('[data-testid="reconciliation-help-workspace"]')
+    expect(workspaceHelp.text()).toContain('Review workspace')
+    expect(workspaceHelp.text()).toContain('Saving and export')
+  })
+
+  it('offers export guidance next to the export button without a persistent alert', async () => {
     const wrapper = await mountView()
 
     await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
     await nextTick()
 
-    const guidance = wrapper.get('[data-testid="reconciliation-export-info"]').text()
-    expect(guidance).toContain('Accepted links are written only after that check succeeds')
-    expect(guidance).toContain('Saving a decision does not export a link')
-    expect(guidance).not.toContain('remain unverified until you export again')
+    expect(wrapper.find('[data-testid="reconciliation-export-info"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="export-help"]').attributes('aria-label')).toBe('Export guidance')
     expect(wrapper.find('[data-testid="export-to-mapping-button"]').exists()).toBe(true)
   })
 })

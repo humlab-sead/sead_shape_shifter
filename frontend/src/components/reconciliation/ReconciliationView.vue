@@ -170,19 +170,40 @@
                   Add Manual Link
                 </v-btn>
 
-                <v-btn
-                  v-if="selectedEntity && selectedTarget && entitySpec"
-                  data-testid="export-to-mapping-button"
-                  variant="tonal"
-                  color="primary"
-                  prepend-icon="mdi-export"
-                  :loading="loading"
-                  :disabled="loading || !selectedEntityHasBusinessKeys"
-                  class="ml-2"
-                  @click="handleExportToMapping"
-                >
-                  Export to Mapping
-                </v-btn>
+                <div v-if="selectedEntity && selectedTarget && entitySpec" class="d-flex align-center ml-2">
+                  <v-btn
+                    data-testid="export-to-mapping-button"
+                    variant="tonal"
+                    color="primary"
+                    prepend-icon="mdi-export"
+                    :loading="loading"
+                    :disabled="loading || !selectedEntityHasBusinessKeys"
+                    @click="handleExportToMapping"
+                  >
+                    Export to Mapping
+                  </v-btn>
+                  <v-tooltip location="bottom" max-width="360">
+                    <template #activator="{ props: exportHelpProps }">
+                      <v-btn
+                        v-bind="exportHelpProps"
+                        icon="mdi-lightbulb-on-outline"
+                        variant="text"
+                        size="small"
+                        class="ml-1"
+                        data-testid="export-help"
+                        aria-label="Export guidance"
+                      />
+                    </template>
+                    <div class="font-weight-bold mb-1">Export</div>
+                    <div class="mb-1">
+                      Accepted links are checked against SEAD before they are written; New decisions are recorded
+                      separately.
+                    </div>
+                    <div class="mb-1">A failed check leaves accepted links unexported.</div>
+                    <div class="mb-1">Saving a decision does not export a link.</div>
+                    <div>Manual and unowned links are protected.</div>
+                  </v-tooltip>
+                </div>
               </div>
 
               <v-alert
@@ -193,21 +214,6 @@
                 class="mb-4"
               >
                 Candidate search is blocked: {{ matchEligibility.message }}
-              </v-alert>
-
-              <v-alert
-                v-if="showExportGuidance"
-                data-testid="reconciliation-export-info"
-                type="info"
-                variant="tonal"
-                class="mb-4"
-                closable
-                @click:close="showExportGuidance = false"
-              >
-                Export checks accepted candidates against SEAD and records New decisions separately. Accepted links are
-                written only after that check succeeds, so a failed check leaves them unexported. After a review
-                workspace has opened, valid New-only saves and exports still work if the service later becomes
-                unavailable. Manual and unowned links are protected. Saving a decision does not export a link.
               </v-alert>
 
               <v-alert v-if="previewError" data-testid="preview-error" type="error" variant="tonal" class="mb-4">
@@ -227,14 +233,29 @@
                 data-testid="matching-result"
                 type="success"
                 variant="tonal"
+                density="compact"
                 class="mb-4"
                 closable
                 @click:close="showCandidateSearchSummary = false"
               >
-                Candidate search considered {{ autoReconcileResult.total }} rows, updated
-                {{ autoReconcileResult.proposed }} proposed decisions, and found no candidates for
-                {{ autoReconcileResult.unmatched }} rows. {{ autoReconcileResult.errors.length }} rows need attention.
-                <ul v-if="autoReconcileResult.errors.length" class="mt-2">
+                <div class="d-flex align-center flex-wrap ga-2">
+                  <span data-testid="matching-result-summary">{{ candidateSearchSummary }}</span>
+                  <v-btn
+                    v-if="autoReconcileResult.errors.length"
+                    data-testid="matching-result-details-toggle"
+                    variant="text"
+                    size="x-small"
+                    :append-icon="showCandidateSearchDetails ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+                    @click="showCandidateSearchDetails = !showCandidateSearchDetails"
+                  >
+                    Details
+                  </v-btn>
+                </div>
+                <ul
+                  v-if="showCandidateSearchDetails && autoReconcileResult.errors.length"
+                  class="mt-2"
+                  data-testid="matching-result-details"
+                >
                   <li v-for="(rowError, index) in autoReconcileResult.errors" :key="`${rowError.row_index}-${index}`">
                     Row {{ rowError.row_index + 1
                     }}{{ rowError.local_key_value ? ` (${rowError.local_key_value})` : '' }}:
@@ -254,6 +275,7 @@
                 :preview-rows="entityPreviewData"
                 :selection-descriptor="manifestResult?.status === 'valid' ? manifestResult.manifest.selection : null"
                 @fallback="reviewMode = false"
+                @help="reconciliationHelpDialog = true"
               />
 
               <!-- Reconciliation Grid -->
@@ -310,7 +332,7 @@
       </v-card-text>
     </v-card>
 
-    <ReconciliationHelpDialog v-model="reconciliationHelpDialog" />
+    <ReconciliationHelpDialog v-model="reconciliationHelpDialog" :workspace-mode="workspaceHelpMode" />
 
     <v-dialog v-model="manualLinkDialog" max-width="600">
       <v-card>
@@ -485,6 +507,7 @@ import type {
   ReconciliationPreviewRow,
 } from '@/types/reconciliation'
 import { getReconciliationCompatibility, parseReconciliationManifest } from '@/utils/reconciliationManifest'
+import { useReviewWorkspaceHelpState } from '@/composables/useReviewWorkspaceHelp'
 import yaml from 'js-yaml'
 
 interface Props {
@@ -521,8 +544,8 @@ const manifestResult = ref<ReconciliationManifestResult | null>(null)
 const availableEntityTypes = ref<number>(0)
 const autoReconcileResult = ref<AutoReconcileResult | null>(null)
 const autoReconcileError = ref<string | null>(null)
-const showExportGuidance = ref(true)
 const showCandidateSearchSummary = ref(false)
+const showCandidateSearchDetails = ref(false)
 const reconciliationHelpDialog = ref(false)
 const manualLinkDialog = ref(false)
 const manualLocalKeyValue = ref('')
@@ -594,6 +617,23 @@ const entityPreviewData = computed(() => {
   return previewData.value[props.projectName]?.[selectedEntity.value]?.[selectedTarget.value] || []
 })
 
+/** One-line candidate-search result; row errors stay behind the Details toggle. */
+const candidateSearchSummary = computed(() => {
+  const result = autoReconcileResult.value
+  if (!result) return ''
+  const parts = [
+    `${result.total} rows considered`,
+    `${result.proposed} ${result.proposed === 1 ? 'proposal' : 'proposals'} updated`,
+    `${result.unmatched} with no candidates`,
+  ]
+  if (result.errors.length) {
+    parts.push(`${result.errors.length} ${result.errors.length === 1 ? 'row needs' : 'rows need'} attention`)
+  }
+  return `Candidate search: ${parts.join(', ')}.`
+})
+
+const { reviewWorkspaceHelpMode } = useReviewWorkspaceHelpState()
+
 /** The workspace needs a reviewable specification and loaded preview rows. */
 const reviewWorkspaceVisible = computed(
   () =>
@@ -606,6 +646,9 @@ const reviewWorkspaceVisible = computed(
 )
 
 const workspaceKey = computed(() => JSON.stringify([props.projectName, selectedEntity.value, selectedTarget.value]))
+
+/** The dialog shows workspace guidance only while the workspace is on screen. */
+const workspaceHelpMode = computed(() => (reviewWorkspaceVisible.value ? reviewWorkspaceHelpMode.value : null))
 
 const previewError = computed(() => {
   if (!selectedEntity.value || !selectedTarget.value) return null
@@ -683,6 +726,7 @@ async function handleAutoReconcile() {
   autoReconcileError.value = null
   autoReconcileResult.value = null
   showCandidateSearchSummary.value = false
+  showCandidateSearchDetails.value = false
   if (!matchEligibility.value.canMatch) {
     autoReconcileError.value = matchEligibility.value.message ?? 'Reconciliation compatibility could not be verified.'
     return

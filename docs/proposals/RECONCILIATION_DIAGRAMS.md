@@ -1,10 +1,10 @@
 # Reconciliation workflow diagrams
 
-These diagrams show how source-row keys and target-record IDs move through reconciliation. `local_key_value` identifies a source row; `target_id` identifies a record in the target system. The reconciliation catalog stores candidate results and review decisions. The mapping sidecar stores links that normalization applies.
+These diagrams show how source-row keys and target-record IDs move through reconciliation. `local_key_value` identifies a source row; `target_id` identifies a record in the target system. The reconciliation catalog stores candidate results from ranked candidate matching and review decisions. The mapping sidecar stores links that normalization applies.
 
 See the [reconciliation improvement backlog](./RECONCILIATION_IMPROVEMENTS_BACKLOG.md) for proposed workflow improvements.
 
-## Find candidates
+## Ranked candidate matching
 
 ```mermaid
 sequenceDiagram
@@ -14,13 +14,38 @@ sequenceDiagram
     participant Authority as Authority Service
     participant Catalog as Reconciliation catalog
 
-    Reviewer->>View: Find candidates for a source row
-    View->>API: Send local_key_value and search text
-    API->>Authority: Query for matching records
-    Authority-->>API: Return candidate URI and target_id
+    Reviewer->>View: Select Find Candidates for a source row
+    View->>API: Send local_key_value and source-row search values
+    API->>Authority: Request candidates using the configured matching strategy
+    Authority-->>API: Return scored candidate URI and target_id values
     API->>Catalog: Save candidates under local_key_value
-    API-->>View: Show candidates for review
-    Note over View,Catalog: Search text supplies the query. local_key_value keeps the source row identity.
+    API-->>View: Show scored candidates in the candidate grid
+    Note over View,Catalog: Matching strategy ranks candidates. local_key_value keeps the source row identity.
+```
+
+## Interactive Search/Browse
+
+```mermaid
+sequenceDiagram
+    actor Reviewer
+    participant View as Review workspace
+    participant API as Shape Shifter API
+    participant Authority as Authority Service
+
+    alt Search
+        Reviewer->>View: Enter search text and optional context
+        View->>API: Send reviewer-entered search request
+        API->>Authority: Search for matching records
+        Authority-->>API: Return matching records, possibly ranked
+        API-->>View: Show search results
+    else Browse
+        Reviewer->>View: Select Browse
+        View->>API: Request the complete eligible list
+        API->>Authority: Load list within advertised limits
+        Authority-->>API: Return complete list or too-large result
+        API-->>View: Show list or explicit size message
+    end
+    Note over Reviewer,Authority: The workflow starts from reviewer input or browsing. Search may also rank results.
 ```
 
 ## Accept a candidate
