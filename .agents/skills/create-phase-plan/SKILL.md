@@ -36,7 +36,7 @@ Before writing or revising a phase plan, read:
 
 1. Read the source proposal and extract its confirmed decisions, Planning Handoff, and `P-AC-*` criteria as the source of work.
 2. Inspect the repository only as needed to confirm current state and phase boundaries. Do not perform task-level file, symbol, or test inventory.
-3. When `graphify-out/graph.json` exists, begin with a scoped `.venv/bin/graphify query "<phase question>"`. Verify findings in current source.
+3. When `graphify-out/graph.json` exists, begin with a scoped `graphify query "<phase question>"`. Verify findings in current source.
 4. Create ordered phases with explicit dependencies, outputs, `PH<N>-AC-<N>` criteria mapped to `P-AC-*`, validation milestones, and task-plan handoff details.
 5. Mark a phase ready for a task plan only when no unresolved decision can change its implementation or validation. Record other decisions as blocking questions.
 
