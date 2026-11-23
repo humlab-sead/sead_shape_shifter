@@ -16,7 +16,7 @@ Unless implementation is explicitly requested, create or update only the request
 Before writing the plan:
 
 1. Extract the goal, scope, constraints, and acceptance criteria.
-2. When `graphify-out/graph.json` exists, begin with a scoped `.venv/bin/graphify query "<phase question>"`. Use `path` or `explain` for relationships, then inspect relevant project instructions, code, tests, configuration, and documentation to verify findings.
+2. When `graphify-out/graph.json` exists, begin with a scoped `graphify query "<phase question>"`. Use `path` or `explain` for relationships, then inspect relevant project instructions, code, tests, configuration, and documentation to verify findings.
 3. Trace affected callers, consumers, contracts, schemas, and data flows where relevant.
 4. Locate existing project commands and similar implementations.
 5. Identify dependencies, risks, ambiguities, and behavior that must be preserved.

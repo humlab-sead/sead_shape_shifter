@@ -134,12 +134,8 @@ data
 output
 
 node_modules
-# graphify-out
-graphify-out/*-*-*
-graphify-out/cost.json 
-graphify-out/manifest.json 
-# Optional: commit cache for speed, skip to keep repo small.
-graphify-out/cache/
+# graphify knowledge graph: built locally (git hooks / make targets), never committed
+graphify-out/
 secrets
 
 state
