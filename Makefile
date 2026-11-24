@@ -373,6 +373,15 @@ create-graphify:
 # file (graph is far above the 5000-node viz limit and the HTML is unused).
 update-graphify:
 	@GRAPHIFY_VIZ_NODE_LIMIT=0 GRAPHIFY_NO_BACKUP=1 graphify update $(CURDIR) --force
+	@$(MAKE) --no-print-directory graphify-wiki
+
+# Regenerates graphify-out/wiki/ (index.md plus one page per community and per highly
+# connected node) from the current graph. Runs locally in about a second with no LLM calls,
+# and removes pages for communities that no longer exist. The git hooks do not run it, so
+# update-graphify and semantic-graphify call it at the end.
+.PHONY: graphify-wiki
+graphify-wiki:
+	@graphify export wiki
 
 # Rebuilds the graph including the LLM-based (semantic) results: document/paper/image
 # extraction and community names. Code is still parsed locally (AST).
@@ -422,7 +431,8 @@ semantic-graphify:
 		$(if $(GRAPHIFY_MODE),--mode $(GRAPHIFY_MODE)) $(if $(GRAPHIFY_REEXTRACT),--force); \
 	graphify label $(CURDIR) --backend openai $(if $(GRAPHIFY_CONCURRENCY),--max-concurrency $(GRAPHIFY_CONCURRENCY)) \
 		$(if $(GRAPHIFY_RELABEL),,--missing-only); \
-	echo "✓ Semantic graph rebuilt in graphify-out/"
+	graphify export wiki; \
+	echo "✓ Semantic graph and wiki rebuilt in graphify-out/"
 
 install-graphify:
 	@uv tool install "graphifyy[all]" --force

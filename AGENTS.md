@@ -86,10 +86,11 @@ This project has a knowledge graph at graphify-out/ with god nodes, community st
 How the graph is kept current:
 - graphify git hooks (installed by `make install-hooks`) rebuild the code part of the graph in the background after each commit, checkout, merge and rebase. The rebuild is AST-only and makes no LLM calls; its log is `~/.cache/graphify-rebuild.log`.
 - `make semantic-graphify` adds the LLM-based results (documents and community names). Run it only when the user asks.
+- `make update-graphify` and `make semantic-graphify` also rebuild graphify-out/wiki/; `make graphify-wiki` rebuilds only the wiki (local, about a second, no LLM).
 
 Rules:
 - When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- If graphify-out/wiki/index.md exists, use it for broad orientation instead of raw source browsing. The git hooks do not rebuild the wiki; only `make update-graphify`, `make semantic-graphify` and `make graphify-wiki` do, so it can lag behind recent commits. Use `graphify explain` or `graphify query` for anything specific, because they read the current graph.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - Before your first graph query in a session, check that the graph is usable:
   - If `graphify hook status` reports a hook as `not installed`, tell the user and suggest `make install-hooks`. Do not install hooks yourself.
