@@ -16,7 +16,7 @@
 
 ## Repository Findings
 
-**Repository basis:** `change-request-target-bundle-access` at `7db7eb86`, planning date 2026-10-20. Uncommitted changes under `TARGET_MODEL_GUIDED_ENTITY_CREATION` were left untouched and did not inform this plan. Graphify was used for navigation; the findings below were checked in source and tests. The proposal's Current Behavior predates completed Phase 1 output work; plan from current source.
+**Repository basis:** `change-request-target-bundle-access` at `07cf5826`, planning date 2026-10-20. Uncommitted changes under `TARGET_MODEL_GUIDED_ENTITY_CREATION` were left untouched and did not inform this plan. Graphify was used for navigation; the findings below were checked in source and tests. The proposal's Current Behavior predates completed Phase 1 output work; plan from current source.
 
 | Source | Verified finding | Planning implication |
 | --- | --- | --- |

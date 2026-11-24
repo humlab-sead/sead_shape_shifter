@@ -16,7 +16,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Planning date 2026-11-04. Shape Shifter `dev` at `722c4006`; Authority Service `dev` at `4fb9b22`. The Shape Shifter proposal and phase plan are untracked; Authority Service grant sources and generated deployment SQL are committed in `4fb9b22`. Granting read access to `PUBLIC` is approved, but deployment and service-role access remain unverified. Relative paths below labeled **Authority Service** refer to the sibling `sead_authority_service` repository; all other paths refer to Shape Shifter.
+**Repository basis:** Planning date 2026-11-04. Shape Shifter `dev` at `f9be4310`; Authority Service `dev` at `4fb9b22`. The Shape Shifter proposal and phase plan are untracked; Authority Service grant sources and generated deployment SQL are committed in `4fb9b22`. Granting read access to `PUBLIC` is approved, but deployment and service-role access remain unverified. Relative paths below labeled **Authority Service** refer to the sibling `sead_authority_service` repository; all other paths refer to Shape Shifter.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |

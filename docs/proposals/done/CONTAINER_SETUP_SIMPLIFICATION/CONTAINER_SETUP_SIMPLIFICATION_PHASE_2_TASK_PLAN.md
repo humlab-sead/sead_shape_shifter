@@ -30,7 +30,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `container-setup-simplifications`, commit `a0c46fed`, planning date 2026-10-11. The worktree already contains the uncommitted Phase 1 changes (deleted operational verify scripts, updated `deployment/container/scripts/verify/README.md`, `docs/OPERATIONS.md`, `deployment/container/tests/test_verify_inventory.sh`) plus untracked phase-plan and handoff documents. Those were considered and are outside this task plan. Paths were repointed to the current `deployment/` tree layout; at Phase 2 time the trees sat at the repository root (`container/`, `container-host/`).
+**Repository basis:** Branch `container-setup-simplifications`, commit `7170b757`, planning date 2026-10-11. The worktree already contains the uncommitted Phase 1 changes (deleted operational verify scripts, updated `deployment/container/scripts/verify/README.md`, `docs/OPERATIONS.md`, `deployment/container/tests/test_verify_inventory.sh`) plus untracked phase-plan and handoff documents. Those were considered and are outside this task plan. Paths were repointed to the current `deployment/` tree layout; at Phase 2 time the trees sat at the repository root (`container/`, `container-host/`).
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |
@@ -287,7 +287,7 @@ Run `V-1`, `V-2`, `V-3`, `V-4`, and `V-5` after every area that touches them; ru
 
 ### Validation Results
 
-Executed on branch `container-setup-simplifications` at commit `a0c46fed`, with the Phase 1 worktree changes preserved and the Phase 2 changes applied on top.
+Executed on branch `container-setup-simplifications` at commit `7170b757`, with the Phase 1 worktree changes preserved and the Phase 2 changes applied on top.
 
 | ID | Result | Evidence |
 | --- | --- | --- |

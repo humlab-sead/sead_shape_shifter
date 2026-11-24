@@ -18,7 +18,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Shape Shifter branch `reconciliation-mvp` at `6e8f788e`; Authority Service branch `dev` at `0e2d5e9`; inspected 2026-10-31. The uncommitted phase plan (including the named adoption owner and Phase 7 readiness) was considered. This follow-up's uncommitted owner-verification changes are included below; unrelated uncommitted files were excluded. Graphify was used for navigation; the file-level paths below were checked against current source and tests.
+**Repository basis:** Shape Shifter branch `reconciliation-mvp` at `759d18d5`; Authority Service branch `dev` at `0e2d5e9`; inspected 2026-10-31. The uncommitted phase plan (including the named adoption owner and Phase 7 readiness) was considered. This follow-up's uncommitted owner-verification changes are included below; unrelated uncommitted files were excluded. Graphify was used for navigation; the file-level paths below were checked against current source and tests.
 
 | Verified source | Current behavior | Planning implication |
 | --- | --- | --- |

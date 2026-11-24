@@ -19,7 +19,7 @@ Return an authorized, read-only integrity result for the saved foreign key, dist
 
 ## Repository Findings
 
-**Repository basis:** `feature/foreign-key-integrity-trouble-shooter` at `6656d29f`, 2026-11-06. The worktree was clean during inspection. Graphify was used for navigation; the following findings were checked against current code and tests. Phase 1's task tracker marks both areas Done.
+**Repository basis:** `feature/foreign-key-integrity-trouble-shooter` at `8285879b`, 2026-11-06. The worktree was clean during inspection. Graphify was used for navigation; the following findings were checked against current code and tests. Phase 1's task tracker marks both areas Done.
 
 | Evidence | Verified finding | Planning implication |
 | --- | --- | --- |

@@ -17,7 +17,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `in-memory-ingester-handoff`, commit `51fa3c425de990d5dad8afb627bb10af90c0850c`, planning date 2026-10-19. The working tree was clean when this document was drafted. The Phase 4 files were initially uncommitted during inspection, then committed at this revision; the focused baselines passed against those same files. The Graphify query surfaced the route and model files but not the then-untracked Phase 4 helper; source and tests established its current interface.
+**Repository basis:** Branch `in-memory-ingester-handoff`, commit `248c8ba67d4ae081c9aa17c3c7c76ca6c93c5ea9`, planning date 2026-10-19. The working tree was clean when this document was drafted. The Phase 4 files were initially uncommitted during inspection, then committed at this revision; the focused baselines passed against those same files. The Graphify query surfaced the route and model files but not the then-untracked Phase 4 helper; source and tests established its current interface.
 
 | Verified source | Current behavior | Planning implication |
 | --- | --- | --- |

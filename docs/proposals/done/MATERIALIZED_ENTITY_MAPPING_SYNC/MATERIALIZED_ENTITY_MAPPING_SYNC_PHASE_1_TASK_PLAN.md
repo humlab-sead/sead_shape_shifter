@@ -19,7 +19,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `materialized-entity-mapping-sync`, commit `122bd7f0ef33ebe26d9ff6e7da70f4a34c37c55f`, planned 2026-10-15. The uncommitted proposal and phase plan were used as sources. Other working-tree changes were left untouched. Graphify identified the relevant components; the findings below were checked in current source and tests.
+**Repository basis:** Branch `materialized-entity-mapping-sync`, commit `f47c2d19267b6ec271c8bd6c9481372bb00900da`, planned 2026-10-15. The uncommitted proposal and phase plan were used as sources. Other working-tree changes were left untouched. Graphify identified the relevant components; the findings below were checked in current source and tests.
 
 | Source | Verified finding | Planning implication |
 |---|---|---|
@@ -157,7 +157,7 @@ After implementation, run `.venv/bin/graphify update .` as required by the root 
 
 ### Implementation Evidence
 
-Implemented and verified 2026-10-16 on branch `materialized-entity-mapping-sync` (HEAD `0dece8b9`). Commands used the repository virtualenv.
+Implemented and verified 2026-10-16 on branch `materialized-entity-mapping-sync` (HEAD `ac18e231`). Commands used the repository virtualenv.
 
 | Validation | Command | Result |
 | --- | --- | --- |

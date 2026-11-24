@@ -1,4 +1,4 @@
-# Found Errors — sead_shape_shifter (main @ 961589d5, re-verified on dev @ f85fad0c)
+# Found Errors — sead_shape_shifter (main @ c2cfca91, re-verified on dev @ d1656615)
 
 > Historical note: `docker/` paths in this report describe the deployment state at the time of the security review. The supported deployment path is now `container/` with Podman.
 
@@ -318,7 +318,7 @@ alerting in the repo.
 
 ---
 
-## Dev Branch Re-Verification & New Dev Findings (2026-09-02, dev @ f85fad0c)
+## Dev Branch Re-Verification & New Dev Findings (2026-09-02, dev @ d1656615)
 
 Development happens on `dev` (266 code files diverged from main, +22k lines —
 feature work, not security fixes). The backend was re-run on dev and every
@@ -608,7 +608,7 @@ passed, the defects that were found and corrected, and what remains unverified.
 
 | Item | Value |
 |---|---|
-| Source commit | `95c3d017dca89b17ef1084d194ad7ee1b84ab99c` (`dev`), recorded in the image label `org.opencontainers.image.revision` |
+| Source commit | `2349f7e3ebf8dcbf7962e901842c94f542d8cef2` (`dev`), recorded in the image label `org.opencontainers.image.revision` |
 | Image | `localhost/shape-shifter:dev`, built with `GIT_REF=dev make build` |
 | Image digest | `sha256:aa320c4c89811306b15ed9fbb43474290a7e75b1becb10deadb2f3840a4d0d90` |
 | Container | `93b867cbe30b`, status `Up (healthy)` |
@@ -621,7 +621,7 @@ only the buildah version label, so no recorded value tied a deployed image to a
 source commit.
 
 The build recipe used for this deployment is not yet committed. The
-application source inside the image is exactly `95c3d017`; only the added
+application source inside the image is exactly `2349f7e3`; only the added
 labels differ. Commit `container/Containerfile` and
 `container/scripts/build.sh` so the recorded digest can be reproduced from the
 repository.
@@ -640,7 +640,7 @@ repository.
 | Health check and restart policy | `podman ps`, compose file | Pass — healthy, `restart: unless-stopped`, 0 restarts |
 | Focused security suites on the release commit | listed test files below | Pass — one skipped, no failures |
 
-The focused suites re-run on `95c3d017` were `backend/tests/security`,
+The focused suites re-run on `2349f7e3` were `backend/tests/security`,
 `backend/tests/authorization`, `backend/tests/test_cors.py`,
 `backend/tests/test_session_authorization.py`,
 `backend/tests/services/test_execute_service_output_paths.py`, and
@@ -707,11 +707,11 @@ invalidates all of them.
 
 | Item | Value |
 |---|---|
-| Tested commit | `dbff5ab95459652354c040b9d4fec6e2ead94f96` — merge of PR #495, 2026-09-22, recorded in the image label `org.opencontainers.image.revision` |
+| Tested commit | `6b8529537ee2bf87f6422590931b46d1ad83b7df` — merge of PR #495, 2026-09-22, recorded in the image label `org.opencontainers.image.revision` |
 | Image | `localhost/shape-shifter:dev`, built with `GIT_REF=dev` |
 | Image ID (configuration digest) | `6a487db722883da0eb0c3cfdc00444c07dea1edaf7d59b15643227576acc04a8` |
 | Image manifest digest | `localhost/shape-shifter@sha256:7ff51b2b9af759f3cfa4e1d970e3acea025985aba1898e3263ae25fc8887474d` — **computed locally** |
-| OCI labels | revision `dbff5ab95459652354c040b9d4fec6e2ead94f96`, version `dev`, source `https://github.com/humlab-sead/sead_shape_shifter.git` |
+| OCI labels | revision `6b8529537ee2bf87f6422590931b46d1ad83b7df`, version `dev`, source `https://github.com/humlab-sead/sead_shape_shifter.git` |
 | Manifest | reviewed `resources/authorization/test-initial-manifest.yaml`, deployed as `config/authorization-manifest.yaml`, SHA-256 `43c03186f708164ce9334a001c45b80c4f206fb2efa06d413dff9ad4a2cafb90` |
 | Container | `shape-shifter`, running the image ID above |
 | Deployment target | host `humlabsead.srv.its.umu.se`; user `test-shape-shifter.sead.se`; backend `127.0.0.1:8012`; proxy `https://test-shape-shifter.sead.se`; data directory `/data/test-shape-shifter.sead.se/container-data` |
@@ -732,7 +732,7 @@ OCI `revision` label is the identity that travels across hosts.
 |---|---|
 | Release identity matches the running container (`PH5-AC-1`) | Pass — image ID, manifest digest, and `revision` label all match the running container |
 | Network exposure and proxy boundary (`PH5-AC-2`) | Pass, host side — listeners `0.0.0.0:80`, `0.0.0.0:443`, and `127.0.0.1:8012` only; nftables input policy `drop` accepting `80` and `443` from `172.18.134.40` alone, with no rule naming `8012`; loopback health `200`; LAN address `172.18.134.53:8012` refused. The off-host probe is an approved exception below |
-| Container configuration, mounts, secrets, environment (`PH5-AC-4`) | Pass — container `shape-shifter` on `localhost/shape-shifter:dev`; port published loopback-only; eight mounts matching the documented set with `.pgpass` read-only; image labels carrying revision `dbff5ab9…4f96`; no credential-like text in image history; environment variable names listed, values never printed |
+| Container configuration, mounts, secrets, environment (`PH5-AC-4`) | Pass — container `shape-shifter` on `localhost/shape-shifter:dev`; port published loopback-only; eight mounts matching the documented set with `.pgpass` read-only; image labels carrying revision `6b852953…4f96`; no credential-like text in image history; environment variable names listed, values never printed |
 | PostgreSQL grants and authorization store placement (`PH5-AC-4`) | Pass — `sead_ro` is read-only against `sead_staging.public`, with no elevated attributes, memberships, or owned objects; store `container-data/state/authorization.sqlite3`, owner `test-shape-shifter.sead.se` (1021), mode `600` |
 | Proxy identity-header handling (`PH5-AC-3`) | Pass — the enabled site sets `proxy_set_header X-Authenticated-User $remote_user` and `proxy_set_header X-Authenticated-Groups $authz_groups`; a recursive search of `/etc/nginx` found these as the only occurrences; the upstream is `127.0.0.1:8012` |
 | Authenticated access (`PH5-AC-3`) | Pass — unauthenticated `401`, owner `200` on his own project, concealed `404` for another principal, administrator `200`; the corrected script reported the principal scope and `1 of 2` isolation directions |

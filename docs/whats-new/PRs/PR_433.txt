@@ -64,4 +64,4 @@ tests/specifications/test_entity.py), a new FK-merge regression integration test
 included in the available evidence and are reported here as unknown.
  - No CI check results were available for this pull request (the status check rollup is empty), so
 no checks are reported as passed or failed.
- - The pull request was merged into dev (merge commit d0d69cecda56c4cfa6a2288e47b37733828d4a61).
+ - The pull request was merged into dev (merge commit 86964d6f0ce7dcec6b5cc4c44222c843475f235e).

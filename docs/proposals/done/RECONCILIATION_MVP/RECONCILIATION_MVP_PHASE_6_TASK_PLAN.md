@@ -19,7 +19,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `reconciliation-mvp`, commit `d003e69c`, inspected 2026-10-31. The uncommitted source proposal and phase plan were used as the requested planning sources. No Phase 6 implementation or test changes were assumed. Graphify has no directed path from `MappingCatalog` to `SeadChangeRequestIngester`; the verified integration path runs through project normalization and `ProjectIngesterService`.
+**Repository basis:** Branch `reconciliation-mvp`, commit `613ec5f2`, inspected 2026-10-31. The uncommitted source proposal and phase plan were used as the requested planning sources. No Phase 6 implementation or test changes were assumed. Graphify has no directed path from `MappingCatalog` to `SeadChangeRequestIngester`; the verified integration path runs through project normalization and `ProjectIngesterService`.
 
 | Verified source | Current behavior | Planning implication |
 | --- | --- | --- |

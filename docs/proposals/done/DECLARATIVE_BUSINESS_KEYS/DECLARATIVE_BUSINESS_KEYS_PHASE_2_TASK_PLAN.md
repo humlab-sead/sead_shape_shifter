@@ -18,7 +18,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `declarative-business-keys`, commit `7e6a2a12`, planning date 2026-10-09. Worktree clean; no uncommitted changes considered. Graphify's scoped query was used for navigation; the following findings were verified in source and tests. The phase plan's Current Position describes the pre-Phase-1 state; use the committed Phase 1 behavior instead.
+**Repository basis:** Branch `declarative-business-keys`, commit `3b035002`, planning date 2026-10-09. Worktree clean; no uncommitted changes considered. Graphify's scoped query was used for navigation; the following findings were verified in source and tests. The phase plan's Current Position describes the pre-Phase-1 state; use the committed Phase 1 behavior instead.
 
 | Evidence | Current behavior | Planning implication |
 |---|---|---|
@@ -125,7 +125,7 @@
 
 Baseline on 2026-10-09: `uv run pytest tests/types/test_fixed_entity_types.py tests/specifications/test_entity.py tests/loaders/test_fixed_loader.py backend/tests/services/test_project_service.py backend/tests/services/test_entity_values_service.py backend/tests/services/test_materialization_service.py backend/tests/api/v1/test_entities.py -q` — **Pass** (all selected tests). Planned new cases below were **not run**; the baseline describes current behavior only.
 
-Implementation evidence on 2026-10-09 (branch `declarative-business-keys`, base commit `7e6a2a12`): the same grouped command — **Pass** (387 tests, including the new cases added for `V-1`–`V-5`). Formatting and lint — `black --check` and `isort --check-only` on all changed Python files **Pass**; `ruff check` on the changed source files **Pass**. Full-suite `uv run pytest tests backend/tests -q` reported 17 failures; all 17 reproduce at base commit `7e6a2a12` and are pre-existing Phase 1 validation-spec failures, so Phase 2 introduced no new failures.
+Implementation evidence on 2026-10-09 (branch `declarative-business-keys`, base commit `3b035002`): the same grouped command — **Pass** (387 tests, including the new cases added for `V-1`–`V-5`). Formatting and lint — `black --check` and `isort --check-only` on all changed Python files **Pass**; `ruff check` on the changed source files **Pass**. Full-suite `uv run pytest tests backend/tests -q` reported 17 failures; all 17 reproduce at base commit `3b035002` and are pre-existing Phase 1 validation-spec failures, so Phase 2 introduced no new failures.
 
 | ID | Check and target | Command or method | Covers | Expected result | Baseline |
 |---|---|---|---|---|---|

@@ -13,7 +13,7 @@ The operations team owns this work. The Phase 5 task plan no longer carries it a
 
 ## Current State
 
-The test deployment on `humlabsead` was inspected again on 2026-09-18. The latest read-only run used report `deployment-verification-20260918T210002Z-3878349`; its evidence is in `/data/test-shape-shifter.sead.se/container/deployment-verification/20260918T210002Z-3878349`. The earlier 2026-09-15 release identity remains the recorded baseline: commit `95c3d017`, image `localhost/shape-shifter:dev`, digest `sha256:aa320c4c89811306b15ed9fbb43474290a7e75b1becb10deadb2f3840a4d0d90`. Reconfirm the image identity before promoting a different build.
+The test deployment on `humlabsead` was inspected again on 2026-09-18. The latest read-only run used report `deployment-verification-20260918T210002Z-3878349`; its evidence is in `/data/test-shape-shifter.sead.se/container/deployment-verification/20260918T210002Z-3878349`. The earlier 2026-09-15 release identity remains the recorded baseline: commit `2349f7e3`, image `localhost/shape-shifter:dev`, digest `sha256:aa320c4c89811306b15ed9fbb43474290a7e75b1becb10deadb2f3840a4d0d90`. Reconfirm the image identity before promoting a different build.
 
 | Check | State |
 |---|---|
@@ -38,7 +38,7 @@ The test deployment on `humlabsead` was inspected again on 2026-09-18. The lates
 - The checks marked Verified in the table above, with methods and results.
 - The verification scripts are implemented under `container/scripts/verify`; the orchestrator is `container/scripts/verify/run_deployment_verification.sh`. Four read-only runs were recorded on 2026-09-18. The latest run passed firewall, container configuration, PostgreSQL grants, endpoint containment, and container-log review.
 - The two latest-run failures are now closed. Credential rotation closed on 2026-09-22 as an approved exception, because PostgreSQL credential rotation was decided out of scope for every PostgreSQL database, including the SEAD database. The host-log review closed on 2026-09-23 in cutover Phase 5: three sources were swept clear and the PostgreSQL server log is an approved exception. The first run also reported transient endpoint-containment and container-log failures; both passed in the three subsequent runs.
-- Focused security suites re-run on `95c3d017`.
+- Focused security suites re-run on `2349f7e3`.
 - PostgreSQL: `scripts/postgres/create-readonly-role.sh` and `scripts/postgres/verify_readonly_role.sql` pass against a disposable PostgreSQL 16 (`NOINHERIT`, no role memberships, no owned objects, no schema `CREATE`). The deployed `sead_ro` account was probed with read-only catalog queries against the live `sead_staging` database on 2026-09-16: 730 of 730 relations readable, no write privilege on any relation, schema and database `CREATE` denied, no `COPY` membership.
 - The `rolinherit = t` attribute on the deployed `sead_ro` account was handed to the database administrator on 2026-09-16. It is inert while the account has no memberships. The repository role script creates the role with `NOINHERIT`.
 
@@ -73,7 +73,7 @@ The verification command and outputs are recorded in the dated run directories u
 
 - **The identity header is trusted from any source.** `ProxyAuthenticationMiddleware` accepts any non-empty `X-Authenticated-User` value and does not check the source address, so any local process on the host can assert an identity, including a bootstrap administrator. The loopback-only binding and nginx overwriting the header cover remote callers. Record this as a limitation until a source-address check, a proxy shared secret, or a Unix socket is added; those are new controls and outside the security project's scope.
 - **`make up` starts `IMAGE_NAME`, which can differ from `GIT_REF`.** Read the running container's `org.opencontainers.image.revision` label before recording any result, and record the digest alongside the commit.
-- **The recorded digest predates the committed build recipe.** The image labels were committed afterwards in `7c0da4f2`, so confirm the digest of the release build rather than reusing `sha256:aa320c4c…`.
+- **The recorded digest predates the committed build recipe.** The image labels were committed afterwards in `567ec6a0`, so confirm the digest of the release build rather than reusing `sha256:aa320c4c…`.
 - **The release candidate can change during verification.** Re-run the affected checks after any image, compose, or proxy change; a result does not carry over to a different digest.
 - **Missing access blocks the checks.** Host access, firewall access, and database administration evidence are prerequisites, so stop and report when one is unavailable instead of recording a partial result.
 - **Rollback freshness.** Keep the backup made for readiness testing available until the release is accepted or the rollback window closes.

@@ -16,7 +16,7 @@
 
 ## Repository Findings
 
-**Repository basis:** `change-request-target-bundle-access` at `2907e6f1`, planning date 2026-10-20. Uncommitted files under `TARGET_MODEL_GUIDED_ENTITY_CREATION` were not used. Graphify was used for navigation; source, tests, and documentation below were checked directly. The proposal and phase plan's Current Position describe pre-Phase-1 behavior; current code and the completed task plans govern this cutover.
+**Repository basis:** `change-request-target-bundle-access` at `717c0f1e`, planning date 2026-10-20. Uncommitted files under `TARGET_MODEL_GUIDED_ENTITY_CREATION` were not used. Graphify was used for navigation; source, tests, and documentation below were checked directly. The proposal and phase plan's Current Position describe pre-Phase-1 behavior; current code and the completed task plans govern this cutover.
 
 | Source | Verified finding | Planning implication |
 | --- | --- | --- |

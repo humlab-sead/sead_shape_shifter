@@ -2,7 +2,7 @@
 
 **Brief:** [Issue #539](https://github.com/humlab-sead/sead_shape_shifter/issues/539)  
 **Status:** Conclusive  
-**Environment / baseline:** Repository `HEAD` `22a1c2c` (`v2.5.0`), checked 2026-10-27.
+**Environment / baseline:** Repository `HEAD` `cc0bd1e` (`v2.5.0`), checked 2026-10-27.
 
 ## Executive summary
 

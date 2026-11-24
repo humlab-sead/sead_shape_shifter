@@ -64,4 +64,4 @@ evidence.
 test_lifecycle.sh, test_project_commands.sh, test_release_bundle_contents.sh,
 test_required_files_contract.sh, test_release_manager.sh) are included in the branch, but their
 execution results are not shown in the available CI evidence.
- - The PR was merged into dev as commit 121c274 on 2026-10-11.
+ - The PR was merged into dev as commit 579cbfe on 2026-10-11.

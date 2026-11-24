@@ -12,7 +12,7 @@ Related documents: [approved proposal](./RECONCILIATION_SEARCH_AND_BROWSE.md), [
 
 | Element | Value |
 | --- | --- |
-| Shape Shifter | `localhost/shape-shifter:pilot-7340510f`, revision `7340510ffb3d66ed150394605e1803ec196c7a08` |
+| Shape Shifter | `localhost/shape-shifter:pilot-36050a75`, revision `36050a7510d9c1e2824741d562f2e6df2a9bbb0b` |
 | Authority Service | `localhost/sead-authority:pilot-1f3f1b8`, revision `1f3f1b8470e44b1d0730fb9d8b00e3318ec588eb` |
 | Database | `sead_pilot_recon`, a 2026-11-20 snapshot of `sead_staging`; both services use the read-only `sead_ro` role |
 | Network | Rootless Podman network `pilot-net`; Shape Shifter reaches Authority at `http://pilot-authority:8000` |

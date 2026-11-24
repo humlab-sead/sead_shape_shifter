@@ -2,7 +2,7 @@ title: Add authentication, authorization, and Podman deployment to dev
 description:
 ## Summary
 
-Consolidates the security-hardening branch into dev (fast-forward from c3705b4c; 99 commits, 1430
+Consolidates the security-hardening branch into dev (fast-forward from 114ad7c6; 99 commits, 1430
 files). The diff adds an application-side security boundary addressing the review in
 docs/proposals/MITIGATE_SECURITY_ISSUES/, which found the API accepted unauthenticated requests and
 allowed client-controlled paths, connection details, and SQL.

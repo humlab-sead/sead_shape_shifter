@@ -68,7 +68,7 @@ directory.
  - No CI results were available for this pull request (statusCheckRollup was empty), and no test-run
 output was provided, so test execution and outcomes are unknown. Not verified: validation results
 unavailable.
- - The pull request was merged into dev (merge commit cc1dda26fc52dda14d6f0b897760ddd78bd3952d);
+ - The pull request was merged into dev (merge commit 4f3ef08f9ed38fb565233a87161351f9d2a965c6);
 this is recorded merge metadata, not evidence that checks passed.
  - Within the diff itself, several rewritten ingest CLI command tests are explicitly marked
 @pytest.mark.skip ("fails when not run in isolation, likely due to shared state"), and the deleted

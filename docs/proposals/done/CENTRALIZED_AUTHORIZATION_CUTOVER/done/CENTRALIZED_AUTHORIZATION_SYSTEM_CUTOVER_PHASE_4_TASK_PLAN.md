@@ -27,11 +27,11 @@
 
 ## Repository Findings
 
-**Repository basis:** branch `dev` at `4a74bc40`; planning date 2026-09-22; working tree clean. The deployment under record is the authorization-enabled instance on the new server: host `humlabsead`, deployment user `test-shape-shifter.sead.se`, proxy `https://test-shape-shifter.sead.se`, container `shape-shifter` on `127.0.0.1:8012`.
+**Repository basis:** branch `dev` at `af2eaa0e`; planning date 2026-09-22; working tree clean. The deployment under record is the authorization-enabled instance on the new server: host `humlabsead`, deployment user `test-shape-shifter.sead.se`, proxy `https://test-shape-shifter.sead.se`, container `shape-shifter` on `127.0.0.1:8012`.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |
-| [TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md](../TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md) | Records the release image `shape-shifter:dev` from `dbff5ab9`, zero-missing reconciliation, a backup byte-identical to the readiness backup, 26 of 26 project locators, all 6 shared data sources listed, and a verified `sead-options` connection | This phase records and re-verifies that state for acceptance rather than rebuilding it |
+| [TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md](../TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md) | Records the release image `shape-shifter:dev` from `6b852953`, zero-missing reconciliation, a backup byte-identical to the readiness backup, 26 of 26 project locators, all 6 shared data sources listed, and a verified `sead-options` connection | This phase records and re-verifies that state for acceptance rather than rebuilding it |
 | `backend/app/core/config.py::Settings` | Requires `TRUSTED_PROXY_AUTH_ENABLED=true` in production and a non-empty bootstrap administrator, and rejects an authorization database path inside project, log, or shared-data directories | Confirm these are the values the deployment runs with; the values themselves are already live |
 | `backend/app/authorization/operations.py::apply_manifest` | Migration writes administrators, resources, and grants with actor `migration` | Provisioning audit events are identifiable by actor |
 | `backend/app/authorization/repository.py::_record_audit` | Records `bootstrap_admin_created`, `application_role_created`, `application_role_revoked`, `grant_created`, `grant_revoked`, `resource_lifecycle_changed` | `PH4-AC-3` is checked against the store, not by scraping logs |
@@ -79,7 +79,7 @@
   * **Current -> required:** The Phase 3 handoff records identity in prose; the acceptance evidence needs it stated as an input set with commands.
   * **Implementation:** Record `make info` output, the image ID, the `org.opencontainers.image.revision` label, `GIT_REF`, and `IMAGE_NAME`. Confirm the revision matches the commit the focused and full backend suites passed on.
   * **Constraints:** Record identifiers only; never record credential values or `.pgpass` contents.
-  * **Validation:** `V-4.1`, `V-4.2`. Re-confirmed 2026-09-22 against the running container: image `shape-shifter:dev`, ID `6a487db7...04a8`, revision `dbff5ab9...4f96`, `GIT_REF=dev`, container port `8012`, uid/gid `1021/1021`.
+  * **Validation:** `V-4.1`, `V-4.2`. Re-confirmed 2026-09-22 against the running container: image `shape-shifter:dev`, ID `6a487db7...04a8`, revision `6b852953...4f96`, `GIT_REF=dev`, container port `8012`, uid/gid `1021/1021`.
 * [x] `T4.2` **Change:** Record the manifest, backup, and decision owners.
   * **Target:** Deployment record.
   * **Current -> required:** Recorded in the Phase 3 handoff, but not as a single acceptance input set.
@@ -104,7 +104,7 @@
   * **Current -> required:** The checks pass on `dev`; the deployed revision's own result is not recorded as acceptance evidence.
   * **Implementation:** Run the focused authorization suite and this module at the deployed revision, and retain the result with the release identity.
   * **Constraints:** A mismatch between the runtime routes and the inventory blocks acceptance; do not edit the inventory to pass the check.
-  * **Validation:** `V-4.4`. Ran 2026-09-22: `.venv/bin/pytest backend/tests/authorization` reported 192 passed and 1 skipped, and `git diff --stat dbff5ab9..HEAD -- backend src tests` shows only `container/DEPLOYMENT.md` differing, so the deployed revision's application code and tests are unchanged.
+  * **Validation:** `V-4.4`. Ran 2026-09-22: `.venv/bin/pytest backend/tests/authorization` reported 192 passed and 1 skipped, and `git diff --stat 6b852953..HEAD -- backend src tests` shows only `container/DEPLOYMENT.md` differing, so the deployed revision's application code and tests are unchanged.
 * [x] `T4.4` **Change:** Review resources and grants for unowned or conflicting records.
   * **Target:** Deployment store through `container/scripts/authorization.sh`.
   * **Current -> required:** Reviewed on 2026-09-22 for the applied records; re-run against the current store so the acceptance evidence is current.
@@ -141,7 +141,7 @@
   * **Current -> required:** Rollback was exercised on 2026-09-22; the acceptance evidence needs a current transcript with the recorded image and backup.
   * **Implementation:** Create a post-acceptance backup with `container/scripts/authorization.sh backup`, record its path and SHA-256, then run the rollback exercise with `--image`, `--authorization-backup`, `--manifest`, and `--evidence-dir`. Record the transcript and confirm integrity, reconciliation, image identity, and health. Redeploy the recorded release afterwards.
   * **Constraints:** The script leaves the service stopped when a step fails; do not proceed past a failed rollback without the rollback owner's decision. Verify a copy when a check needs a writable database, never the retained backup.
-  * **Validation:** `V-4.8`, `V-4.9`. Run 2026-09-22 16:48:11. Backup `authorization-20260922-164454.sqlite3`, SHA-256 `9ebf2f22…8b3e`, byte-identical to the three earlier backups of the day, so the restore was state-neutral. Transcript `container-data/backups/rollback-exercise.log`: image `6a487db7…04a8` with revision `dbff5ab9…4f96`, integrity check passed, reconciliation `Missing: 0 resources, 0 administrators, 0 grants`, recorded image restarted, running image ID equal to the recorded image ID, container `running`, health `200`. The exercise starts the container with `podman-compose` outside `shape-shifter.service`, so `make service-restart` is still needed to realign the unit.
+  * **Validation:** `V-4.8`, `V-4.9`. Run 2026-09-22 16:48:11. Backup `authorization-20260922-164454.sqlite3`, SHA-256 `9ebf2f22…8b3e`, byte-identical to the three earlier backups of the day, so the restore was state-neutral. Transcript `container-data/backups/rollback-exercise.log`: image `6a487db7…04a8` with revision `6b852953…4f96`, integrity check passed, reconciliation `Missing: 0 resources, 0 administrators, 0 grants`, recorded image restarted, running image ID equal to the recorded image ID, container `running`, health `200`. The exercise starts the container with `podman-compose` outside `shape-shifter.service`, so `make service-restart` is still needed to realign the unit.
 
 **Completion evidence:** Access checks return the expected statuses with reviewed projects, and the rollback transcript shows integrity and reconciliation passing.
 

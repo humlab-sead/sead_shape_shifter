@@ -4,7 +4,7 @@
 
 **Goal:** Deliver a persistent review workspace that opens without Find Candidates, searches or browses existing targets, stages decisions across source rows, warns about changed saved decisions, and saves drafts in one batch.
 
-**Readiness:** Validated for implementation on 2026-11-20. The [approved proposal](./RECONCILIATION_SEARCH_AND_BROWSE.md), [Phase 3 in the phase plan](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_PLAN.md#phase-3-persistent-review-workspace), and [frozen Phase 2 save contract](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_2_CONTRACT.md) fix the required behavior. Phase 1's Authority API is implemented at `sead_authority_service` commit `1f3f1b8`; Phase 2's serialized writes, batch route, and export gate are present here at `c465a318`. Pilot capabilities remain disabled in the shipped Authority configuration. Enable them only in controlled tests; per-type live checks and advertisement belong to Phase 4.
+**Readiness:** Validated for implementation on 2026-11-20. The [approved proposal](./RECONCILIATION_SEARCH_AND_BROWSE.md), [Phase 3 in the phase plan](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_PLAN.md#phase-3-persistent-review-workspace), and [frozen Phase 2 save contract](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_2_CONTRACT.md) fix the required behavior. Phase 1's Authority API is implemented at `sead_authority_service` commit `1f3f1b8`; Phase 2's serialized writes, batch route, and export gate are present here at `2012d4e9`. Pilot capabilities remain disabled in the shipped Authority configuration. Enable them only in controlled tests; per-type live checks and advertisement belong to Phase 4.
 
 **Constraints:** Keep the existing catalog and export routes, legacy review grid, source identity, project authorization, and read-only retrieval. The workspace warns before overwriting a decision changed since load, but the batch request has no expected-state field; a change between comparison and write remains last-writer-wins (backlog R33). A save is never retried automatically.
 
@@ -19,7 +19,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Shape Shifter branch `reconciliation-search-and-browse`, commit `c465a318`; Authority Service branch `reconciliation-search-and-browse`, commit `1f3f1b8`; planning date 2026-11-20. Both working trees were clean at inspection. No Phase 3 task plan existed. These are source states, not proof of a paired deployment.
+**Repository basis:** Shape Shifter branch `reconciliation-search-and-browse`, commit `2012d4e9`; Authority Service branch `reconciliation-search-and-browse`, commit `1f3f1b8`; planning date 2026-11-20. Both working trees were clean at inspection. No Phase 3 task plan existed. These are source states, not proof of a paired deployment.
 
 | Evidence | Verified finding | Planning implication |
 | --- | --- | --- |
@@ -244,7 +244,7 @@ Delete `data/projects/v6-fixture/` and rerun `dev-bootstrap`. Remove `../sead_au
 
 ## Execution Record (2026-11-20)
 
-Implemented `T1.1`–`T4.3` on Shape Shifter branch `reconciliation-search-and-browse` from `c465a318`. The Authority Service was not modified; it was read at `1f3f1b8` and its contract tests were re-run.
+Implemented `T1.1`–`T4.3` on Shape Shifter branch `reconciliation-search-and-browse` from `2012d4e9`. The Authority Service was not modified; it was read at `1f3f1b8` and its contract tests were re-run.
 
 Design decisions taken within the plan's scope:
 
@@ -325,7 +325,7 @@ Used controlled projects `v6-isolation-a` and `v6-isolation-b`, with the same `f
 
 The `V-6 Targeted Browser Follow-up` above already passed project isolation, superseding the earlier "Not verified" notes in the two preceding sections. This run adds independent evidence on the pinned pilot pair, and an automated guard so the behaviour cannot regress silently.
 
-- **Environment:** Shape Shifter `7340510f` and Authority Service `1f3f1b8`, both built from published refs and pinned by image tag; one shared snapshot database.
+- **Environment:** Shape Shifter `36050a75` and Authority Service `1f3f1b8`, both built from published refs and pinned by image tag; one shared snapshot database.
 - **Fixtures:** New controlled projects `vm9-alpha` and `vm9-beta`, each a `fixed` `feature_type` entity with the same target field `feature_type_name` and the same business key `vm9-shared`. Only the project name differs.
 - **Passed, live catalog isolation:** With `vm9-alpha` holding an accepted decision for `vm9-shared` to `feature_type/12`, `vm9-beta` reported no decision for the same key. Saving `vm9-shared` to `feature_type/576` in `vm9-beta` left `vm9-alpha` unchanged at `12`. Each project persisted and read back only its own decision.
 - **Passed, automated scope regression:** `ReconciliationWorkspace.test.ts` gained a cross-project case that stages a decision in one project, mounts a second project with identical entity, field, and keys, and asserts the second shows no draft, no restored notice, and no carried-over selection, then returns to the first and asserts its draft is restored. The check was mutation-tested: making the draft store ignore the project name fails it with `expected 'Save decisions (1)' to contain '0'`, and keying the scope without the project fails the scope assertion. Suite result: 23 tests in that file, 35 across it and the store test, and 102 across `src/components/reconciliation` plus the store test; `vue-tsc` and ESLint are clean.

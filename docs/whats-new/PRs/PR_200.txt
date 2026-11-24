@@ -38,24 +38,24 @@ branch. No end-user action is required.
 
 No CI or test results were available for this pull request (statusCheckRollup was empty), so no
 checks can be reported as passed or failed. The pull request was merged into dev on 2026-02-01
-(merge commit 7600588), but the merge does not confirm any specific test or lint outcomes.
+(merge commit f275b6b), but the merge does not confirm any specific test or lint outcomes.
 
 ## Detected orphaned commits
 
 Commits pushed directly to the base branch after the previous merged pull request. Each
 commit below reached the base branch without a pull request of its own.
 
-- `7e12199` feat: add custom item template for breadcrumbs in App.vue (#199) (2026-01-31)
-- `fc65a98` Merge branch 'main' of github.com:humlab-sead/sead_shape_shifter (2026-01-31)
-- `6e5628b` feat: add entity type to various entities in arbodat-test.yml (2026-01-31)
-- `4bf1140` feat: add validation for entity type field in EntityFieldsBaseSpecification (2026-01-31)
-- `e5ac919` feat(backend): add consistent entity key ordering in YAML output (2026-01-31)
-- `0751a74` fix: update shape-shifter version to 1.18.0 in uv.lock (2026-01-31)
-- `ab6d9d7` feat: add entity type "file" for file-based entities and improve entity editor with columns picklist (2026-01-31)
-- `da4d282` Merge branch 'main' of github.com:humlab-sead/sead_shape_shifter (2026-01-31)
-- `7764baf` fix: update shape-shifter version to 1.19.0 in uv.lock (2026-01-31)
-- `e2ea0be` Merge branch 'main' of github.com:humlab-sead/sead_shape_shifter (2026-01-31)
-- `09d20ce` fix: update shape-shifter version to 1.20.0 in uv.lock; reorder imports in test_suggestion_service.py; clean up yaml_service.py (2026-01-31)
-- `701c29b` Merge branch 'main' of github.com:humlab-sead/sead_shape_shifter (2026-01-31)
+- `267142d` feat: add custom item template for breadcrumbs in App.vue (#199) (2026-01-31)
+- `fa2d153` Merge branch 'main' of github.com:humlab-sead/sead_shape_shifter (2026-01-31)
+- `ea357ef` feat: add entity type to various entities in arbodat-test.yml (2026-01-31)
+- `744c533` feat: add validation for entity type field in EntityFieldsBaseSpecification (2026-01-31)
+- `18f1a97` feat(backend): add consistent entity key ordering in YAML output (2026-01-31)
+- `8458974` fix: update shape-shifter version to 1.18.0 in uv.lock (2026-01-31)
+- `dbaa23e` feat: add entity type "file" for file-based entities and improve entity editor with columns picklist (2026-01-31)
+- `003f7be` Merge branch 'main' of github.com:humlab-sead/sead_shape_shifter (2026-01-31)
+- `4f72df0` fix: update shape-shifter version to 1.19.0 in uv.lock (2026-01-31)
+- `06cebfc` Merge branch 'main' of github.com:humlab-sead/sead_shape_shifter (2026-01-31)
+- `ab28b34` fix: update shape-shifter version to 1.20.0 in uv.lock; reorder imports in test_suggestion_service.py; clean up yaml_service.py (2026-01-31)
+- `886aff4` Merge branch 'main' of github.com:humlab-sead/sead_shape_shifter (2026-01-31)
 
 Filtered 1 housekeeping commit(s): release-version-bump 1.

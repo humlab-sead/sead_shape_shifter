@@ -8,7 +8,7 @@ Source proposal: [SECURITY_HARDENING_FOLLOWUP.md](../SECURITY_HARDENING_FOLLOWUP
 
 - **Phase title:** Contain request-controlled file and environment disclosure
 - **Goal:** Close the CRITICAL request-path defects so untrusted route and project inputs can no longer read or write outside approved roots or expose environment values.
-- **Readiness:** **Validated** — every edit site below is verified against `dev @ 5bb562a1`; no unresolved decision can change implementation.
+- **Readiness:** **Validated** — every edit site below is verified against `dev @ 2e7f124e`; no unresolved decision can change implementation.
 - **Constraints (fixed by the proposal):** contain the *mapped* path at the service boundary; never ban `:` outright — `namespace:project` locators are a shipped convention; environment substitution resolves only at the mapper boundary; the `run_ingesters` gate and log-route role classification are out of scope here.
 - **Dependencies:** none pending. This phase produces the disposable reproduction environment that later phases (2, 6, 7) reuse.
 
@@ -22,7 +22,7 @@ Acceptance criteria:
 
 ## Repository Findings
 
-**Repository basis:** branch `dev`, commit `5bb562a1`, planned 2026-09-23. Uncommitted changes are limited to `.vscode/settings.json` and the new `docs/proposals/SECURITY_HARDENING_FOLLOWUP/` folder; no implementation file is dirty. Ledger IDs refer to the untracked `secrets/FINDINGS.md`.
+**Repository basis:** branch `dev`, commit `2e7f124e`, planned 2026-09-23. Uncommitted changes are limited to `.vscode/settings.json` and the new `docs/proposals/SECURITY_HARDENING_FOLLOWUP/` folder; no implementation file is dirty. Ledger IDs refer to the untracked `secrets/FINDINGS.md`.
 
 | Evidence | Finding | Planning implication |
 |---|---|---|

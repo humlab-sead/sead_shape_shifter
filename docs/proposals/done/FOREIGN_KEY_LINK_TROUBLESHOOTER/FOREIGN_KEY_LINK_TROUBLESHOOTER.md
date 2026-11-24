@@ -2,7 +2,7 @@
 
 ## Status
 
-- **Implemented** (branch `feature/foreign-key-link-troubleshooter`; merged into `dev` in commits `65209594` and `40f6b08d`).
+- **Implemented** (branch `feature/foreign-key-link-troubleshooter`; merged into `dev` in commits `f924436a` and `b03fce53`).
 - Scope: first edition of a read-only troubleshooter for one configured foreign-key link
 - Goal: identify which rows and keys cause a linking warning, and test alternative join keys without changing the project
 - Validation: Recorded in the [phase plan](FOREIGN_KEY_LINK_TROUBLESHOOTER_PHASE_PLAN.md) task plans. Automated backend and frontend checks passed through Phase 4, and the end-to-end flow passed against the staging container on 2026-11-04 for a `ROW_COUNT_MISMATCH` link: the action opens the saved link with A, B, join type, and constraints read-only, shows the configured keys and baseline totals, runs a changed key pair with its own totals, filters and pages A rows without changing complete totals, reports stale, ineligible, and incomplete states, offers no save action, and starts a fresh view after close and reopen.

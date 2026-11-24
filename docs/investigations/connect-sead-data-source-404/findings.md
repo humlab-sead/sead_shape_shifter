@@ -2,7 +2,7 @@
 
 **Brief:** User report in this session; no separate investigation brief.
 **Status:** Conclusive
-**Environment / baseline:** Shape Shifter repository at `24dde7fa168b84042bf636abc92d2ad584d57a52`; Linux. The user's running frontend/backend and project authorization state were not available.
+**Environment / baseline:** Shape Shifter repository at `df4cc4b5a03220c5d41df55dbac7f019a6aef5ea`; Linux. The user's running frontend/backend and project authorization state were not available.
 
 ## Executive summary
 
@@ -82,7 +82,7 @@ The request URL and response are confirmed by the user. The parameter collision 
 
 ## Verification record
 
-- Repository source inspection at commit `24dde7fa168b84042bf636abc92d2ad584d57a52`.
+- Repository source inspection at commit `df4cc4b5a03220c5d41df55dbac7f019a6aef5ea`.
 - User-provided browser Network details for the failed POST and its response.
 - Passed: `uv run pytest backend/tests/authorization/test_dependencies.py -q -n 0 --tb=short` (19 passed, 1 skipped).
 - Passed: `uv run pytest backend/tests/authorization backend/tests/api/v1/test_query_endpoints.py backend/tests/api/v1/test_schema_endpoints.py backend/tests/test_data_source_api.py -q -n 0 --tb=short` (passed; 2 skipped).

@@ -55,5 +55,5 @@ the default row-filter change (useLinkTroubleshooter.test.ts). Their execution r
 in the available evidence.
  - CI on the pull request ran only the Container Release workflow: the validate and publish checks
 both concluded SKIPPED. No test-suite results were reported by CI.
- - The pull request was merged into dev (merge commit 99c4da2). Backend test execution for the
+ - The pull request was merged into dev (merge commit fe377d0). Backend test execution for the
 default-mode change is unknown from the available evidence.

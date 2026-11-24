@@ -27,7 +27,7 @@ Source phase plan: [DIRECT_TARGET_ID_FOREIGN_KEY_UX_PHASE_PLAN.md](./DIRECT_TARG
 
 ## Repository Findings
 
-**Repository basis:** branch `direct-target-id-foreign-key-ux`, commit `2a17adf9`, planning date 2026-11-09. Uncommitted changes were present and considered: the Phase 1 backend work (models, service, route, tests, authorization inventory) and proposal documents. None of them touch `frontend/`, and Phase 2 edits no file that Phase 1 touched.
+**Repository basis:** branch `direct-target-id-foreign-key-ux`, commit `0edc9efa`, planning date 2026-11-09. Uncommitted changes were present and considered: the Phase 1 backend work (models, service, route, tests, authorization inventory) and proposal documents. None of them touch `frontend/`, and Phase 2 edits no file that Phase 1 touched.
 
 | Evidence | Finding | Planning implication |
 | -------- | ------- | -------------------- |

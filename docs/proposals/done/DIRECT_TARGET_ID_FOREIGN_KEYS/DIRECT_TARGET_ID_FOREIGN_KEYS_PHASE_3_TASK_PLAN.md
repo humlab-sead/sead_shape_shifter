@@ -20,7 +20,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `direct-target-id-foreign-keys`, commit `bf7a6b88`, 2026-10-23. `git status --short` was clean before planning; no uncommitted source changes were considered. Graphify located the project service and ingester, then the files below were checked directly. The phase plan's “Current Position” describes pre-phase behavior; Phase 1 and Phase 2 code is present in this checkout.
+**Repository basis:** Branch `direct-target-id-foreign-keys`, commit `703110a5`, 2026-10-23. `git status --short` was clean before planning; no uncommitted source changes were considered. Graphify located the project service and ingester, then the files below were checked directly. The phase plan's “Current Position” describes pre-phase behavior; Phase 1 and Phase 2 code is present in this checkout.
 
 | Verified source | Current behavior | Planning consequence |
 | --- | --- | --- |

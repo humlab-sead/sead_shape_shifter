@@ -66,7 +66,7 @@ request is ignored.
 automated CI results are available from the provided evidence.
  - The author's description reports manual verification on the test target (humlabsead,
 test-shape-shifter.sead.se, 2026-09-22), which was not independently confirmed here: focused
-authorization suite and full backend suite passing at e38f4bc6; manifest applied and reconciled with
+authorization suite and full backend suite passing at bda38b33; manifest applied and reconciled with
 32 resources, 3 administrators, 32 grants and 0 missing; an access matrix showing unauthenticated
 401, granted project 200, concealed denied 404, and administrator 200; rollback restore, backup
 integrity, external HTTPS, firewall inspection, and credential rotation checks; and git diff --check

@@ -210,7 +210,7 @@ Validate the paired workflow and advertise only capabilities that pass for each 
 
 **Environment**
 
-The pilot environment is named `pilot-recon-2026-11-20`. It pairs the Authority Service at commit `1f3f1b8` with Shape Shifter at commit `7340510f`, both built from published refs and pinned by image tag, against `sead_pilot_recon`, a 2026-11-20 snapshot of `sead_staging` reached through a read-only role. All five capabilities are enabled for `feature_type` and `country` in the pilot's mounted Authority configuration only; the shipped configuration keeps every flag `false`. The pair, ports, and startup command are recorded in [the Phase 4 task plan](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_4_TASK_PLAN.md#pilot-environment).
+The pilot environment is named `pilot-recon-2026-11-20`. It pairs the Authority Service at commit `1f3f1b8` with Shape Shifter at commit `36050a75`, both built from published refs and pinned by image tag, against `sead_pilot_recon`, a 2026-11-20 snapshot of `sead_staging` reached through a read-only role. All five capabilities are enabled for `feature_type` and `country` in the pilot's mounted Authority configuration only; the shipped configuration keeps every flag `false`. The pair, ports, and startup command are recorded in [the Phase 4 task plan](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_4_TASK_PLAN.md#pilot-environment).
 
 The [Phase 4 baseline](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_4_BASELINE.md) records complete per-type Search and Browse timings at loopback and at approximately 100 ms and 200 ms RTT, the VM-12 decision and request measurements, and the per-capability pilot decisions. Both list limits were exercised and restored; neither list was partially returned.
 

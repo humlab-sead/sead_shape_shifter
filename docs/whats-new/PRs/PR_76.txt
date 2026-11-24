@@ -73,6 +73,6 @@ now fail validation.
 
  - Not verified: validation results unavailable. The pull request data contains no CI check results
 (statusCheckRollup is empty), so no test or check outcomes can be reported as passed or failed.
- - The PR was merged into dev on 2025-12-31 (merge commit f391014), but no execution evidence for
+ - The PR was merged into dev on 2025-12-31 (merge commit 0602f64), but no execution evidence for
 the added test suites (new backend service tests, tests/configuration/, loader, dispatcher, and
 preview tests) is included in the available data.

@@ -3,7 +3,7 @@
 **Brief:** [brief.md](./brief.md)  
 **Tracking issue:** [humlab-sead/sead_shape_shifter#624](https://github.com/humlab-sead/sead_shape_shifter/issues/624)  
 **Status:** Partially conclusive  
-**Environment / baseline:** Repository `humlab-sead/sead_shape_shifter`, branch `dev`, commit `4a04566be18331576c06c9dd7bb6560520aa7f11` (`Merge pull request #625`), 2026-10-28. The worktree contained the untracked investigation brief; no tracked application changes were present.
+**Environment / baseline:** Repository `humlab-sead/sead_shape_shifter`, branch `dev`, commit `c13050f6ef4d93f50b5d8e9571fe09a6f649a7a9` (`Merge pull request #625`), 2026-10-28. The worktree contained the untracked investigation brief; no tracked application changes were present.
 
 ## Executive summary
 
@@ -12,7 +12,7 @@ This is a maintainability audit, not an investigation of a reported runtime fail
 1. `AutoFixService` handles general fix actions but also embeds fixed-entity `system_id` repairs. Those repairs are selected using string values stored in the generic `FixAction.new_value` field.
 2. `MaterializationService` manages materialization and unmaterialization, and also owns a separately callable workflow for synchronizing mapping-sidecar links from saved materialized rows.
 
-These are supported hypotheses about maintenance costs, not confirmed defects or proven SRP violations. The evidence does not establish user-visible failures or data impact. `ProjectMapper` was checked as a calibration example: commit `f762e96e` moved fixed-entity load issue collection into a dedicated collector, and the current mapper calls a collector registry. That fixed case is not reported as outstanding.
+These are supported hypotheses about maintenance costs, not confirmed defects or proven SRP violations. The evidence does not establish user-visible failures or data impact. `ProjectMapper` was checked as a calibration example: commit `fd731252` moved fixed-entity load issue collection into a dedicated collector, and the current mapper calls a collector registry. That fixed case is not reported as outstanding.
 
 Coverage was targeted rather than class-by-class exhaustive. The findings therefore describe the reviewed candidates and screened patterns, not every class in Core or Backend.
 
@@ -57,8 +57,8 @@ These call paths change different state: the lifecycle methods update the projec
 
 | ID | Observation or test | Source | Result | Assessment |
 | --- | --- | --- | --- | --- |
-| E1 | Audit baseline | Branch and revision recorded above; `rtk git status --short --branch`, `rtk git log -1 --oneline` | Baseline is `dev` at `4a04566b`; only the untracked investigation directory was present. | Verified |
-| E2 | Fixed `ProjectMapper` case | Commit [`f762e96e`](https://github.com/humlab-sead/sead_shape_shifter/commit/f762e96e); current [project_mapper.py](../../../backend/app/mappers/project_mapper.py#L140), [project_load_issue_collectors.py](../../../backend/app/mappers/project_load_issue_collectors.py#L6), and [fixed_entity_load_issue_collector.py](../../../backend/app/mappers/fixed_entity_load_issue_collector.py#L24) | The commit added a dedicated fixed-entity load issue collector and reduced `ProjectMapper`; current mapper delegates collection through the registry. | Verified; calibration only |
+| E1 | Audit baseline | Branch and revision recorded above; `rtk git status --short --branch`, `rtk git log -1 --oneline` | Baseline is `dev` at `c13050f6`; only the untracked investigation directory was present. | Verified |
+| E2 | Fixed `ProjectMapper` case | Commit [`fd731252`](https://github.com/humlab-sead/sead_shape_shifter/commit/fd731252); current [project_mapper.py](../../../backend/app/mappers/project_mapper.py#L140), [project_load_issue_collectors.py](../../../backend/app/mappers/project_load_issue_collectors.py#L6), and [fixed_entity_load_issue_collector.py](../../../backend/app/mappers/fixed_entity_load_issue_collector.py#L24) | The commit added a dedicated fixed-entity load issue collector and reduced `ProjectMapper`; current mapper delegates collection through the registry. | Verified; calibration only |
 | E3 | Generic fix action contains fixed-entity operation codes | [fix.py](../../../backend/app/models/fix.py#L22), [auto_fix_service.py](../../../backend/app/services/auto_fix_service.py#L424), [auto_fix_service.py](../../../backend/app/services/auto_fix_service.py#L456) | Three fixed `system_id` repairs are distinguished through `new_value` strings in the shared action model. | Verified structure; maintenance impact is a supported hypothesis |
 | E4 | Fixed-value action test search | Search for `UPDATE_VALUES`, `fill_null_system_ids`, `fix_duplicate_system_ids`, and `fix_invalid_system_ids` under `backend/tests/` | No matches. This establishes a test-coverage gap for these operation names, not a runtime failure. | Verified |
 | E5 | Materialization and mapping-sync call paths | [materialization_service.py](../../../backend/app/services/materialization_service.py#L289), [materialization.py](../../../backend/app/api/v1/endpoints/materialization.py#L131), [test_materialization_service.py](../../../backend/tests/services/test_materialization_service.py#L754) | Mapping synchronization has a distinct method, route, and test group alongside materialization lifecycle methods. | Verified structure; SRP impact is a supported hypothesis |
@@ -67,7 +67,7 @@ These call paths change different state: the lifecycle methods update the projec
 
 ## Timeline or causal chain
 
-There is no failure timeline. For calibration, commit `f762e96e` (`fix(validation): surface project load failures`) moved fixed-entity load issue collection into a dedicated collector. The current [ProjectMapper](../../../backend/app/mappers/project_mapper.py#L140) calls the project-load collector registry. This confirms that the cited mapper example is a completed change, not a remaining finding.
+There is no failure timeline. For calibration, commit `fd731252` (`fix(validation): surface project load failures`) moved fixed-entity load issue collection into a dedicated collector. The current [ProjectMapper](../../../backend/app/mappers/project_mapper.py#L140) calls the project-load collector registry. This confirms that the cited mapper example is a completed change, not a remaining finding.
 
 ## Root-cause assessment
 
@@ -78,7 +78,7 @@ There is no failure timeline. For calibration, commit `f762e96e` (`fix(validatio
 | Core has a remaining class that combines unrelated responsibilities or embeds problematic fixed-entity behavior. | Targeted review of `TableConfig`, pipeline orchestration, subset extraction, fixed-entity specifications, and fixed-entity mapping logic. | The reviewed type branches correspond to configuration semantics, registered type-specific specifications, or focused extraction behavior. The derived-entity alias case has a targeted test. | No candidate substantiated in reviewed examples; broader Core coverage remains incomplete. |
 | `AutoFixService` embeds a type-coded fixed-entity operation protocol in a general action model. | Generic `UPDATE_VALUES` actions carry one of three string operation codes; `_update_values` checks for fixed entities and dispatches on those values. | The operations share one column and purpose; no defect or demonstrated maintenance failure was found. Other action types use explicit enum dispatch. | Supported hypothesis |
 | `MaterializationService` combines independently changing materialization and mapping-sidecar responsibilities. | Separate methods and API routes manage materialization lifecycle and sidecar synchronization; their state changes differ. | Synchronization is limited to materialized rows and shares the project lock and feature context. Independent change history was not established. | Supported hypothesis |
-| The fixed-entity `ProjectMapper` example remains open. | The relevant history and current mapper were checked. | `f762e96e` added a collector; current mapper delegates collection through a registry. | Ruled out |
+| The fixed-entity `ProjectMapper` example remains open. | The relevant history and current mapper were checked. | `fd731252` added a collector; current mapper delegates collection through a registry. | Ruled out |
 
 ## Impact and extent
 
@@ -112,7 +112,7 @@ No blocker prevents the targeted findings above. The smallest next step is a mai
 ## Verification record
 
 - `rtk git status --short --branch` and `rtk git log -1 --oneline`: confirmed the baseline branch, revision, and worktree state.
-- `rtk git show --stat --oneline f762e96e`: confirmed the mapper calibration change includes a dedicated fixed-entity load issue collector and a reduced `ProjectMapper`.
+- `rtk git show --stat --oneline fd731252`: confirmed the mapper calibration change includes a dedicated fixed-entity load issue collector and a reduced `ProjectMapper`.
 - `rtk graphify explain "MaterializationService"`: used to inspect service relationships; source and API call sites were then checked directly.
 - Ripgrep searches over `src/` and `backend/app/` for type-dependent branches were used to find candidate locations. Candidate conclusions above were checked against relevant source and tests.
 - Search for `UPDATE_VALUES` and the three fixed-entity operation strings under `backend/tests/`: no matches.
@@ -123,4 +123,4 @@ No blocker prevents the targeted findings above. The smallest next step is a mai
 
 - [Investigation brief](./brief.md)
 - [Tracking issue #624](https://github.com/humlab-sead/sead_shape_shifter/issues/624)
-- [Calibration commit f762e96e](https://github.com/humlab-sead/sead_shape_shifter/commit/f762e96e)
+- [Calibration commit fd731252](https://github.com/humlab-sead/sead_shape_shifter/commit/fd731252)

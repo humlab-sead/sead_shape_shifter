@@ -14,7 +14,7 @@ The motivation is a rule already accepted in this repository: a result recorded 
 
 ## Problem
 
-**Results expire faster than they are produced.** The centralized-authorization cutover recorded deployment verification against `95c3d017` on 2026-09-15, against the same baseline on 2026-09-18, and against `dbff5ab9` on 2026-09-22. Each pass covered substantially the same controls. Because a result belongs to one image, every rebuild discards the previous pass, and no step ever declares an artifact frozen.
+**Results expire faster than they are produced.** The centralized-authorization cutover recorded deployment verification against `2349f7e3` on 2026-09-15, against the same baseline on 2026-09-18, and against `6b852953` on 2026-09-22. Each pass covered substantially the same controls. Because a result belongs to one image, every rebuild discards the previous pass, and no step ever declares an artifact frozen.
 
 **Evidence collection is manual, and partly narrative.** `container/scripts/verify/run_deployment_verification.sh` captures firewall, container configuration, PostgreSQL grants, log, credential, and endpoint-containment checks into a timestamped directory. It does not capture the authorization evidence set — resource and grant inventories, audit events, the manifest checksum, integrity, and reconciliation — and it does not capture the image digest. `container/scripts/verify/verify_authenticated_access.sh` has no way to write its output to a file, so its transcript must be copied by hand. The Phase 4 record consequently states four access outcomes as a prose table, and the supporting raw transcript had to be recovered from a session log after the fact.
 

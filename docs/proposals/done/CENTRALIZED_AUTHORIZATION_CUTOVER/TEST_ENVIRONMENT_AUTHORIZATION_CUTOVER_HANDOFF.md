@@ -14,7 +14,7 @@ Record the live centralized-authorization cutover in the test target environment
 
 ## Current State
 
-The test host runs the three-directory layout: `~/container` for replaceable code, `~/config` for configuration and policy (mode `700`, files `600`), and `~/container-data` for mutable data. The deployed image is now the release build from merged `dev`; the earlier `d27b072c` baseline image remains on the host as the rollback target. `http://127.0.0.1:8012/api/v1/health` answered `200` with `{"status":"healthy","version":"2.1.0","environment":"production"}` on 2026-09-22, last confirmed at 10:59:17Z on the release image.
+The test host runs the three-directory layout: `~/container` for replaceable code, `~/config` for configuration and policy (mode `700`, files `600`), and `~/container-data` for mutable data. The deployed image is now the release build from merged `dev`; the earlier `9062216a` baseline image remains on the host as the rollback target. `http://127.0.0.1:8012/api/v1/health` answered `200` with `{"status":"healthy","version":"2.1.0","environment":"production"}` on 2026-09-22, last confirmed at 10:59:17Z on the release image.
 
 | Item | State |
 |---|---|
@@ -46,12 +46,12 @@ The following checks were run on 2026-09-22 without repeating the completed Phas
 
 | Check | Result |
 |---|---|
-| Full backend regression | Passed at `e38f4bc6` and rerun at the post-merge `dev` revision `dbff5ab95459652354c040b9d4fec6e2ead94f96`: `.venv/bin/pytest backend/tests -q`; all collected tests passed with the repository's existing skips and one unrelated JPype deprecation warning |
+| Full backend regression | Passed at `bda38b33` and rerun at the post-merge `dev` revision `6b8529537ee2bf87f6422590931b46d1ad83b7df`: `.venv/bin/pytest backend/tests -q`; all collected tests passed with the repository's existing skips and one unrelated JPype deprecation warning |
 | Reviewed manifest identity | SHA-256 `43c03186f708164ce9334a001c45b80c4f206fb2efa06d413dff9ad4a2cafb90`; authoritative content is 3 administrators (`admin`, `roger`, `rebecka`), 32 resources, and 32 grants |
-| Release image identity | `shape-shifter:dev`, image ID `6a487db722883da0eb0c3cfdc00444c07dea1edaf7d59b15643227576acc04a8`, built 2026-09-22 10:55:15Z from `github`, OCI source revision `dbff5ab95459652354c040b9d4fec6e2ead94f96`, OCI version `dev` |
-| Release image source revision | `dbff5ab95459652354c040b9d4fec6e2ead94f96` equals the `dev` merge commit for PR #495 and the checkout revision where the focused authorization and full backend suites passed |
+| Release image identity | `shape-shifter:dev`, image ID `6a487db722883da0eb0c3cfdc00444c07dea1edaf7d59b15643227576acc04a8`, built 2026-09-22 10:55:15Z from `github`, OCI source revision `6b8529537ee2bf87f6422590931b46d1ad83b7df`, OCI version `dev` |
+| Release image source revision | `6b8529537ee2bf87f6422590931b46d1ad83b7df` equals the `dev` merge commit for PR #495 and the checkout revision where the focused authorization and full backend suites passed |
 | Configuration revision | `GIT_REF=dev`, `IMAGE_NAME=shape-shifter:dev`, `GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git`, recorded in `/data/test-shape-shifter.sead.se/config/deployment.env` by the deploy script |
-| Baseline image identity (retained) | `localhost/shape-shifter:test`, image ID `4762be65496839738800b5034cf487faafaf4bda6c3dceb2e608d00fe5e4700b`, OCI source revision `d27b072c26e026fe9049a14558ffbaf0ffecda98`, built from checkout `e38f4bc67b289dd23f6995f38ff70ccc79a32bf0` |
+| Baseline image identity (retained) | `localhost/shape-shifter:test`, image ID `4762be65496839738800b5034cf487faafaf4bda6c3dceb2e608d00fe5e4700b`, OCI source revision `9062216ab6ed1f6c16071443113b298f4706bd96`, built from checkout `bda38b330366d8291a4a59321dc71c85986d4c0e` |
 | Authorization inventory | 51 retained resources: 36 active and 15 deleted; 53 retained grants; 25 application-role rows, including 3 `admin` roles. Historical/deleted rows explain why raw store totals exceed the 32 reviewed active records |
 | Manifest reconciliation | Passed using a one-shot container with the host manifest mounted read-only: `Missing: 0 resources, 0 administrators, 0 grants` |
 | Administrator access | Passed: `admin` received HTTP 200 for `GET /api/v1/projects` through `https://test-shape-shifter.sead.se`; credentials and response contents were not recorded |
@@ -87,11 +87,11 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 - Areas 1–5 of the layout task plan: three-directory layout, path resolution, operator-provisioned authorization inputs, deployment helpers, and documentation.
 - Live migration of the test host to the new layout, including `~/config/deployment.env`, `~/config/backend.env`, and `~/config/.pgpass/.pgpass` (mode `600` inside a `700` directory) and correction of a migrated `../container-data` spelling that resolved one level too high.
 - Five host-discovered defects fixed in the repository:
-  - `15c89c46` run the bootstrap in the deployment user's podman context (`-H` and `XDG_RUNTIME_DIR`), otherwise podman reports the running container as absent.
-  - `2b8fbee3` switch to the deployment directory before running as its user, because `sudo` keeps the caller's working directory.
-  - `fe47d0f5` read htpasswd passwords from stdin with `-i`; without it htpasswd prompts on the terminal and ignores the here-string.
-  - `d1b21b5d` detect the manifest format from content when the path has no recognised extension, with a test for the extension-less case.
-  - `d27b072c` place the imported manifest inside the container, because `migrate` reads it twice and a stdin stream cannot be read twice.
+  - `23a03aa5` run the bootstrap in the deployment user's podman context (`-H` and `XDG_RUNTIME_DIR`), otherwise podman reports the running container as absent.
+  - `567f83e8` switch to the deployment directory before running as its user, because `sudo` keeps the caller's working directory.
+  - `76629a38` read htpasswd passwords from stdin with `-i`; without it htpasswd prompts on the terminal and ignores the here-string.
+  - `39a7fab2` detect the manifest format from content when the path has no recognised extension, with a test for the extension-less case.
+  - `9062216a` place the imported manifest inside the container, because `migrate` reads it twice and a stdin stream cannot be read twice.
 - Bootstrap run to completion on 2026-09-22: htpasswd accounts, nginx group file, 19 application-role grants, and the manifest import, ending with `Authorization database ready: /app/state/authorization.sqlite3`.
 - Post-deployment checks re-run on 2026-09-22: loopback health returned `200`, the public protected route returned `401`, the backend listener was loopback-only, container configuration passed, authorization database integrity passed, manifest reconciliation reported no missing records, `sudo nginx -t` passed, and external HTTPS port `443` was open. The safe verification bundle also confirmed the container was running, published only `127.0.0.1:8012`, and was owned by the systemd user service through `scripts/up.sh` with `--no-build`. Authenticated isolation passed for Bruno and Phil; cleanup then deleted all four temporary projects through the application with HTTP `204` responses. The privileged nftables inspection passed with default inbound drop and no `8012` accept rule. The rollback exercise restored the recorded image and authorization backup, reconciled zero missing records, and returned health `200`. Same-LAN testing is unavailable for this virtual server and the exception was accepted by Roger Mähler on 2026-09-22.
 - Repository memory (`/memories/repo/container-deployment-layout.md`) records the host-specific lessons: working directory for `sudo -u`, `XDG_RUNTIME_DIR`, `htpasswd -i`, the two-read manifest import, and which kind of change needs an image rebuild.
@@ -128,7 +128,7 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 - `verify_authenticated_access.sh` requires each project to be granted to exactly one principal, and neither principal may be a bootstrap administrator.
 - `bulgaria-arbodat-lookup-options` was resolved on 2026-09-22 by removing the definition: it declared the `access` driver with no data file, the legacy file enumeration of 2026-09-18 lists no Bulgarian dataset, and nothing referenced the source. Three records still name it and the authorization resource remains an inert orphan; a follow-up covers them together. The authenticated access check used temporary colon-qualified projects, so it verifies grant enforcement rather than access to the reviewed dataset.
 - **Container-to-host services need the gateway alias.** The container cannot reach the host's LAN address, so host services must be addressed as `host.docker.internal`. Host-side checks against the LAN address succeed and therefore give a false positive. See [container/DEPLOYMENT.md](../../../../deployment/container/DEPLOYMENT.md).
-- The release image is built from merged `dev` at `dbff5ab95459652354c040b9d4fec6e2ead94f96`, so its recorded source revision matches the checkout where the focused and full backend suites passed. The earlier `d27b072c` image built from checkout `e38f4bc6` remains on the host as the rollback target and is no longer the running image.
+- The release image is built from merged `dev` at `6b8529537ee2bf87f6422590931b46d1ad83b7df`, so its recorded source revision matches the checkout where the focused and full backend suites passed. The earlier `9062216a` image built from checkout `bda38b33` remains on the host as the rollback target and is no longer the running image.
 
 ## Open Decisions
 

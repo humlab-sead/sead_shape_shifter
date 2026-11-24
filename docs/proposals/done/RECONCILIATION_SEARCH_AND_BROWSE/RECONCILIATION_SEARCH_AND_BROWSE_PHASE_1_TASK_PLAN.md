@@ -15,7 +15,7 @@
 
 ## Repository Findings
 
-**Repository basis:** 2026-11-19, Shape Shifter `reconciliation-search-and-browse` at `5727bed8` and Authority Service `reconciliation-search-and-browse` at `5e19232`. Used the uncommitted Shape Shifter phase-plan edits supplied in the working tree; Authority was clean. Graphify identified the strategy and client entry points; current code and checked-in SQL supplied the contract and query details.
+**Repository basis:** 2026-11-19, Shape Shifter `reconciliation-search-and-browse` at `3e3ba3ce` and Authority Service `reconciliation-search-and-browse` at `5e19232`. Used the uncommitted Shape Shifter phase-plan edits supplied in the working tree; Authority was clean. Graphify identified the strategy and client entry points; current code and checked-in SQL supplied the contract and query details.
 
 Paths in the work breakdown, validation commands, and deliverables are relative to the **Authority Service** repository (`../sead_authority_service` from the Shape Shifter root).
 

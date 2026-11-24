@@ -15,7 +15,7 @@
 
 ## Repository Findings
 
-**Repository basis:** 2026-11-05, `feature/manifest-driven-reconciliation-inputs` at `5de9cbe0`. The uncommitted changes to `.vscode/settings.json`, the source proposal, and the phase plan were observed; the current, edited proposal and phase plan were used for planning, and none of these existing changes were modified. Graphify was queried for the reconciliation flow; its broad result was narrowed to `ReconciliationService` and checked against the source and tests below.
+**Repository basis:** 2026-11-05, `feature/manifest-driven-reconciliation-inputs` at `5b52fb2d`. The uncommitted changes to `.vscode/settings.json`, the source proposal, and the phase plan were observed; the current, edited proposal and phase plan were used for planning, and none of these existing changes were modified. Graphify was queried for the reconciliation flow; its broad result was narrowed to `ReconciliationService` and checked against the source and tests below.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |
@@ -127,7 +127,7 @@ The database-backed `backend/tests/integration/test_site_reconciliation_end_to_e
 
 ## Execution Record
 
-Executed on 2026-11-05 against `feature/manifest-driven-reconciliation-inputs` at `5de9cbe0`. The pre-existing edits to `.vscode/settings.json`, the source proposal, and the phase plan were not modified.
+Executed on 2026-11-05 against `feature/manifest-driven-reconciliation-inputs` at `5b52fb2d`. The pre-existing edits to `.vscode/settings.json`, the source proposal, and the phase plan were not modified.
 
 | Check | Command | Result |
 | --- | --- | --- |

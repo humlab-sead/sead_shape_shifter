@@ -45,7 +45,7 @@ None - no user action required.
 ## Validation
 
 No CI check results were reported for this pull request (the status check rollup is empty), so no
-checks can be confirmed as passed or failed. The merge into main is recorded (merge commit 357ea2e,
+checks can be confirmed as passed or failed. The merge into main is recorded (merge commit 96f9f36,
 merged 2026-03-14). The diff adds or updates backend, frontend, and core test files (for example
 tests/test_path_resolution.py, tests/transforms/test_unnest_validation_error.py,
 frontend/src/utils/__tests__/taskGraph.test.ts), but no execution results for them are available.

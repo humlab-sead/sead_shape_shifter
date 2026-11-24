@@ -18,7 +18,7 @@ package metadata artifact_type from delivery_1_change_package to mvp_delivery_ch
 change package"; the frontend test fixture description is updated to match. Backend and frontend
 tests are updated to assert the renamed diagnostics and artifact type.
 
-Closes #545. Note: the branch also carries the earlier MVP alert-wording commit 757b809a, which was 
+Closes #545. Note: the branch also carries the earlier MVP alert-wording commit e8320ea9, which was 
 present on local dev but not yet on origin/dev when the PR was opened.
 
 ## User-facing release note

@@ -2,7 +2,7 @@
 
 - **Brief:** User report and attached log (`Pasted text #1`); no separate brief was supplied
 - **Status:** Partially conclusive; code fix implemented and tested locally
-- **Environment / baseline:** Shape Shifter `dev` at `8c4424b3`; Authority Service `dev` at `2f71b3b31d143fdbf50f1f5e1436e131ef39451b`. The attached container log reports Python 3.13. Its deployed Authority Service version is not identified.
+- **Environment / baseline:** Shape Shifter `dev` at `4a229bdd`; Authority Service `dev` at `2f71b3b31d143fdbf50f1f5e1436e131ef39451b`. The attached container log reports Python 3.13. Its deployed Authority Service version is not identified.
 
 ## Executive summary
 

@@ -17,7 +17,7 @@ This plan covers release publication, per-environment installation and selection
 ## Current Position
 
 - All three phases are complete (2026-10-11), and this phase plan is archived with the proposal in `done/`.
-- Phase 1: PR #541 published `container-v0.1.0` from merge commit `71f52f8268daed3f04c501e50cf59341fbb1273d`; its archive and checksum were verified against the complete tracked `container/` tree.
+- Phase 1: PR #541 published `container-v0.1.0` from merge commit `6cf3c1bd86f752fb62442e7e062eb35f073157c2`; its archive and checksum were verified against the complete tracked `container/` tree.
 - Phase 2: the administrator-owned release manager installs, activates, rolls back, and reports a named release per user, and the home-relative path rule is implemented in the Makefile and `load-env.sh`.
 - Phase 3: the lifecycle dispatcher is committed and runs through `~/container`, and every verification script has a documented disposition.
 - The application release workflow remains separate on `main`; branch and tag protections and the `container-release` publication workflow are active.

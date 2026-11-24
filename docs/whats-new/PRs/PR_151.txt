@@ -38,5 +38,5 @@ should be repointed.
  - No CI check results are available for this pull request (the status check rollup is empty), and
 no test output was included in the available evidence; execution of the new make docker-validate /
 make docker-test targets is unknown.
- - The pull request was merged into main (merge commit 7d7dee9, 2026-01-14), but no passing checks
+ - The pull request was merged into main (merge commit 079a2a8, 2026-01-14), but no passing checks
 are documented in the available evidence.

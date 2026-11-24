@@ -21,7 +21,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `container-deploy-versioning`, commit `768b5c473bd6`, planning date 2026-10-10. The worktree has existing edits to the Phase 1 task plan and phase plan, plus an untracked `.github/skills/review-pr/` directory. These are unrelated to this task-plan target and were left unchanged. No Phase 2 task plan existed at the target path.
+**Repository basis:** Branch `container-deploy-versioning`, commit `92017ef9314d`, planning date 2026-10-10. The worktree has existing edits to the Phase 1 task plan and phase plan, plus an untracked `.github/skills/review-pr/` directory. These are unrelated to this task-plan target and were left unchanged. No Phase 2 task plan existed at the target path.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |
@@ -178,7 +178,7 @@
 
 ## Execution Record
 
-Implementation date 2026-10-10, branch `container-deploy-versioning`. The first pass started from commit `768b5c47`; the host validation ran after the branch tip advanced to `6cfaf910` (`feat(review-pr): ...`), which is unrelated to this phase. Pre-existing worktree changes to the Phase 1 task plan and the phase plan were left unchanged. This phase's changes are uncommitted.
+Implementation date 2026-10-10, branch `container-deploy-versioning`. The first pass started from commit `92017ef9`; the host validation ran after the branch tip advanced to `c1bbf986` (`feat(review-pr): ...`), which is unrelated to this phase. Pre-existing worktree changes to the Phase 1 task plan and the phase plan were left unchanged. This phase's changes are uncommitted.
 
 **Implemented deliverables:**
 
@@ -199,7 +199,7 @@ Implementation date 2026-10-10, branch `container-deploy-versioning`. The first 
 | --- | --- | --- |
 | `V-1` | Passed | `bash container/tests/test_path_resolution.sh`: 27 assertions passed, exit 0. `bash -n` passed for the changed shell files. |
 | `V-2` | Passed | `bash container/tests/test_release_manager.sh`: 79 assertions passed, exit 0. |
-| `V-3` | Passed | Disposable Podman container host (rootless Podman 5.7.0, `python:3.13-slim` base with `curl` and `git`), `--network=host`: 93 assertions passed, exit 0. Installed the real published `container-v0.1.0`; `release-info` recorded `COMMIT=71f52f8268daed3f04c501e50cf59341fbb1273d`, the Phase 1 merge commit. Installed tree is `root:root` with no group/other write bits; the deployment user could read and execute but could not modify, create, or delete installed content. Install created no selector and no `~/container`, and left `deployment.env` byte-identical. |
+| `V-3` | Passed | Disposable Podman container host (rootless Podman 5.7.0, `python:3.13-slim` base with `curl` and `git`), `--network=host`: 93 assertions passed, exit 0. Installed the real published `container-v0.1.0`; `release-info` recorded `COMMIT=6cf3c1bd86f752fb62442e7e062eb35f073157c2`, the Phase 1 merge commit. Installed tree is `root:root` with no group/other write bits; the deployment user could read and execute but could not modify, create, or delete installed content. Install created no selector and no `~/container`, and left `deployment.env` byte-identical. |
 | `V-4` | Passed | Same disposable host with two real deployment users, then a second container started with `--network=none`: 37 assertions passed, exit 0. `rollback` succeeded with no network and restored the previous version; each user kept its own selection; configuration, credentials, runtime data, ownership, modes, and `GIT_REF`/`IMAGE_NAME` were unchanged; a missing selected bundle was reported without hiding the selection and could not be activated; a real `~/container` directory and an unrelated symlink were both refused and left intact. |
 | `V-5` | Passed | `bash -n` and `shellcheck -S warning` report only the two pre-existing `sync-to-deploy` SC1007 warnings and no new diagnostics. Both new test scripts pass. The local `sync-to-deploy` guard was exercised with exported `sudo`/`getent` functions: a symlinked manager `~/container` was refused with exit 1, and `--remote-dir container-dev` was allowed with exit 0 in dry-run. On the disposable host, `sync-to-deploy --dry-run` against the manager-owned `~/container` was refused and against `container-dev` was allowed. |
 

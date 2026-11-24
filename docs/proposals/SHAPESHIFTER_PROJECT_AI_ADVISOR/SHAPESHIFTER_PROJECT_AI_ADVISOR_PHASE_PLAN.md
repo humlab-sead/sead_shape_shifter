@@ -3,7 +3,7 @@
 **Date:** November 8, 2026  
 **Status:** Delivery plan; implementation has not started  
 **Source:** [AI Project Advisor proposal](./SHAPESHIFTER_PROJECT_AI_ADVISOR.md), revised November 8, 2026  
-**Repository baseline:** `staging` commit `95c56d8ccb779225ee3104c3035c192780519642`
+**Repository baseline:** `staging` commit `6be3d1090f0fbf2ed972dcd20fa05a6b88b971e1`
 
 ## Summary
 

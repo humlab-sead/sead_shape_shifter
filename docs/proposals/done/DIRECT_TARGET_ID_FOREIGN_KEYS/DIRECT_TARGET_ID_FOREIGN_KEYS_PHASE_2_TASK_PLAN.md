@@ -19,7 +19,7 @@ Phase 2 acceptance criteria:
 
 ## Repository Findings
 
-**Repository basis:** Branch `direct-target-id-foreign-keys`, commit `74f30ead`, 2026-10-23. The working tree also contains changes in `backend/tests/authorization/test_state_snapshot.py` and `backend/tests/services/test_file_manager.py`; these were not used as a basis or modified. Graphify located the ingester and protocol; source and tests below establish the behavior.
+**Repository basis:** Branch `direct-target-id-foreign-keys`, commit `60279beb`, 2026-10-23. The working tree also contains changes in `backend/tests/authorization/test_state_snapshot.py` and `backend/tests/services/test_file_manager.py`; these were not used as a basis or modified. Graphify located the ingester and protocol; source and tests below establish the behavior.
 
 | Source | Verified finding | Planning implication |
 | --- | --- | --- |

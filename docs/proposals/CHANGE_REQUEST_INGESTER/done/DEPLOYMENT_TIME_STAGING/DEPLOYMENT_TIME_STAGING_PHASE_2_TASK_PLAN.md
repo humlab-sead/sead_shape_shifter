@@ -22,7 +22,7 @@
 
 ## Repository Findings
 
-**Repository basis:** branch `deployment-time-staging` at `f0d76e23`, inspected 2026-10-17. `f0d76e23` amends the `987e28af` basis with documentation-only changes. Graphify located `build_change_request_package` callers; source and tests below were checked directly. Baseline results: 77 focused ingester tests, 54 ingester end-to-end unit tests, and 42 Phase 1 helper tests passed; Ruff passed on the current ingester package and insert-dependency helper. The worktree has no local `.venv`; commands below use the verified virtualenv at `../sead_shape_shifter/.venv`.
+**Repository basis:** branch `deployment-time-staging` at `c2fdf133`, inspected 2026-10-17. `c2fdf133` amends the `987e28af` basis with documentation-only changes. Graphify located `build_change_request_package` callers; source and tests below were checked directly. Baseline results: 77 focused ingester tests, 54 ingester end-to-end unit tests, and 42 Phase 1 helper tests passed; Ruff passed on the current ingester package and insert-dependency helper. The worktree has no local `.venv`; commands below use the verified virtualenv at `../sead_shape_shifter/.venv`.
 
 | Verified source | Current behavior | Phase 2 consequence |
 | --- | --- | --- |
@@ -212,7 +212,7 @@ The disposable tests must build their own small serial and identity target table
 | Area 3: Transactional inline SQL | Done | Areas 1–2; Phase 1 generator/cache rules | `render_inline_staging_deploy` emits one statement per artifact entry: support check, sorted union locks, temp staging, id map, allocation, FK resolution, unique-set checks, ordered inserts, SIMS sync. |
 | Area 4: Disposable deployment cases | Done | Areas 1–3; loopback PostgreSQL | 13 tests passed with no skips against loopback `127.0.0.1:55433` (PostgreSQL 17.11); the fixture created and dropped its own schemas. |
 
-Execution note: HEAD was `f0d76e23` (branch `deployment-time-staging`) when implementation started, an amend of the `987e28af` basis named in Repository Findings with documentation-only changes. The uncommitted phase-plan edit and the untracked Phase 2 task plan were preserved. `V-7` formatting could not pass on the existing tree: `ruff format --check` and `black --check` already fail on files untouched by this work (for example `orchestration.py` and `target_projection.py` at HEAD), so only the four new modules were formatted.
+Execution note: HEAD was `c2fdf133` (branch `deployment-time-staging`) when implementation started, an amend of the `987e28af` basis named in Repository Findings with documentation-only changes. The uncommitted phase-plan edit and the untracked Phase 2 task plan were preserved. `V-7` formatting could not pass on the existing tree: `ruff format --check` and `black --check` already fail on files untouched by this work (for example `orchestration.py` and `target_projection.py` at HEAD), so only the four new modules were formatted.
 
 ## Definition Of Done
 

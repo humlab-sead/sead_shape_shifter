@@ -39,7 +39,7 @@ None - no user action required.
 
 ## Validation
 
- - The pull request was merged into dev (merge commit b1d1b02).
+ - The pull request was merged into dev (merge commit 2a1fc29).
  - The only CI results available in the provided evidence are the Container Release workflow checks
 validate and publish, both of which were SKIPPED; they do not exercise the changed code.
  - No test-suite results were included in the available evidence, so execution and outcomes of the

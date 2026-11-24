@@ -20,7 +20,7 @@
 
 ## Repository Findings
 
-**Repository basis:** `feature/foreign-key-link-troubleshooter-experiments` at `f598e371`, inspected 2026-11-07. The worktree was clean before this plan; no uncommitted implementation changes were used. Graphify was queried for the dialog/context flow, then the files below were inspected directly.
+**Repository basis:** `feature/foreign-key-link-troubleshooter-experiments` at `8f68a1c8`, inspected 2026-11-07. The worktree was clean before this plan; no uncommitted implementation changes were used. Graphify was queried for the dialog/context flow, then the files below were inspected directly.
 
 | Evidence | Verified current behavior | Planning implication |
 |---|---|---|

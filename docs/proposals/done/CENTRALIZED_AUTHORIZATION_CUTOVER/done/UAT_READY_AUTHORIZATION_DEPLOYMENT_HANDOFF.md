@@ -23,7 +23,7 @@ This deployment runs the authorization system from the outset. The old server co
 | Proxy | `https://test-shape-shifter.sead.se` | Deployment configuration |
 | Image | `shape-shifter:dev` | `make info` |
 | Image ID | `6a487db722883da0eb0c3cfdc00444c07dea1edaf7d59b15643227576acc04a8` | `podman image inspect` |
-| OCI source revision | `dbff5ab95459652354c040b9d4fec6e2ead94f96` | `podman image inspect` |
+| OCI source revision | `6b8529537ee2bf87f6422590931b46d1ad83b7df` | `podman image inspect` |
 | OCI version and source | `dev`, from `github`, built 2026-09-22 10:55:15Z | `podman image inspect` |
 | Configuration revision | `GIT_REF=dev`, `IMAGE_NAME=shape-shifter:dev`, `GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git` | `~/config/deployment.env` |
 | Config directory | `/data/test-shape-shifter.sead.se/config` | `make info` |
@@ -50,14 +50,14 @@ This deployment runs the authorization system from the outset. The old server co
 | Check | Command | Result |
 |---|---|---|
 | Focused authorization suite, including the route-inventory and classification tests (`V-4.4`) | `.venv/bin/pytest backend/tests/authorization -q` | 192 passed, 1 skipped |
-| Deployed revision matches this checkout | `git diff --stat dbff5ab9..HEAD -- backend src tests` | Only `container/DEPLOYMENT.md` differs, so the deployed revision's application code and tests are unchanged |
+| Deployed revision matches this checkout | `git diff --stat 6b852953..HEAD -- backend src tests` | Only `container/DEPLOYMENT.md` differs, so the deployed revision's application code and tests are unchanged |
 | Full backend regression | `.venv/bin/pytest backend/tests -q` | 1853 passed, 15 skipped, 1 warning (an unrelated JPype deprecation) |
 | Loopback health | `curl -fsS --max-time 10 http://127.0.0.1:8012/api/v1/health` | `200`, `{"status":"healthy","version":"2.1.0","environment":"production"}`, last confirmed 2026-09-22 11:55:54Z |
 | Inventory and reconciliation (Phase 3, still current) | `container/scripts/authorization.sh integrity-check` and `reconcile` | Integrity passed; `Missing: 0 resources, 0 administrators, 0 grants` |
 | Provisioned content (Phase 3, still current) | Locator walk and `GET /api/v1/data-sources` | 26 of 26 project locators resolve; all 6 shared data sources listed |
 | Shared data source connection (Phase 3, still current) | `POST /api/v1/data-sources/sead-options/test` | `success: true`, 167 tables, 112 ms |
 | Audit-trail coverage (`V-4.6`) | `scripts/authorization.sh list-audit-events --json` | 144 events from 2026-09-17 19:08 to 2026-09-22 07:45: `grant_created` 53, `application_role_created` 43, `resource_lifecycle_changed` 30, `application_role_revoked` 18; every event `allowed` |
-| Release identity re-confirmed (`V-4.1`, `V-4.2`) | `make info`, `podman image inspect` | Image `shape-shifter:dev`, ID `6a487db7...04a8`, revision `dbff5ab9...4f96`, `GIT_REF=dev`, container port `8012`, uid/gid `1021/1021` |
+| Release identity re-confirmed (`V-4.1`, `V-4.2`) | `make info`, `podman image inspect` | Image `shape-shifter:dev`, ID `6a487db7...04a8`, revision `6b852953...4f96`, `GIT_REF=dev`, container port `8012`, uid/gid `1021/1021` |
 | Deployed manifest matches the reviewed manifest (`V-4.3`) | `sha256sum ~/config/authorization-manifest.yaml` | `43c03186f708164ce9334a001c45b80c4f206fb2efa06d413dff9ad4a2cafb90`, identical to the repository copy |
 | Resource inventory and grants (`V-4.5`) | `scripts/authorization.sh list-resources --json` and `list-grants --json` | 51 resources (36 active, 15 deleted) and 53 grants (47 principal, 6 `everyone`). Every active resource has at least one grant, and no grant points at a missing resource |
 | Access checks with reviewed projects (`V-4.7`) | `container/scripts/verify/verify_authenticated_access.sh` and the administrator probe | Unauthenticated `401`; `bruno` reading his own project `200`; `bruno` reading `Glykou_etal_2021` concealed `404`; `riia` reading her own project `200`; `admin` listing projects `200`. The remaining probe is invalid, not a defect: see *Access-check detail*. Both runs are filed as `<DATA_DIR>/deployment-verification/phase-4/verify-authenticated-access.log` |
@@ -135,7 +135,7 @@ The exercise ran on 2026-09-22 at 16:48:11 from the deployment host. Transcript:
 
 | Step | Result |
 |---|---|
-| Recorded image identity | `6a487db7…04a8`, revision `dbff5ab9…4f96` |
+| Recorded image identity | `6a487db7…04a8`, revision `6b852953…4f96` |
 | Stop current deployment | Container removed |
 | Restore authorization database | `/app/state/authorization.sqlite3` restored from the pre-rollback backup |
 | Integrity check | Passed |
@@ -223,7 +223,7 @@ The supervision follow-up is done. `make service-restart` reported `Service rest
 
 ## Post-Fix Re-Run Skipped (Accepted Risk)
 
-The corrected access-check script (commit `5ea5e534`) was merged to `dev` in PR #500 and reached the deployment host at 2026-09-22 19:09:21, after both recorded runs. The post-fix re-run was **skipped**: the script prompts for the principal passwords, and the operator has no access to them from the workstation used for this work.
+The corrected access-check script (commit `4b035a18`) was merged to `dev` in PR #500 and reached the deployment host at 2026-09-22 19:09:21, after both recorded runs. The post-fix re-run was **skipped**: the script prompts for the principal passwords, and the operator has no access to them from the workstation used for this work.
 
 The residual risk is accepted, for these reasons:
 

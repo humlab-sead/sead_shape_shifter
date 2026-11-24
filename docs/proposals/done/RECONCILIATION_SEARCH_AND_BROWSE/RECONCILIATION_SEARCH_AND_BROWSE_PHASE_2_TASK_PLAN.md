@@ -16,7 +16,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Shape Shifter `reconciliation-search-and-browse` at `5727bed84e859d19e50842fd224cae882fa61815`, inspected 2026-11-19. The revised phase plan, contract, proposal amendment, and Phase 1 task plan are part of this change. Authority Service `reconciliation-search-and-browse` is at `1f3f1b8470e44b1d0730fb9d8b00e3318ec588eb`. Graphify was used for navigation and source files were checked directly.
+**Repository basis:** Shape Shifter `reconciliation-search-and-browse` at `3e3ba3ce5131688a6a5ee2be0826a78abeef48fe`, inspected 2026-11-19. The revised phase plan, contract, proposal amendment, and Phase 1 task plan are part of this change. Authority Service `reconciliation-search-and-browse` is at `1f3f1b8470e44b1d0730fb9d8b00e3318ec588eb`. Graphify was used for navigation and source files were checked directly.
 
 | Evidence | Finding | Planning implication |
 |---|---|---|
@@ -218,7 +218,7 @@ Run Shape Shifter Python commands from its repository root and the Authority com
 
 ## Implementation Record
 
-Implemented on 2026-11-19 on branch `reconciliation-search-and-browse` (base `5727bed8`). Every `T*` task is complete.
+Implemented on 2026-11-19 on branch `reconciliation-search-and-browse` (base `3e3ba3ce`). Every `T*` task is complete.
 
 **Validation results**
 

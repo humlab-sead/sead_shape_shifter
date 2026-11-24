@@ -4,7 +4,7 @@ description:
 
 ## Summary
 
-This pull request promotes the dev branch (f1239b2) into main, carrying the changes accumulated on
+This pull request promotes the dev branch (ee31db9) into main, carrying the changes accumulated on
 dev since the previous promotion. The diff spans 93 files across the pipeline core, backend API,
 frontend, and documentation, including:
 

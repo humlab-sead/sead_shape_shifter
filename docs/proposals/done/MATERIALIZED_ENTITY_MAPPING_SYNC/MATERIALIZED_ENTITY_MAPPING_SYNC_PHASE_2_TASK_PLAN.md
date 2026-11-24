@@ -18,7 +18,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `materialized-entity-mapping-sync`, commit `a231bd4b`, planning date 2026-10-16. The Phase 2 implementation and tests are uncommitted; the task plan is untracked. Graphify outputs were refreshed after implementation and retained. Graphify identified the mapping and save services; the findings below were checked in source and tests.
+**Repository basis:** Branch `materialized-entity-mapping-sync`, commit `de1b1323`, planning date 2026-10-16. The Phase 2 implementation and tests are uncommitted; the task plan is untracked. Graphify outputs were refreshed after implementation and retained. Graphify identified the mapping and save services; the findings below were checked in source and tests.
 
 | Evidence | Finding | Planning implication |
 |---|---|---|

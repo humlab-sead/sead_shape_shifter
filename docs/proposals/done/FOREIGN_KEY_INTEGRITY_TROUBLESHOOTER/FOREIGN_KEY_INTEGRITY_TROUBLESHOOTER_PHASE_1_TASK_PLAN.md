@@ -17,7 +17,7 @@ Add saved-FK identity and the distinct unmatched count to each new `FK_DATA_INTE
 
 ## Repository Findings
 
-**Repository basis:** `dev` at `8f9af77e` on 2026-11-06. The untracked source phase plan was considered; no implementation or test changes were present at planning time. Graphify was used for navigation; the findings below were checked against current source and tests.
+**Repository basis:** `dev` at `d1e6b415` on 2026-11-06. The untracked source phase plan was considered; no implementation or test changes were present at planning time. Graphify was used for navigation; the findings below were checked against current source and tests.
 
 | Evidence | Verified finding | Planning implication |
 | --- | --- | --- |

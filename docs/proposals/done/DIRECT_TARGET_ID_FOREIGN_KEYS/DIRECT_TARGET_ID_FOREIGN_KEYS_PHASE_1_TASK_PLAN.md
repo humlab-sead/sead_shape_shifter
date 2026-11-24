@@ -18,7 +18,7 @@ Phase 1 acceptance criteria (`VM-1` in the phase plan):
 
 ## Repository Findings
 
-**Repository basis:** `direct-target-id-foreign-keys` at `81e62836`, planned on 2026-10-23. The untracked phase plan from this topic was considered; no implementation changes were present. Graphify located the main types, but its `ProjectMapper` → `ShapeShiftProject` path was ambiguous, so the data flow below was verified in source.
+**Repository basis:** `direct-target-id-foreign-keys` at `79195b69`, planned on 2026-10-23. The untracked phase plan from this topic was considered; no implementation changes were present. Graphify located the main types, but its `ProjectMapper` → `ShapeShiftProject` path was ambiguous, so the data flow below was verified in source.
 
 | Source | Verified finding | Planning implication |
 |---|---|---|

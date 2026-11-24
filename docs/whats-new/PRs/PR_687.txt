@@ -34,4 +34,4 @@ completion, stale-trial handling, failed-trial dashes, and exception-row switchi
 output is available in the supplied evidence, so their results are unknown.
  - The validate and publish checks in the "Container Release" workflow were reported as SKIPPED for
 this pull request.
- - The pull request was merged into dev (merge commit c473ac6).
+ - The pull request was merged into dev (merge commit 2aaa481).

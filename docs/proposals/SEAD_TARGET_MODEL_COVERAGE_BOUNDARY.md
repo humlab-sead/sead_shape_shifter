@@ -36,7 +36,7 @@ The schema dump (`docs/sead/01_tables.sql`, 137 tables) and the filtered snapsho
 
 `TargetModelSpecValidator` checks internal consistency only. No test, script, or Makefile target loads the filtered snapshot or queries SEAD to compare against the model. The only target-model drift guard in `make lint` is the generated schema reference.
 
-Recent history shows the cost. Commit `d677113b` disabled two entities and one column without updating the spec tests or the prose, and `tests/target_model` was red on `dev` until `9b3ca12f`. The accepted completeness proposal also states that `coordinate_system` is "modeled explicitly" and "kept in the shared superset"; the entity was added, disabled, and removed, and `tbl_coordinate_systems` exists in none of the three schema sources checked. The claim survived because no tool connected prose coverage claims to the model.
+Recent history shows the cost. Commit `b5f66412` disabled two entities and one column without updating the spec tests or the prose, and `tests/target_model` was red on `dev` until `0c9eb81d`. The accepted completeness proposal also states that `coordinate_system` is "modeled explicitly" and "kept in the shared superset"; the entity was added, disabled, and removed, and `tbl_coordinate_systems` exists in none of the three schema sources checked. The claim survived because no tool connected prose coverage claims to the model.
 
 ## Scope
 

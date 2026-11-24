@@ -53,7 +53,7 @@ diff.
 Commits pushed directly to the base branch after the previous merged pull request. Each
 commit below reached the base branch without a pull request of its own.
 
-- `028d509` fix: update SEAD logo source to use variable (2026-01-19)
-- `da61f07` feat: add docker-patch-frontend and presentation export commands (2026-01-19)
+- `03d25b0` fix: update SEAD logo source to use variable (2026-01-19)
+- `94d053f` feat: add docker-patch-frontend and presentation export commands (2026-01-19)
 
 Filtered 3 housekeeping commit(s): docs-only 1, release-version-bump 2.

@@ -26,8 +26,8 @@ The frozen unit is the image already verified in Phase 4 — confirmed on 2026-0
 
 | Field | Value | Check |
 | --- | --- | --- |
-| Source commit | `dbff5ab95459652354c040b9d4fec6e2ead94f96` — merge of PR #495, 2026-09-22 12:44:33 +0200 | `git log -1 dbff5ab9` (`V-5.1`) |
-| Application code and tests at the frozen revision | No differences from the current branch head | `git diff --stat dbff5ab9..HEAD -- backend src tests` is empty (`V-5.1`) |
+| Source commit | `6b8529537ee2bf87f6422590931b46d1ad83b7df` — merge of PR #495, 2026-09-22 12:44:33 +0200 | `git log -1 6b852953` (`V-5.1`) |
+| Application code and tests at the frozen revision | No differences from the current branch head | `git diff --stat 6b852953..HEAD -- backend src tests` is empty (`V-5.1`) |
 | Reviewed manifest | `resources/authorization/test-initial-manifest.yaml`, SHA-256 `43c03186f708164ce9334a001c45b80c4f206fb2efa06d413dff9ad4a2cafb90` | `sha256sum` in this checkout (`V-5.1`) |
 
 The reviewed manifest checksum equals the value recorded for the deployed manifest under `V-4.3` in the UAT-ready deployment record. The reviewed manifest is therefore unchanged since that record, and the deployed copy was identical to it at that time.
@@ -49,7 +49,7 @@ Read on 2026-09-22 as the deployment user. Every value below came from the comma
 | Deployed manifest | `config/authorization-manifest.yaml`, SHA-256 `43c03186f708164ce9334a001c45b80c4f206fb2efa06d413dff9ad4a2cafb90` | `sha256sum` on the host |
 | Image ID (configuration digest) | `6a487db722883da0eb0c3cfdc00444c07dea1edaf7d59b15643227576acc04a8` | `podman image inspect` |
 | Image manifest digest | `localhost/shape-shifter@sha256:7ff51b2b9af759f3cfa4e1d970e3acea025985aba1898e3263ae25fc8887474d` | `podman image inspect` `.RepoDigests` |
-| OCI labels | revision `dbff5ab95459652354c040b9d4fec6e2ead94f96`, version `dev`, source `https://github.com/humlab-sead/sead_shape_shifter.git` | `podman image inspect` |
+| OCI labels | revision `6b8529537ee2bf87f6422590931b46d1ad83b7df`, version `dev`, source `https://github.com/humlab-sead/sead_shape_shifter.git` | `podman image inspect` |
 | Running container image | `6a487db722883da0eb0c3cfdc00444c07dea1edaf7d59b15643227576acc04a8`, equal to the image ID | `podman container inspect` |
 | Runtime | Podman `5.7.0`, rootless | `make info` |
 
@@ -57,7 +57,7 @@ Three identifiers agree with the UAT-ready deployment record: the image ID, the 
 
 **A manifest digest exists, and it is locally computed.** Phase 5 planning assumed a locally built image would report an empty `.RepoDigests`. It does not, so no substitute identity is needed and none is recorded.
 
-Podman reports `localhost/shape-shifter@sha256:7ff51b2b9af759f3cfa4e1d970e3acea025985aba1898e3263ae25fc8887474d`, a digest over the image manifest. It differs from the image ID `6a487db7…04a8`, which is the digest of the image configuration. The identity therefore carries three identifiers: the configuration digest, the manifest digest, and the OCI `revision` label `dbff5ab9…4f96` naming the source commit.
+Podman reports `localhost/shape-shifter@sha256:7ff51b2b9af759f3cfa4e1d970e3acea025985aba1898e3263ae25fc8887474d`, a digest over the image manifest. It differs from the image ID `6a487db7…04a8`, which is the digest of the image configuration. The identity therefore carries three identifiers: the configuration digest, the manifest digest, and the OCI `revision` label `6b852953…4f96` naming the source commit.
 
 What a registry would add is provenance, not the digest's existence. The `localhost/` repository prefix shows the image was never pushed, so nothing outside this host vouches for the manifest, and a manifest digest computed on a different host is not guaranteed to match. Treat the manifest digest as local evidence about this deployment, and the `revision` label as the identity that travels across hosts.
 
@@ -153,7 +153,7 @@ Accepted 2026-09-23 by Roger Mähler. `PH5-AC-2` is met by the listener, firewal
 | Container | `shape-shifter`, state `running`, image `localhost/shape-shifter:dev` |
 | Port publication | `{"8012/tcp":[{"HostIp":"127.0.0.1","HostPort":"8012"}]}`, loopback-only |
 | Mounts | Eight, matching the documented set: `projects`, `shared`, `logs`, `output`, `backups`, `tmp`, and `state` read-write, and `.pgpass` read-only. No unexpected mount, and no sensitive host path mounted writable |
-| Image labels | revision `dbff5ab9…4f96`, created `2026-09-22T10:54:49Z`, title `shape-shifter`, version `dev`, source repository, built with buildah `1.42.1` |
+| Image labels | revision `6b852953…4f96`, created `2026-09-22T10:54:49Z`, title `shape-shifter`, version `dev`, source repository, built with buildah `1.42.1` |
 | Image history | No credential-like text |
 | Environment | Variable names listed, values never printed |
 
@@ -196,7 +196,7 @@ The deployed site is `/etc/nginx/sites-available/test-shape-shifter.sead.se`, an
 
 ### `T5.9` / `V-5.9` — route classification at the frozen revision: passed
 
-`.venv/bin/pytest backend/tests/authorization -q` returned 192 passed, 1 skipped, 0 failed, exit 0. It ran at branch head rather than at `dbff5ab9`, which is equivalent here because `git diff --stat dbff5ab9..HEAD -- backend src tests` is empty, so the tested code and tests are identical to the frozen revision.
+`.venv/bin/pytest backend/tests/authorization -q` returned 192 passed, 1 skipped, 0 failed, exit 0. It ran at branch head rather than at `6b852953`, which is equivalent here because `git diff --stat 6b852953..HEAD -- backend src tests` is empty, so the tested code and tests are identical to the frozen revision.
 
 ### `T5.8` / `V-5.8` — corrected access check: passed
 
@@ -232,7 +232,7 @@ The frozen release unit equals image ID `6a487db7…04a8`, so the exercise recor
 | Item | Value |
 | --- | --- |
 | Exercise | 2026-09-22 16:48:11, from the deployment host |
-| Image | `6a487db7…04a8`, revision `dbff5ab9…4f96`, equal to the running image after the exercise |
+| Image | `6a487db7…04a8`, revision `6b852953…4f96`, equal to the running image after the exercise |
 | Authorization database | restored from `authorization-20260922-164454.sqlite3`, SHA-256 `9ebf2f22…8b3e` |
 | Integrity check | passed |
 | Reconciliation | `Missing: 0 resources, 0 administrators, 0 grants` |

@@ -15,7 +15,7 @@
 
 ## Repository Findings
 
-**Repository basis:** `dev` at `7839c8b0`, planned 2026-10-17. Current uncommitted proposal and phase-plan changes, plus the current `sead_standard_model.yml`, were considered and left untouched. `TARGET_MODEL_REVIEW.md` is tracked and clean, but its `analysis_entity` section predates the current model and proposal. Graphify identified `resolve_effective_identity()` callers; current source confirmed them. A representative deployed schema was not accessed during planning.
+**Repository basis:** `dev` at `873a4be2`, planned 2026-10-17. Current uncommitted proposal and phase-plan changes, plus the current `sead_standard_model.yml`, were considered and left untouched. `TARGET_MODEL_REVIEW.md` is tracked and clean, but its `analysis_entity` section predates the current model and proposal. Graphify identified `resolve_effective_identity()` callers; current source confirmed them. A representative deployed schema was not accessed during planning.
 
 | Verified source | Finding and implementation implication |
 | --- | --- |
@@ -152,7 +152,7 @@ Execution used the repository virtualenv at `/data/roger/source/sead_shape_shift
 | Area 2: Review model assignments and inventory | Done | Area 1 | Review `analysis_entity` text corrected; derived inventory and root-row rules recorded; file assertions added. The model YAML needed no ownership correction. |
 | Area 3: Verify deployed ID generators | Done | Area 2; representative schema and disposable clone | 39 candidates supported, `value_type_item` unsupported, schema ambiguity recorded, and clone lock/identity checks passed. |
 
-Execution note: HEAD was `8dfca103` (branch `deployment-time-staging`) when implementation started. The three uncommitted proposal documents were pre-existing and were preserved. `scripts/review_staging_id_generators.py` was linted with `# noqa: E402` on its two `src` imports to match the existing script pattern that inserts the project root on `sys.path`.
+Execution note: HEAD was `f86bc66b` (branch `deployment-time-staging`) when implementation started. The three uncommitted proposal documents were pre-existing and were preserved. `scripts/review_staging_id_generators.py` was linted with `# noqa: E402` on its two `src` imports to match the existing script pattern that inserts the project root on `sys.path`.
 
 ## Definition Of Done
 

@@ -35,5 +35,5 @@ opt-in.
 
 Not verified: validation results unavailable. No CI check results were reported for this pull
 request (empty status check rollup), and no test commands or outcomes are included in the available
-evidence. The pull request was merged into dev (merge commit 5538695), but no individual checks can
+evidence. The pull request was merged into dev (merge commit 8c4ee98), but no individual checks can
 be confirmed as passed or failed.

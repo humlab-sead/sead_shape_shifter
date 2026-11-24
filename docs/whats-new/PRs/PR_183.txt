@@ -49,5 +49,5 @@ execution and outcomes of the test suites are unknown.
  - The diff adds new test files (backend/tests/utils/test_graph.py, backend/tests/utils/test_sql.py,
 tests/loaders/test_data_loaders.py) and updates numerous existing tests for the type rename, but no
 run results for them are available.
- - The pull request was merged into dev (merge commit 00e5b70), but no check outcomes are reported
+ - The pull request was merged into dev (merge commit 47d9dc9), but no check outcomes are reported
 in the available evidence.

@@ -25,7 +25,7 @@ Source: [Foreign-Key Link Troubleshooter](FOREIGN_KEY_LINK_TROUBLESHOOTER.md), [
 
 ## Repository Findings
 
-**Repository basis:** `feature/foreign-key-link-troubleshooter` at `ccb33e9c`, inspected 2026-11-02; implementation files were clean, and this task plan was the only untracked file. Graphify was used for navigation and every finding below was verified in source, tests, or configuration.
+**Repository basis:** `feature/foreign-key-link-troubleshooter` at `8a4c274c`, inspected 2026-11-02; implementation files were clean, and this task plan was the only untracked file. Graphify was used for navigation and every finding below was verified in source, tests, or configuration.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |
@@ -419,7 +419,7 @@ After code changes, refresh the repository knowledge graph with `GRAPHIFY_VIZ_NO
 | Area 1: Backend response contract and mapper | Done | Phase 2/3 result types | `V-1` passed; mapper contract and bounded JSON-safe response verified. |
 | Area 2: Backend orchestration and route | Done | Area 1; Phase 2/3 services | `V-2`–`V-5` passed; `V-6` records one pre-existing Pylint diagnostic. |
 | Area 3: Frontend types, API, helper, composable | Done | Area 2 contract | `V-7` and frontend type/build checks passed. |
-| Area 4: Frontend dialog and validation wiring | Done | Area 3; validation panel/view | `T4.1`–`T4.5` complete and committed in `65209594` with the header fix in `40f6b08d`. `V-8` re-verified 2026-11-04: 28 tests passed across 3 files. `V-9` re-verified: `vue-tsc --noEmit` exits 0 and `components.d.ts` registers `LinkTroubleshooterDialog`. `V-11` passed on 2026-11-04 in the staging container. |
+| Area 4: Frontend dialog and validation wiring | Done | Area 3; validation panel/view | `T4.1`–`T4.5` complete and committed in `f924436a` with the header fix in `b03fce53`. `V-8` re-verified 2026-11-04: 28 tests passed across 3 files. `V-9` re-verified: `vue-tsc --noEmit` exits 0 and `components.d.ts` registers `LinkTroubleshooterDialog`. `V-11` passed on 2026-11-04 in the staging container. |
 
 ## Definition Of Done
 

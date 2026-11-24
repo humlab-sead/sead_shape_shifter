@@ -18,11 +18,11 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `container-deploy-versioning`, commit `6cfaf910`, planning date 2026-10-11. The worktree contains the uncommitted Phase 2 changes to `container/` described in the [Phase 2 task plan](./CONTAINER_DEPLOY_VERSIONING_PHASE_2_TASK_PLAN.md), including the untracked `container/tests/` directory. Those changes were read as the current state and left unchanged.
+**Repository basis:** Branch `container-deploy-versioning`, commit `c1bbf986`, planning date 2026-10-11. The worktree contains the uncommitted Phase 2 changes to `container/` described in the [Phase 2 task plan](./CONTAINER_DEPLOY_VERSIONING_PHASE_2_TASK_PLAN.md), including the untracked `container/tests/` directory. Those changes were read as the current state and left unchanged.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |
-| `container/scripts/container.sh`, `container/Makefile`, `container/service/shape-shifter.service` | The dispatcher (`up`, `down`, `restart`, `logs`, `status`, `help`) is committed in `7e17837a`. Make lifecycle targets invoke `scripts/container.sh`, and the unit runs `%h/container/scripts/container.sh up\|down`. `logs` uses `exec`, and an empty or unknown action prints usage and exits 64. | Preserve this contract and add regression coverage. The phase plan's "in-progress dispatcher edits" premise is stale: the only uncommitted `container.sh` change is a Phase 2 diagnostic-wording edit. |
+| `container/scripts/container.sh`, `container/Makefile`, `container/service/shape-shifter.service` | The dispatcher (`up`, `down`, `restart`, `logs`, `status`, `help`) is committed in `6ae502c4`. Make lifecycle targets invoke `scripts/container.sh`, and the unit runs `%h/container/scripts/container.sh up\|down`. `logs` uses `exec`, and an empty or unknown action prints usage and exits 64. | Preserve this contract and add regression coverage. The phase plan's "in-progress dispatcher edits" premise is stale: the only uncommitted `container.sh` change is a Phase 2 diagnostic-wording edit. |
 | `container/scripts/verify/verify_container_release.sh::REQUIRED_FILES` | Lists `container.sh`, `load-env.sh`, `env-config.sh`, `setup.sh`, `build.sh`, `backup.sh`, `healthcheck.sh`, the unit, and three resources. It omits `scripts/service.sh` and `scripts/verify/verify_container_release.sh`. | `make service-*` needs `service.sh`, and the Phase 2 installer needs the release verifier inside the bundle. A release missing either currently passes validation. |
 | `git archive HEAD:container \| tar -t \| grep -c scripts/verify/` | The published archive already contains `scripts/verify/` (19 entries). | Adding those files to `REQUIRED_FILES` changes no current archive; it only makes an omission fail. |
 | `container/scripts/verify/README.md` | Documents 12 of the 14 verification files. `verify_container_release.sh` and `verify_readonly_role.sql` are absent, and no row names callers or a disposition. | Add a disposition table with purpose, callers, safeguard, and decision. |
@@ -195,7 +195,7 @@
 
 ## Execution Record
 
-Implementation date 2026-10-11, branch `container-deploy-versioning`, from commit `6cfaf910` plus the changes below. The uncommitted Phase 2 `container/` changes were read as the current state and preserved.
+Implementation date 2026-10-11, branch `container-deploy-versioning`, from commit `c1bbf986` plus the changes below. The uncommitted Phase 2 `container/` changes were read as the current state and preserved.
 
 **Implemented deliverables:**
 

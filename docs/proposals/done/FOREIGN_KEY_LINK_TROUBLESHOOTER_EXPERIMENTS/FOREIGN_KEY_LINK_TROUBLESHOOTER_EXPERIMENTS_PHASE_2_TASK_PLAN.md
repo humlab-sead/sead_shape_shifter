@@ -17,7 +17,7 @@
 
 ## Repository Findings
 
-**Repository basis:** `feature/foreign-key-link-troubleshooter-experiments` at `92627dc6`, inspected 2026-11-07. The worktree was clean before this document was created. Graphify was queried for the Phase 2 flow; its broad result was checked against the code and tests below.
+**Repository basis:** `feature/foreign-key-link-troubleshooter-experiments` at `1eb528ae`, inspected 2026-11-07. The worktree was clean before this document was created. Graphify was queried for the Phase 2 flow; its broad result was checked against the code and tests below.
 
 | Evidence | Verified current behavior | Planning implication |
 |---|---|---|
@@ -136,7 +136,7 @@ The commands below are executable from the repository root. Baselines describe *
 
 ## Execution Evidence
 
-Implemented 2026-11-07 on `feature/foreign-key-link-troubleshooter-experiments` at `4cbb0fb4` with only the plan's named deliverables changed.
+Implemented 2026-11-07 on `feature/foreign-key-link-troubleshooter-experiments` at `4a04dbe3` with only the plan's named deliverables changed.
 
 | Check | Command | Result |
 |---|---|---|
