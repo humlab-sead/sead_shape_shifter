@@ -1,3 +1,15 @@
+# [2.9.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.8.0...v2.9.0) (2026-11-24)
+
+
+### Bug Fixes
+
+* **workflow:** accept comma-separated pull requests in --included-prs ([ebc37c1](https://github.com/humlab-sead/sead_shape_shifter/commit/ebc37c1cdfac11fd7fe3f896c1cba4d50bcda776))
+
+
+### Features
+
+* **hooks:** update PreToolUse commands for graphify integration and add skills symlink ([8fd380f](https://github.com/humlab-sead/sead_shape_shifter/commit/8fd380f4812cdd3c9ec0711a2fecc3c29e3c7ab8)), closes [#767](https://github.com/humlab-sead/sead_shape_shifter/issues/767)
+
 # [2.8.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.7.1...v2.8.0) (2026-11-23)
 
 
