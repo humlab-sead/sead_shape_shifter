@@ -83,7 +83,7 @@ else
     fi
 
     # The LLM step (make semantic-graphify) is the only one that indexes Markdown documents.
-    semantic_time=$(mtime "$graph_dir/cost.json")
+    semantic_time=$(mtime "$graph_dir/.graphify_analysis.json")
     if (( semantic_time == 0 )); then
       action "documents have never been indexed (no LLM-based run yet)" "make semantic-graphify GRAPHIFY_CONCURRENCY=1"
     else
