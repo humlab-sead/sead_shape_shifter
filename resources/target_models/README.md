@@ -23,11 +23,13 @@ Measured against the declared source of truth below:
 
 ### Source of truth
 
-`docs/investigations/sead-target-model-completeness/columns.csv` — a current run
-of `exported-columns.sql` (same folder) against `sead_staging`, declared by the
-maintainer on 2026-11-10. Rerun that query read-only against `sead_staging` to
-refresh the surface. Earlier surfaces (the `docs/sead/01_tables.sql` dump, the
-136-table filtered import snapshot) are historical context only.
+`docs/sead/columns.csv` — a run of `docs/sead/columns.sql` against `sead_staging`,
+declared the source of truth by the maintainer on 2026-11-10. Refresh it with
+`make sead-schema`, which also regenerates `docs/sead/SCHEMA.md`; see
+[docs/sead/README.md](../../docs/sead/README.md). The investigation's copy in
+`docs/investigations/sead-target-model-completeness/` is the dated snapshot behind its
+findings. Earlier surfaces (the `docs/sead/01_tables.sql` dump, the 136-table filtered
+import snapshot) are historical context only.
 
 ### Exclusions from the completeness surface
 

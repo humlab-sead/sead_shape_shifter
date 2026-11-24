@@ -144,7 +144,7 @@ tidy:
 	@uv run black src tests backend ingesters scripts
 
 .PHONY: lint
-lint: tidy ruff pylint check-target-model-schema-reference check-doc-links
+lint: tidy ruff pylint check-target-model-schema-reference sead-schema-check check-doc-links
 
 .PHONY: check-doc-links
 check-doc-links:
@@ -373,6 +373,15 @@ create-graphify:
 # file (graph is far above the 5000-node viz limit and the HTML is unused).
 update-graphify:
 	@GRAPHIFY_VIZ_NODE_LIMIT=0 GRAPHIFY_NO_BACKUP=1 graphify update $(CURDIR) --force
+	@$(MAKE) --no-print-directory graphify-wiki
+
+# Regenerates graphify-out/wiki/ (index.md plus one page per community and per highly
+# connected node) from the current graph. Runs locally in about a second with no LLM calls,
+# and removes pages for communities that no longer exist. The git hooks do not run it, so
+# update-graphify and semantic-graphify call it at the end.
+.PHONY: graphify-wiki
+graphify-wiki:
+	@graphify export wiki
 
 # Rebuilds the graph including the LLM-based (semantic) results: document/paper/image
 # extraction and community names. Code is still parsed locally (AST).
@@ -422,7 +431,8 @@ semantic-graphify:
 		$(if $(GRAPHIFY_MODE),--mode $(GRAPHIFY_MODE)) $(if $(GRAPHIFY_REEXTRACT),--force); \
 	graphify label $(CURDIR) --backend openai $(if $(GRAPHIFY_CONCURRENCY),--max-concurrency $(GRAPHIFY_CONCURRENCY)) \
 		$(if $(GRAPHIFY_RELABEL),,--missing-only); \
-	echo "✓ Semantic graph rebuilt in graphify-out/"
+	graphify export wiki; \
+	echo "✓ Semantic graph and wiki rebuilt in graphify-out/"
 
 install-graphify:
 	@uv tool install "graphifyy[all]" --force
@@ -430,6 +440,47 @@ install-graphify:
 	@graphify vscode install
 	@graphify codex install
 	@echo "✓ Graphify installed and git hooks set up"
+
+################################################################################
+# SEAD schema reference
+################################################################################
+
+# Exports the SEAD schema reference docs/sead/columns.csv (one row per column, with type,
+# nullability, primary key and foreign-key target) by running docs/sead/columns.sql read-only,
+# then regenerates docs/sead/SCHEMA.md. Connection settings are taken from the environment if
+# set, otherwise from their KEY=value lines in .env: SEAD_HOST, SEAD_PORT, SEAD_USER, SEAD_DBNAME.
+# psql never prompts (-w): put the password in ~/.pgpass or PGPASSWORD. The export is written to
+# a temporary file first, so a failed run leaves the current columns.csv unchanged.
+.PHONY: sead-schema
+sead-schema:
+	@set -e; \
+	setting() { \
+		v=$$(printenv "$$1" || true); \
+		if [ -z "$$v" ] && [ -f .env ]; then \
+			v=$$(sed -nE "s/^[[:space:]]*(export[[:space:]]+)?$$1[[:space:]]*=[[:space:]]*(.*)$$/\2/p" .env | tail -n 1); \
+		fi; \
+		printf '%s' "$$v" | sed -E 's/[[:space:]]+$$//; s/^"(.*)"$$/\1/'; \
+	}; \
+	host=$$(setting SEAD_HOST); port=$$(setting SEAD_PORT); user=$$(setting SEAD_USER); dbname=$$(setting SEAD_DBNAME); \
+	if [ -z "$$host" ] || [ -z "$$port" ] || [ -z "$$user" ] || [ -z "$$dbname" ]; then \
+		echo "error: set SEAD_HOST, SEAD_PORT, SEAD_USER and SEAD_DBNAME (environment or .env)" >&2; exit 1; \
+	fi; \
+	tmp=$$(mktemp docs/sead/.columns.csv.XXXXXX); trap 'rm -f "$$tmp"' EXIT; \
+	echo "Exporting SEAD columns from $$dbname at $$host:$$port as $$user..."; \
+	PGCONNECT_TIMEOUT=15 psql -h "$$host" -p "$$port" -U "$$user" -d "$$dbname" -X -w -q \
+		--csv -P null=NULL -v ON_ERROR_STOP=1 -f docs/sead/columns.sql -o "$$tmp"; \
+	chmod 644 "$$tmp"; mv "$$tmp" docs/sead/columns.csv; \
+	echo "Wrote docs/sead/columns.csv ($$(($$(wc -l < docs/sead/columns.csv) - 1)) columns)"
+	@$(MAKE) --no-print-directory sead-schema-docs
+
+# Regenerates docs/sead/SCHEMA.md from docs/sead/columns.csv without a database connection.
+# Use `make sead-schema-check` to verify that SCHEMA.md matches the CSV.
+.PHONY: sead-schema-docs sead-schema-check
+sead-schema-docs:
+	@python3 scripts/target_model/generate_sead_schema_reference.py
+
+sead-schema-check:
+	@python3 scripts/target_model/generate_sead_schema_reference.py --check
 
 ################################################################################
 # Project Editor UI

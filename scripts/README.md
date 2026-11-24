@@ -108,6 +108,7 @@ worked examples.
 | --- | --- |
 | `print_target_model_entity.py` | Print one entity specification from a target model YAML file. |
 | `generate_target_model_schema_reference.py` | Generate or check `docs/TARGET_MODEL_SCHEMA_REFERENCE.md` from the Pydantic schema. |
+| `generate_sead_schema_reference.py` | Generate or check `docs/sead/SCHEMA.md` from `docs/sead/columns.csv` (`make sead-schema-docs`, `make sead-schema-check`). Standard library only, no database connection. |
 | `generate_target_model_docs.py` | Render target-model documentation as HTML, Markdown, Excel, or a SIMS reference. |
 | `generate_project_template.py` | Build a starter `shapeshifter.yml` scaffold from a target model. |
 | `export_target_tables.py` | Export target-model entities from a PostgreSQL schema to one Excel workbook. |

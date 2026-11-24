@@ -788,12 +788,62 @@ def test_included_prs_overrides_detection_for_a_promotion(monkeypatch: pytest.Mo
         "list_included_pull_requests",
         lambda metadata, repo: pytest.fail("detection ran despite --included-prs"),
     )
+    monkeypatch.setattr(
+        update_pr_descriptions,
+        "fetch_pull_requests",
+        lambda numbers, repo: [{"number": number, "title": ""} for number in numbers],
+    )
     context = {"metadata": {"headRefName": "dev", "baseRefName": "staging", "url": "https://github.com/o/r/pull/9"}}
 
     draft = update_pr_descriptions.build_draft(context, None, included_prs=[621, 626])
 
     assert "#621" in draft["body"]
     assert "#626" in draft["body"]
+
+
+def test_parse_included_prs_accepts_comma_separated_numbers_and_ranges() -> None:
+    assert update_pr_descriptions.parse_included_prs("755, 758,760-762") == [755, 758, 760, 761, 762]
+
+
+@pytest.mark.parametrize("value", ["", " , ", "755,abc", "755,,x"])
+def test_parse_included_prs_rejects_invalid_values(value: str) -> None:
+    with pytest.raises(ValueError, match="Invalid PR number or range"):
+        update_pr_descriptions.parse_included_prs(value)
+
+
+def test_included_prs_draft_lists_titles_and_closing_issues(monkeypatch: pytest.MonkeyPatch) -> None:
+    records = {
+        621: {"number": 621, "title": "Add first change", "body": "## Summary\n\nCloses #700\n", "closingIssuesReferences": []},
+        626: {"number": 626, "title": "Add second change", "body": "", "closingIssuesReferences": [{"number": 701}]},
+    }
+    commands: list[list[str]] = []
+
+    def fake_run_command(command: list[str], **_: object) -> str:
+        commands.append(command)
+        return json.dumps(records[int(command[3])])
+
+    monkeypatch.setattr(update_pr_descriptions, "run_command", fake_run_command)
+    context = {"metadata": {"headRefName": "staging", "baseRefName": "main", "url": "https://github.com/o/r/pull/9"}}
+
+    draft = update_pr_descriptions.build_draft(context, None, repo="o/r", included_prs=[621, 626])
+
+    assert "Add first change" in draft["body"]
+    assert "Add second change" in draft["body"]
+    assert "Closes #700" in draft["body"]
+    assert "Closes #701" in draft["body"]
+    assert all(command[:3] == ["gh", "pr", "view"] and command[-2:] == ["--repo", "o/r"] for command in commands)
+
+
+def test_included_prs_draft_lists_unreadable_pull_request_by_number(monkeypatch: pytest.MonkeyPatch) -> None:
+    def failing_run_command(command: list[str], **_: object) -> str:
+        raise update_pr_descriptions.CommandError("not found")
+
+    monkeypatch.setattr(update_pr_descriptions, "run_command", failing_run_command)
+    context = {"metadata": {"headRefName": "staging", "baseRefName": "main", "url": "https://github.com/o/r/pull/9"}}
+
+    draft = update_pr_descriptions.build_draft(context, None, included_prs=[621])
+
+    assert "#621" in draft["body"]
 
 
 def test_promotion_draft_accepts_a_trailing_orphaned_commit_record() -> None:

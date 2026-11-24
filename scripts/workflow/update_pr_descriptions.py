@@ -164,6 +164,19 @@ def parse_pr_specs(specs: list[str]) -> list[int]:
     return list(dict.fromkeys(numbers))
 
 
+def parse_included_prs(value: str) -> list[int]:
+    """Expand a comma-separated `--included-prs` value, such as `621,626-628`.
+
+    Each comma-separated item may be a number or an inclusive range. Spaces around items are
+    ignored. Raises `ValueError` when the value holds no item or an item is not a valid number
+    or range.
+    """
+    specs = [item.strip() for item in value.split(",") if item.strip()]
+    if not specs:
+        raise ValueError(f"Invalid PR number or range: {value}")
+    return parse_pr_specs(specs)
+
+
 def run_command(
     command: list[str],
     *,
@@ -1132,6 +1145,24 @@ def collect_issue_numbers(records: Sequence[dict[str, Any]]) -> list[int]:
     return list(dict.fromkeys(numbers))
 
 
+def fetch_pull_requests(numbers: Sequence[int], repo: str | None) -> list[dict[str, Any]]:
+    """Read the listed pull requests with the same fields that automatic detection uses.
+
+    Returns one record per number, in the given order, so a promotion draft built from
+    `--included-prs` shows titles and the `Closes` lines of the carried pull requests. A pull
+    request that cannot be read is listed by number only.
+    """
+    records: list[dict[str, Any]] = []
+    for number in numbers:
+        command = gh_command(["pr", "view", str(number), "--json", PROMOTION_JSON_FIELDS], repo)
+        try:
+            record = json.loads(run_command(command))
+        except (CommandError, json.JSONDecodeError):
+            record = None
+        records.append(record if isinstance(record, dict) else {"number": number, "title": ""})
+    return records
+
+
 def build_promotion_draft(metadata: dict[str, Any], included: Sequence[dict[str, Any]]) -> dict[str, str]:
     """Build a promotion description that lists the pull requests it carries.
 
@@ -1204,7 +1235,7 @@ def build_draft(
     if not is_promotion_pull_request(metadata):
         return generate_draft(context, model, verbose=verbose, attempts=attempts)
     if included_prs:
-        included: list[dict[str, Any]] = [{"number": number, "title": ""} for number in included_prs]
+        included = fetch_pull_requests(included_prs, repo)
     else:
         included = list_included_pull_requests(metadata, repo)
     return build_promotion_draft(metadata, included)
@@ -1282,8 +1313,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--included-prs",
         help=(
-            "With --draft, comma-separated pull request numbers to list in a promotion draft instead of "
-            "detecting them from branch history"
+            "With --draft, comma-separated pull request numbers or ranges (for example 621,626-628) to list "
+            "in a promotion draft instead of detecting them from branch history"
         ),
     )
     return parser.parse_args()
@@ -1315,7 +1346,7 @@ def main() -> int:
         print("--included-prs can only be used with --draft.", file=sys.stderr)
         return 2
     try:
-        included_prs = parse_pr_specs([args.included_prs]) if args.included_prs else None
+        included_prs = parse_included_prs(args.included_prs) if args.included_prs else None
     except ValueError as error:
         print(error, file=sys.stderr)
         return 2
