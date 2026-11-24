@@ -127,6 +127,7 @@ worked examples.
 | `spinup_disposable_postgres.py` | Start, inspect, and remove a loopback disposable PostgreSQL container for integration tests. |
 | `install-uncanccess.sh` | Download the UCanAccess JDBC package into `lib/ucanaccess/`. |
 | `archie` | Archive a directory to `archive/<name>_<timestamp>.tar.gz`. |
+| `status.sh` | Show the status of graphify, repository hooks, branch promotion and the SEAD schema reference, with the command for each action (`make status`). Read-only and offline. |
 | `graphify-to-wiki.py` | Convert `graphify-out/graph.json` into graphify wiki pages. |
 
 ### `postgres/`
