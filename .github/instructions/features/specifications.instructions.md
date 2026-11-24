@@ -1,5 +1,5 @@
 ---
-applyTo: "src/specifications/**,tests/test_constraints*,tests/project/**"
+applyTo: "src/specifications/**,tests/specifications/**,tests/project/**"
 ---
 
 # Specifications – AI Coding Instructions

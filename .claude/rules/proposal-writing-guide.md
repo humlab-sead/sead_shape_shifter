@@ -51,7 +51,7 @@ Use this guide when writing or updating design proposals for this repository.
 
 ## Structure
 
-Follow the required proposal shape in [proposal-document-structure.instructions.md](./proposal-document-structure.instructions.md) and the template at [docs/templates/PROPOSAL_TEMPLATE.md](../../docs/templates/PROPOSAL_TEMPLATE.md).
+Follow the required proposal shape in [proposal-document-structure.md](proposal-document-structure.md) and the template at [docs/templates/PROPOSAL_TEMPLATE.md](../../docs/templates/PROPOSAL_TEMPLATE.md).
 
 Keep the shape lean: use only the sections that earn their place and stop once the decision is clear. For work that will use a phase plan, add a compact `Planning Handoff` after Acceptance Criteria. State confirmed decisions, constraints and behavior to preserve, expected validation outcomes, and open questions with the phase by which each must be resolved. For major efforts, link to a separate phase plan instead of embedding a full execution document.
 

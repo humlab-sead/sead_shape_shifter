@@ -1,7 +1,6 @@
 ---
 paths:
   - "docs/whats-new/v*.md"
-  - "docs/whats-new/????-??-v*.md"
   - "docs/whats-new/TEMPLATE.md"
   - "docs/whats-new/PENDING.md"
 ---

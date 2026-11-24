@@ -38,7 +38,7 @@ This order is enforced in `ShapeShifter.normalize()`. Never reorder stages. Each
 - Never reference FK-added columns in filter expressions — filters run before linking.
 - `extra_columns` may reference FK-added columns; they are deferred until after linking, not an error on the first pass.
 - `unnest` `id_vars` and `value_vars` must exist at unnest time — they may be defined as `extra_columns` or FK columns, so do not assume they come from the source.
-- `system_id` is assigned per entity and is stable within a run; FK values always reference the parent's `system_id`, never external IDs.
+- `system_id` is assigned per entity and is stable within a run; Core FK values always reference the parent's `system_id`, never external IDs. The change-request package FK declared with `foreign_key_value_sources.<target>: public_id` is the only exception and creates no Core link.
 
 ## Orchestrator: `ShapeShifter`
 
@@ -70,7 +70,7 @@ This order is enforced in `ShapeShifter.normalize()`. Never reorder stages. Each
 
 ## Local File Resolution
 
-- `_resolve_project_local_file_options()` rewrites relative `filename` paths when `location: local`.
+- `apply_local_file_options()` in `src/normalizer.py` rewrites relative `filename` paths when `location: local`.
 - This runs at load time, not at config parse time.
 - Uses `resolve_managed_file_path()` — do not construct paths manually.
 

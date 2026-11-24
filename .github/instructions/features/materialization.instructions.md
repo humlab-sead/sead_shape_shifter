@@ -1,5 +1,5 @@
 ---
-applyTo: "backend/app/services/materialization*,backend/app/api/v1/endpoints/materialization*,src/specifications/materialize.py,backend/tests/test_materialization*"
+applyTo: "backend/app/services/materialization*,backend/app/api/v1/endpoints/materialization*,src/specifications/materialize.py,backend/tests/specifications/test_materialization*,tests/specifications/test_materialize.py"
 ---
 
 # Materialization – AI Coding Instructions

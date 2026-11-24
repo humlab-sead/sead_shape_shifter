@@ -54,7 +54,7 @@ class MyLoader(DataLoader):
 
 ## Local File Resolution
 
-- `location: local` in `options` triggers relative path resolution in `ShapeShifter._resolve_project_local_file_options()`.
+- `location: local` in `options` triggers relative path resolution in `apply_local_file_options()` in `src/normalizer.py`.
 - The loader itself does not resolve relative paths — the normalizer rewrites the path before calling `load()`.
 
 ## `ConnectTestResult`

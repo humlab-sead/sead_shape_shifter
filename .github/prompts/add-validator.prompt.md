@@ -11,10 +11,10 @@ Choose one of the two validator types below and follow its pattern:
 
 ## Constraint Validator (config-level, pre/post-merge stage)
 
-**File**: `src/constraints.py`
+**File**: `src/specifications/constraints.py`
 
 ```python
-from src.constraints import ConstraintValidator, Validators
+from src.specifications.constraints import ConstraintValidator, Validators
 
 @Validators.register(key="{validator_key}", stage="{pre-merge|post-merge}")
 class {ValidatorName}(ConstraintValidator):
@@ -39,7 +39,7 @@ Issue structure:
 - **pre-merge**: validates before entity merges with inherited config
 - **post-merge**: validates after full entity config resolution
 
-**Tests** go in `tests/test_constraints.py`.
+**Tests** go in `tests/specifications/test_constraints.py`.
 
 ---
 

@@ -62,7 +62,7 @@ Core FK links use local `system_id` values. A change-request package can use an 
 ## Common Implementation Tasks
 
 - **Backend endpoint**: router in `backend/app/api/v1/endpoints/`, models in `backend/app/models/`, service in `backend/app/services/`, register in `backend/app/api/v1/api.py`. See `.github/prompts/add-endpoint.prompt.md`.
-- **Constraint validator**: `@Validators.register(key=..., stage=...)` in `src/constraints.py`. See `.github/prompts/add-validator.prompt.md`.
+- **Constraint validator**: `@Validators.register(key=..., stage=...)` in `src/specifications/constraints.py`. See `.github/prompts/add-validator.prompt.md`.
 - **Data loader**: `@DataLoaders.register(key=...)` in `src/loaders/`, `ClassVar` schema on the class. See `.github/prompts/add-loader.prompt.md`.
 - **Specification**: subclass `ProjectSpecification`, implement `is_satisfied_by()`, add to `CompositeProjectSpecification.__init__()`.
 - **Ingester**: directory under `ingesters/<name>/`, implement `Ingester` protocol, `@Ingesters.register(key="<name>")`. See `ingesters/AGENTS.md`.
@@ -71,7 +71,7 @@ Core FK links use local `system_id` values. A change-request package can use an 
 
 ## Key References
 
-- Core models: `src/model.py`, `src/constraints.py`, `src/specifications.py`.
+- Core models: `src/model.py`, `src/specifications/constraints.py`, `src/specifications/`.
 - Backend entry: `backend/app/main.py`; validation: `backend/app/services/validation_service.py`.
 - SIMS client: `backend/app/clients/sims_client.py` (env vars: `SHAPE_SHIFTER_SIMS_SERVICE_URL`, `SHAPE_SHIFTER_SIMS_CONTRACT_CALLER`, `SHAPE_SHIFTER_SIMS_CONTRACT_REGISTRATION_TOKEN`).
 - Docs: `docs/DESIGN.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`.

@@ -11,7 +11,9 @@ Rules for the conversion:
 - `applyTo: "**/*"` becomes a rule without `paths`, which Claude Code loads for every task.
 - A source file without `applyTo` is skipped. Copilot loads those by matching their
   description to the task, which Claude Code cannot do. Skipped files are listed in the output.
-- The Markdown body is copied unchanged. Generated files start with a marker comment.
+- The Markdown body is copied, except that references to other `*.instructions.md` files are
+  rewritten to point at the matching generated rule file (or, for skipped files, at the source file).
+  Generated files start with a marker comment.
 - Rule files that carry the marker but have no source file any more are deleted.
   Files without the marker are never changed or deleted.
 
@@ -25,6 +27,7 @@ Uses only the standard library and does not connect to any service.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from collections.abc import Sequence
@@ -42,6 +45,7 @@ ALWAYS_ON_PATTERNS: frozenset[str] = frozenset({"**/*", "**"})
 FRONTMATTER_END = re.compile(r"^---+\s*$")
 KEY_LINE = re.compile(r"^([A-Za-z_][\w-]*):\s*(.*)$")
 LIST_ITEM = re.compile(r"^\s+-\s+(.*)$")
+INSTRUCTION_REF = re.compile(r"(?<![\w/.-])((?:\.{1,2}/)?(?:[\w-]+/)*[\w-]+" + re.escape(SOURCE_SUFFIX) + r")")
 
 
 @dataclass(frozen=True)
@@ -109,7 +113,45 @@ def parse_source(path: Path) -> SourceFile:
     return SourceFile(path=path, apply_to=apply_to or None, body="".join(lines[end + 1 :]))
 
 
-def render(source: SourceFile) -> str:
+def find_referenced_source(source: SourceFile, reference: str, sources: Sequence[SourceFile]) -> SourceFile | None:
+    """Finds the instruction file named by a reference such as `features/loaders.instructions.md`.
+
+    Tries the path relative to the referring file, then relative to `.github/instructions/`,
+    then a unique match on the file name alone. Returns None when nothing matches.
+    """
+    for base in (source.path.parent, SOURCE_DIR):
+        candidate: Path = (base / reference).resolve()
+        for other in sources:
+            if other.path.resolve() == candidate:
+                return other
+    matches: list[SourceFile] = [other for other in sources if other.path.name == Path(reference).name]
+    return matches[0] if len(matches) == 1 else None
+
+
+def rewrite_references(source: SourceFile, sources: Sequence[SourceFile]) -> str:
+    """Returns the body with references to other instruction files pointed at files that exist for Claude.
+
+    A reference to a file that has a rule file now points at that rule file. A reference to a
+    skipped file points at the source file. Inside a Markdown link the new target is a path relative
+    to the rule file; elsewhere it is a path from the repository root.
+    """
+
+    def replace(match: re.Match[str]) -> str:
+        referenced: SourceFile | None = find_referenced_source(source, match.group(1), sources)
+        if referenced is None:
+            return match.group(0)
+        destination: Path = referenced.target if referenced.apply_to else referenced.path
+        if match.string[max(0, match.start() - 1) : match.start()] == "[":
+            return destination.name
+        in_link: bool = match.string[max(0, match.start() - 2) : match.start()] == "]("
+        if in_link:
+            return Path(os.path.relpath(destination, source.target.parent)).as_posix()
+        return destination.relative_to(REPO_ROOT).as_posix()
+
+    return INSTRUCTION_REF.sub(replace, source.body)
+
+
+def render(source: SourceFile, sources: Sequence[SourceFile]) -> str:
     """Returns the full text of the rule file for one source file."""
     assert source.apply_to is not None
     paths: list[str] = [] if set(source.apply_to) <= ALWAYS_ON_PATTERNS else source.apply_to
@@ -118,7 +160,7 @@ def render(source: SourceFile) -> str:
         quoted: str = "\n".join(f'  - "{pattern}"' for pattern in paths)
         header = f"---\npaths:\n{quoted}\n---\n\n"
     marker: str = f"{MARKER_PREFIX}{source.relative}. Do not edit; edit the source file and run `make claude-rules`. -->\n"
-    return f"{header}{marker}\n{source.body.lstrip()}"
+    return f"{header}{marker}\n{rewrite_references(source, sources).lstrip()}"
 
 
 def collect_sources() -> list[SourceFile]:
@@ -134,7 +176,7 @@ def is_generated(path: Path) -> bool:
 def sync(check_only: bool) -> int:
     """Writes or checks the rule files. Returns the number of files that are or were out of date."""
     sources: list[SourceFile] = collect_sources()
-    expected: dict[Path, str] = {s.target: render(s) for s in sources if s.apply_to}
+    expected: dict[Path, str] = {s.target: render(s, sources) for s in sources if s.apply_to}
     skipped: list[SourceFile] = [s for s in sources if not s.apply_to]
 
     problems: list[str] = []

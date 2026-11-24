@@ -8,7 +8,7 @@ paths:
 
 # Frontend Conventions
 
-- Use Vue 3 Composition API with `<script setup lang=\"ts\">`.
+- Use Vue 3 Composition API with `<script setup lang="ts">`.
 - Prefer composables over mixins for shared logic.
 - Use typed `defineProps<T>()` and `defineEmits<T>()`.
 - Use `storeToRefs()` when destructuring Pinia store state.

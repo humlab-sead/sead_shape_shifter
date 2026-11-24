@@ -1,7 +1,7 @@
 ---
 paths:
   - "src/specifications/**"
-  - "tests/test_constraints*"
+  - "tests/specifications/**"
   - "tests/project/**"
 ---
 

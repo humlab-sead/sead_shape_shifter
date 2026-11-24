@@ -1,5 +1,5 @@
 ---
-applyTo: "src/validators/**,backend/app/validators/**,backend/app/services/validation*,tests/test_constraints*,backend/tests/test_validation*"
+applyTo: "src/validators/**,src/specifications/constraints.py,backend/app/validators/**,backend/app/services/validation*,tests/validators/**,tests/specifications/test_constraints.py,backend/tests/validators/**"
 ---
 
 # Validation – AI Coding Instructions
@@ -9,7 +9,7 @@ applyTo: "src/validators/**,backend/app/validators/**,backend/app/services/valid
 | Tier | Location | Responsibility |
 |------|----------|---------------|
 | Structural | `src/specifications/` | Config structure, FK integrity, dependency graph |
-| Constraint | `src/validators/`, `src/constraints.py` | Business rules, cardinality, keys, data types |
+| Constraint | `src/specifications/constraints.py` | Business rules, cardinality, keys, data types |
 | Data | `src/validators/data_validators.py` + backend orchestrator | Row-level data checks against actual DataFrames |
 
 Run structural and constraint validation before data validation — structural errors may prevent data from loading.
@@ -17,12 +17,12 @@ Run structural and constraint validation before data validation — structural e
 ## Pure Domain Validators (`src/validators/`)
 
 - Validators receive `pd.DataFrame` and config — they **never fetch data**.
-- Return `list[ValidationIssue]` — not API DTOs, not exceptions.
+- Return `list[ValidationIssue]` from `src/validators/data_validators.py` — not API DTOs, not exceptions. (`src/specifications/constraints.py` has a separate `ValidationIssue` dataclass for constraint checks; do not mix the two.)
 - `ValidationIssue` carries: `entity_name`, `column_name` (optional), `message`, `severity` (`error` / `warning`).
 - Validators are pure functions — no side effects, no I/O.
 - Current validators: `BusinessKeyProducedValidator`, `ColumnExistsValidator`, `DataTypeCompatibilityValidator`, `ForeignKeyDataValidator`, `ForeignKeyIntegrityValidator`, `NaturalKeyUniquenessValidator`, `NonEmptyResultValidator`, `UnresolvedExtraColumnsValidator`.
 
-## Constraint Validators (`src/constraints.py`)
+## Constraint Validators (`src/specifications/constraints.py`)
 
 - Registered with `@CONFORMANCE_VALIDATORS.register(key="...")` or `@Validators.register(key=..., stage=...)`.
 - Receive `data` and `config` — no DB, no HTTP.

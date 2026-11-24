@@ -1,6 +1,6 @@
 ---
 description: "Create and maintain semantic validation rules for Shape Shifter project YAML files."
-applyTo: "docs/rules/**/*.yml, docs/rules/**/*.md, backend/app/**/rules/**/*.yml, backend/app/**/validation/**/*.py"
+applyTo: "docs/rules/**/*.yml, docs/rules/**/*.md"
 ---
 
 # Shape Shifter semantic rules
