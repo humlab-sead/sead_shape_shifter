@@ -56,6 +56,19 @@ frontend/docs/
 /docs/proposals/*/future/
 /docs/proposals/*/onhold/
 
+# Reconciliation policies and fixtures: YAML data, one node per key, 4,949 nodes and
+# ~490 communities with a single edge to the rest of the graph (2026-11-24).
+# Read the policy files directly when needed.
+resources/reconciliation_policies/
+
+# Generated release history: release notes, PR description drafts and the
+# semantic-release changelog repeat what PRs and code already describe.
+/docs/whats-new/
+/CHANGELOG.md
+
+# Old-to-new commit hashes from the 2026-11-23 history rewrite (data, not docs)
+scripts/_shared/history_rewrite_commit_map.txt
+
 # Binary assets and database fixtures
 *.pyc
 *.log
