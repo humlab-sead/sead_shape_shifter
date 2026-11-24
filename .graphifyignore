@@ -66,6 +66,12 @@ resources/reconciliation_policies/
 /docs/whats-new/
 /CHANGELOG.md
 
+# CLAUDE.md and GEMINI.md are symlinks to AGENTS.md. Indexing them adds the same text
+# three times, makes names like ProjectMapper ambiguous, and trips graphify's shrink
+# check when the LLM extracts one copy differently. AGENTS.md is still indexed.
+/CLAUDE.md
+/GEMINI.md
+
 # Old-to-new commit hashes from the 2026-11-23 history rewrite (data, not docs)
 scripts/_shared/history_rewrite_commit_map.txt
 
