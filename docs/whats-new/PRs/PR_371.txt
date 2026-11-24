@@ -55,7 +55,7 @@ no configuration change is required, but verify column names in affected SQL ent
 ## Validation
 
  - No CI check results are available in the provided evidence (statusCheckRollup is empty), so no
-checks can be reported as passed or failed. The PR was merged (merge commit 99355ab).
+checks can be reported as passed or failed. The PR was merged (merge commit c443280).
  - The PR adds substantial test coverage in the diff: tests/transforms/test_dsl.py (tokenizer,
 parser, validator, backend, engine, edge cases),
 tests/transforms/test_extra_columns_dsl_integration.py, DSL/escaping detection tests in

@@ -19,7 +19,7 @@ Acceptance criteria:
 
 ## Repository Findings
 
-**Repository basis:** branch `dev`, commit `254b44f9`, revised 2026-10-18. Uncommitted proposal-tree changes and the user's approved `mal` pilot identities were considered. The working tree also contains unrelated uncommitted proposal changes. No provider registry implementation exists yet. Existing source files outside these planning documents were inspected read-only.
+**Repository basis:** branch `dev`, commit `09998ed4`, revised 2026-10-18. Uncommitted proposal-tree changes and the user's approved `mal` pilot identities were considered. The working tree also contains unrelated uncommitted proposal changes. No provider registry implementation exists yet. Existing source files outside these planning documents were inspected read-only.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |

@@ -24,7 +24,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Planning date 2026-10-03. Shape Shifter is on `sims-identity-allocation-phase-1` at `7172e415` with a clean working tree. The Authority Service Phase 1 capability work is committed on the same branch in that repository and is the source of the capability contract this phase consumes.
+**Repository basis:** Planning date 2026-10-03. Shape Shifter is on `sims-identity-allocation-phase-1` at `d5ba873a` with a clean working tree. The Authority Service Phase 1 capability work is committed on the same branch in that repository and is the source of the capability contract this phase consumes.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |

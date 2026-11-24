@@ -11,7 +11,7 @@ Sources: [approved proposal](OUTPUT_DATASET_EXPECTATIONS.md) (`P-AC-1`, `P-AC-2`
 
 ## Repository Findings
 
-**Repository basis:** Branch `value-reference-column-ux-enhancement`, commit `4af1ca4a`, 2026-10-29. Uncommitted changes to the proposal, index, and phase plan were considered; none of those files is an implementation target.
+**Repository basis:** Branch `value-reference-column-ux-enhancement`, commit `993281f2`, 2026-10-29. Uncommitted changes to the proposal, index, and phase plan were considered; none of those files is an implementation target.
 
 | Source | Verified finding | Planning implication |
 |---|---|---|

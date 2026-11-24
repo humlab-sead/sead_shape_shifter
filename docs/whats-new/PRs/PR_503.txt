@@ -6,7 +6,7 @@ This documentation-only pull request closes out Phase 5 of the centralized-autho
 archives the completed planning records.
 
  - Adds PODMAN_DEPLOYMENT_RECORD.md, the Phase 5 deployment record: it freezes the release unit
-(source commit dbff5ab9…4f96, image ID 6a487db7…04a8, locally computed manifest digest, deployed
+(source commit 6b852953…4f96, image ID 6a487db7…04a8, locally computed manifest digest, deployed
 manifest checksum 43c03186…fb90) and records the exposure, container-configuration,
 PostgreSQL-grant, proxy identity-header, authenticated-access, route-classification, log-review, and
 rollback results for that unit, with two approved exceptions (off-host network probe, accepted by

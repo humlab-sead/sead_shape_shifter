@@ -22,7 +22,7 @@ container/scripts/verify/ checks), plus PostgreSQL read-only role scripts under 
 and handoffs under docs/proposals/.
 
 The PR description states origin/main was a clean ancestor of origin/dev and the merge carries 269
-commits; the merge completed as commit 43c92b4.
+commits; the merge completed as commit f2d8306.
 
 Included PRs
 

@@ -17,7 +17,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `reconciliation-mvp`, commit `d003e69c`, inspected 2026-10-31. The working proposal and phase plan contain uncommitted changes, which were considered; their Phase 5 criteria and handoff remain unchanged. Other unrelated worktree changes are not in scope.
+**Repository basis:** Branch `reconciliation-mvp`, commit `613ec5f2`, inspected 2026-10-31. The working proposal and phase plan contain uncommitted changes, which were considered; their Phase 5 criteria and handoff remain unchanged. Other unrelated worktree changes are not in scope.
 
 | Verified source | Current behavior | Planning implication |
 | --- | --- | --- |
@@ -148,7 +148,7 @@
 - `V-3`: The backend command reported 89 passed and the same 5 pre-existing `TestSpecificationManagement` failures; rerunning without that class passed 79 tests.
 - `V-4`: Grid, View, and reconciliation-store frontend tests passed: 22 tests.
 - `V-5`: The live Authority Service route test passed. Site ID `1` was verified; absent ID `6487` and invalid URI `/other/1` were rejected; stopping the service produced unverified links, and recovery verified ID `1` while removing the other links. Database counts remained unchanged (3,466 tracked identities and 3 submissions). The helper's `bootstrap site` post-check failed because existing SIMS IDs are absent from SEAD; no repair was attempted.
-- `V-6`: Offline normalization passed (52 tests); Black reported 10 files unchanged; `vue-tsc --noEmit` and `make check-doc-links` passed. `uv run pyright --threads 2 src backend` reported 147 diagnostics on both baseline commit `d003e69c` and the current tree, with no diagnostic differences. The existing diagnostics are tracked in [#632](https://github.com/humlab-sead/sead_shape_shifter/issues/632); the task plan's earlier 134-diagnostic figure did not reproduce in this environment.
+- `V-6`: Offline normalization passed (52 tests); Black reported 10 files unchanged; `vue-tsc --noEmit` and `make check-doc-links` passed. `uv run pyright --threads 2 src backend` reported 147 diagnostics on both baseline commit `613ec5f2` and the current tree, with no diagnostic differences. The existing diagnostics are tracked in [#632](https://github.com/humlab-sead/sead_shape_shifter/issues/632); the task plan's earlier 134-diagnostic figure did not reproduce in this environment.
 
 ## Deliverables
 

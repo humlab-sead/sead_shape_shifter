@@ -16,7 +16,7 @@
 
 ## Repository Findings
 
-**Repository basis:** branch `in-memory-ingester-handoff`, commit `010544a0`, planning date 2026-10-20. The working tree was clean before this plan. Graphify's scoped query returned unrelated nodes and `explain` mapped `ProjectIngesterService` to an endpoint reference, so the findings below were verified against current source and tests.
+**Repository basis:** branch `in-memory-ingester-handoff`, commit `0b866e63`, planning date 2026-10-20. The working tree was clean before this plan. Graphify's scoped query returned unrelated nodes and `explain` mapped `ProjectIngesterService` to an endpoint reference, so the findings below were verified against current source and tests.
 
 | Evidence | Current behavior | Planning implication |
 | --- | --- | --- |

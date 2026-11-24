@@ -4,7 +4,7 @@
 
 **Goal:** Validate the paired Search/Browse workflow against one named pilot environment and record a baseline, then advertise each capability only for the pilot types that pass their own checks.
 
-**Readiness:** Validated for implementation on 2026-11-20. The [approved proposal](./RECONCILIATION_SEARCH_AND_BROWSE.md), [Phase 4 in the phase plan](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_PLAN.md#phase-4-per-type-pilot-and-capability-release), and the frozen [Phase 2 save contract](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_2_CONTRACT.md) fix the required behavior. Phases 1–3 are implemented: the Authority Service contract at `sead_authority_service` commit `1f3f1b8`, Shape Shifter at commit `7340510f`. The blocking decisions Phase 4 named — a named pilot environment and selected paired images — are settled below.
+**Readiness:** Validated for implementation on 2026-11-20. The [approved proposal](./RECONCILIATION_SEARCH_AND_BROWSE.md), [Phase 4 in the phase plan](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_PLAN.md#phase-4-per-type-pilot-and-capability-release), and the frozen [Phase 2 save contract](./RECONCILIATION_SEARCH_AND_BROWSE_PHASE_2_CONTRACT.md) fix the required behavior. Phases 1–3 are implemented: the Authority Service contract at `sead_authority_service` commit `1f3f1b8`, Shape Shifter at commit `36050a75`. The blocking decisions Phase 4 named — a named pilot environment and selected paired images — are settled below.
 
 **Named environment:** `pilot-recon-2026-11-20`. This is the identity `VM-13` records. Its full specification is in [Pilot Environment](#pilot-environment).
 
@@ -24,7 +24,7 @@
 
 | Element | Value |
 | --- | --- |
-| Shape Shifter image | `localhost/shape-shifter:pilot-7340510f`, revision `7340510ffb3d66ed150394605e1803ec196c7a08` |
+| Shape Shifter image | `localhost/shape-shifter:pilot-36050a75`, revision `36050a7510d9c1e2824741d562f2e6df2a9bbb0b` |
 | Authority Service image | `localhost/sead-authority:pilot-1f3f1b8`, revision `1f3f1b8470e44b1d0730fb9d8b00e3318ec588eb` |
 | Data | `sead_pilot_recon`, a snapshot of `sead_staging` created 2026-11-20 |
 | Database role | `sead_ro`, read-only for both services |
@@ -39,7 +39,7 @@ Port `8012`, the deployed instance on this host, is deliberately left alone. The
 
 ## Repository Findings
 
-**Repository basis:** Shape Shifter branch `reconciliation-search-and-browse`, commit `7340510f`; Authority Service branch `reconciliation-search-and-browse`, commit `1f3f1b8`; planning date 2026-11-20. Uncommitted changes were considered: the Phase 3 task plan and `ReconciliationWorkspace.test.ts` carry the VM-9 corroboration added on the same date.
+**Repository basis:** Shape Shifter branch `reconciliation-search-and-browse`, commit `36050a75`; Authority Service branch `reconciliation-search-and-browse`, commit `1f3f1b8`; planning date 2026-11-20. Uncommitted changes were considered: the Phase 3 task plan and `ReconciliationWorkspace.test.ts` carry the VM-9 corroboration added on the same date.
 
 | Evidence | Verified finding | Planning implication |
 | --- | --- | --- |

@@ -18,7 +18,7 @@ Phase acceptance criteria:
 
 ## Repository Findings
 
-**Repository basis:** Branch `add-copy-project-script`, commit `e545a374`, planning date 2026-11-10. The working tree has uncommitted changes, including `tests/model/test_target_model_conformance.py`; baseline checks below ran against the current worktree.
+**Repository basis:** Branch `add-copy-project-script`, commit `bc2c5ae3`, planning date 2026-11-10. The working tree has uncommitted changes, including `tests/model/test_target_model_conformance.py`; baseline checks below ran against the current worktree.
 
 | Evidence | Finding | Planning implication |
 |---|---|---|

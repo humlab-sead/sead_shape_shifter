@@ -16,7 +16,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `reconciliation-mvp`, commit `315f9acf`, inspected 2026-10-30. The worktree was clean; the repository versions of the proposal and phase plan were used alongside the attached phase-plan snapshot. No implementation or test changes were made while planning.
+**Repository basis:** Branch `reconciliation-mvp`, commit `1b54244c`, inspected 2026-10-30. The worktree was clean; the repository versions of the proposal and phase plan were used alongside the attached phase-plan snapshot. No implementation or test changes were made while planning.
 
 | Verified source | Current behavior | Planning implication |
 | --- | --- | --- |

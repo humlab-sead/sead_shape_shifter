@@ -2,7 +2,7 @@
 
 **Brief:** User report for project `rebecka-arbodat-2`
 **Status:** Partially conclusive
-**Environment / baseline:** Repository `HEAD` `4a4028eee88d6be456c7602a6a409354f67a6220`; checked 2026-10-28. The reported development deployment version was not available.
+**Environment / baseline:** Repository `HEAD` `bd94df2b7285492f804ef33d17895bb43ef33ce9`; checked 2026-10-28. The reported development deployment version was not available.
 
 ## Executive summary
 

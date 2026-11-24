@@ -13,7 +13,7 @@
 
 `SECURITY_CHECK.md` records multiple high-severity findings in the Shape Shifter API. The most serious problem is the absence of application authentication and authorization. Several endpoints then accept user-controlled filesystem paths, database connection details, YAML, and SQL.
 
-The review includes live tests against a local deployment and independent verification passes. It was run against `dev` at `f85fad0c`. The current branch is based on that revision and the main vulnerable files are unchanged. The review did not test a production deployment, so production exposure, network controls, database grants, and deployed secrets must still be checked.
+The review includes live tests against a local deployment and independent verification passes. It was run against `dev` at `d1656615`. The current branch is based on that revision and the main vulnerable files are unchanged. The review did not test a production deployment, so production exposure, network controls, database grants, and deployed secrets must still be checked.
 
 This proposal recommends an emergency containment change followed by application-side enforcement of the identity authenticated by nginx, plus strict restrictions on filesystem, database, configuration, and spreadsheet operations. Native authentication inside the application remains a future option.
 

@@ -24,7 +24,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `dev`, commit `d9477799`, planning date `2026-10-09`. The worktree was clean; no uncommitted changes were considered.
+**Repository basis:** Branch `dev`, commit `740ab37f`, planning date `2026-10-09`. The worktree was clean; no uncommitted changes were considered.
 
 | Evidence | Finding | Planning implication |
 |---|---|---|

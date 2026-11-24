@@ -20,7 +20,7 @@ Sources: [proposal](TARGET_MODEL_GUIDED_ENTITY_CREATION.md) and [phase plan](TAR
 
 ## Repository Findings
 
-**Repository basis:** Branch `target-model-guided-entity-creation`, commit `4a4028ee`, inspected 2026-10-28. The working tree has uncommitted changes in the source proposal and `SHAPESHIFTER_PROJECT_AI_ADVISOR.md`; those files were read as-is and were not changed. The target Phase 2 task plan did not exist.
+**Repository basis:** Branch `target-model-guided-entity-creation`, commit `bd94df2b`, inspected 2026-10-28. The working tree has uncommitted changes in the source proposal and `SHAPESHIFTER_PROJECT_AI_ADVISOR.md`; those files were read as-is and were not changed. The target Phase 2 task plan did not exist.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |

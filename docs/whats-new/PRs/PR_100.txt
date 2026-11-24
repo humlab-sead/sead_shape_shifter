@@ -59,5 +59,5 @@ backend/tests/api/v1/test_reconciliation_specifications.py covering all new endp
 update, delete, available-fields, mapping-count, including error cases) and a new
 TestSpecificationManagement suite in backend/tests/services/test_reconciliation_service.py; whether
 these suites were executed is unknown.
- - The pull request was merged into dev (merge commit 4abf8e8), but no validation evidence
+ - The pull request was merged into dev (merge commit 94e5f48), but no validation evidence
 accompanies the merge.

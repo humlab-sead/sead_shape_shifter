@@ -31,7 +31,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `container-setup-simplifications`, commit `a0c46fed`, planning date 2026-10-11. Existing Phase 2 implementation and planning changes are uncommitted and were considered; only this task plan is being added.
+**Repository basis:** Branch `container-setup-simplifications`, commit `7170b757`, planning date 2026-10-11. Existing Phase 2 implementation and planning changes are uncommitted and were considered; only this task plan is being added.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |

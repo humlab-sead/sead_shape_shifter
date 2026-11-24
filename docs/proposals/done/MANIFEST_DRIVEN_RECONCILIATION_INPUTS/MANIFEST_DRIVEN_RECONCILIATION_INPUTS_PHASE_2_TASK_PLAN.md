@@ -16,7 +16,7 @@
 
 ## Repository Findings
 
-**Repository basis:** 2026-11-04, Shape Shifter `feature/manifest-driven-reconciliation-inputs` at `60d75ad8`. The existing uncommitted `.vscode/settings.json` change is unrelated and was not considered. Authority Service paths below refer to the sibling repository; no changes there are proposed for Phase 2. Graphify was queried for the editor and matching path, then the findings below were checked against current source.
+**Repository basis:** 2026-11-04, Shape Shifter `feature/manifest-driven-reconciliation-inputs` at `120cd42d`. The existing uncommitted `.vscode/settings.json` change is unrelated and was not considered. Authority Service paths below refer to the sibling repository; no changes there are proposed for Phase 2. Graphify was queried for the editor and matching path, then the findings below were checked against current source.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |

@@ -17,7 +17,7 @@ The Phase 2 reconciled-row checks depend on this parsed contract. They are outsi
 
 ## Repository Findings
 
-**Repository basis:** Branch `conditional-target-model-requirements`, commit `d7c75b16`, planned 2026-10-14. Uncommitted changes were considered. The proposal directory is untracked; the superset model, review log, and temporary entity files also have user changes. This plan leaves them untouched. Graphify pointed to the core conformance validator and backend adapter; current source and tests confirmed that path, with no conflicting graph finding.
+**Repository basis:** Branch `conditional-target-model-requirements`, commit `72f13c19`, planned 2026-10-14. Uncommitted changes were considered. The proposal directory is untracked; the superset model, review log, and temporary entity files also have user changes. This plan leaves them untouched. Graphify pointed to the core conformance validator and backend adapter; current source and tests confirmed that path, with no conflicting graph finding.
 
 | Verified source | Finding and implication |
 | --- | --- |
@@ -124,7 +124,7 @@ The condition names the entity that owns the direct FK. A `via` bridge cannot su
 
 ## Validation And Testing
 
-Baseline checks ran on commit `d7c75b16` before implementation. The full core corpus and validation-service checks already had failures. Results below distinguish those failures from focused checks for this change.
+Baseline checks ran on commit `72f13c19` before implementation. The full core corpus and validation-service checks already had failures. Results below distinguish those failures from focused checks for this change.
 
 | ID | Command or method | Expected result | Baseline | After implementation |
 | --- | --- | --- | --- | --- |

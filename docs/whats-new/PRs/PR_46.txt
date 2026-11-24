@@ -39,5 +39,5 @@ None - no user action required.
 ## Validation
 
 Not verified: validation results unavailable. No CI check results were included with this pull
-request, and no test changes appear in the diff. The pull request was merged (merge commit 7bb88fc)
+request, and no test changes appear in the diff. The pull request was merged (merge commit bc96e51)
 with an empty status-check rollup, which is not evidence that checks ran or passed.

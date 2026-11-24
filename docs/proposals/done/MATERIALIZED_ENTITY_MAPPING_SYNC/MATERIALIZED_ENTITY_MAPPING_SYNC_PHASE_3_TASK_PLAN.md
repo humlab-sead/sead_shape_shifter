@@ -18,7 +18,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `materialized-entity-mapping-sync`, commit `8ff9532e`, planning date 2026-10-16. The worktree was clean before this plan was written. Current source and tests, rather than Graphify output, establish the findings below.
+**Repository basis:** Branch `materialized-entity-mapping-sync`, commit `0f881b44`, planning date 2026-10-16. The worktree was clean before this plan was written. Current source and tests, rather than Graphify output, establish the findings below.
 
 | Source | Verified behavior | Planning implication |
 |---|---|---|
@@ -160,7 +160,7 @@
 | `V-7` | User guidance | Read `docs/USER_GUIDE.md` fixed-entity and mapping sections; compare each stated action and message with `EntityFormDialog.vue` and the API route. | `PH3-AC-3` | The guide names retry and review steps exactly as implemented. | Pass: added a **Partial Saves and Mapping Retry** section and the retry endpoint row; wording matches the *Rows saved; mapping changes pending*, **Retry mapping**, and changed-keys messages. |
 | `V-8` | Regression and quality checks | Commands below | All criteria and preserved behavior | Existing successful saves, mapping CRUD, formats, ETags, and type/format checks pass. | Pass with one pre-existing failure: backend `2128` tests (`1` pre-existing `arbodat` failure, `19` skipped), core `1843` tests, frontend `726` tests, `vue-tsc` clean, ESLint clean, Ruff/Black/isort clean. |
 
-Planning baseline on commit `8ff9532e`:
+Planning baseline on commit `0f881b44`:
 
 ```text
 rtk uv run pytest backend/tests/services/test_fixed_entity_mapping_sync_service.py backend/tests/api/v1/test_entities.py backend/tests/api/v1/test_mapping.py -q

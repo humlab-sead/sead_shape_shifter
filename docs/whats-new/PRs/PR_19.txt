@@ -66,5 +66,5 @@ test_debug_connections.py) plus manual debug/demo scripts, but no execution resu
 available in the provided evidence.
  - No CI status checks are reported for this pull request (the status check rollup is empty), so no
 checks can be confirmed as passed or failed.
- - The pull request was merged into dev (merge commit 2050f15d, 2025-12-17), but no test or CI
+ - The pull request was merged into dev (merge commit b53d46c5, 2025-12-17), but no test or CI
 output accompanies the merge.

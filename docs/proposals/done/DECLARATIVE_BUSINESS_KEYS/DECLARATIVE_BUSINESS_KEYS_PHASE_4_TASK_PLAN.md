@@ -14,7 +14,7 @@ Sources: [proposal](./DECLARATIVE_BUSINESS_KEYS.md) (`P-AC-7`) and [phase plan](
 
 ## Repository Findings
 
-**Repository basis:** `declarative-business-keys` at `9a5adfff`, inspected 2026-10-10; clean worktree, no uncommitted changes used. Scoped Graphify queries helped locate column availability and validation; their broad frontend result contained unrelated nodes, so the findings below were verified against code and tests. The phase plan's **Current Position** predates Phases 1–3; do not implement from that historical description.
+**Repository basis:** `declarative-business-keys` at `40a0024a`, inspected 2026-10-10; clean worktree, no uncommitted changes used. Scoped Graphify queries helped locate column availability and validation; their broad frontend result contained unrelated nodes, so the findings below were verified against code and tests. The phase plan's **Current Position** predates Phases 1–3; do not implement from that historical description.
 
 | Evidence | Verified finding | Planning implication |
 | --- | --- | --- |
@@ -109,9 +109,9 @@ Sources: [proposal](./DECLARATIVE_BUSINESS_KEYS.md) (`P-AC-7`) and [phase plan](
 
 ## Validation And Testing
 
-**Planning baseline on `9a5adfff`:** Core-focused pytest command below passed (exit 0); backend-focused pytest command below passed (exit 0); the three frontend entity test files passed (42 tests). These results precede the planned integration tests. Full suites, new test files, type checking, and lint checks were **not run** during planning.
+**Planning baseline on `40a0024a`:** Core-focused pytest command below passed (exit 0); backend-focused pytest command below passed (exit 0); the three frontend entity test files passed (42 tests). These results precede the planned integration tests. Full suites, new test files, type checking, and lint checks were **not run** during planning.
 
-**Execution record (2026-10-10):** All Phase 4 tasks ran on branch `declarative-business-keys` at `9a5adfff` with the new and extended tests present; `V-1`–`V-5` results are recorded in the table below. The full Python run (`V-4`) reports 3777 collected, 3760 passed, and 17 failed. The 17 failures are pre-existing: a stashed-changes rerun produced an identical failure set (17), and none of them exercise the new or extended files. `V-2`'s command also includes `backend/tests/api/v1/test_projects.py::TestProjectsValidate::test_validate_valid_configuration`, which is one of those 17 pre-existing failures (it configures `keys` that are not produced and was not run during planning).
+**Execution record (2026-10-10):** All Phase 4 tasks ran on branch `declarative-business-keys` at `40a0024a` with the new and extended tests present; `V-1`–`V-5` results are recorded in the table below. The full Python run (`V-4`) reports 3777 collected, 3760 passed, and 17 failed. The 17 failures are pre-existing: a stashed-changes rerun produced an identical failure set (17), and none of them exercise the new or extended files. `V-2`'s command also includes `backend/tests/api/v1/test_projects.py::TestProjectsValidate::test_validate_valid_configuration`, which is one of those 17 pre-existing failures (it configures `keys` that are not produced and was not run during planning).
 
 | ID | Check and target | Command or method | Covers | Expected result | Baseline | Result (2026-10-10) |
 | --- | --- | --- | --- | --- | --- | --- |

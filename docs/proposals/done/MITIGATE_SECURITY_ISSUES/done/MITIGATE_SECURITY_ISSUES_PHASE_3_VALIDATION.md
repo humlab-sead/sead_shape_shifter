@@ -25,7 +25,7 @@ These controls do not apply to the normalization workflow; `ShapeShifter.normali
 - `tests/loaders/test_duckdb_loader.py`
 - `tests/process/test_workflow.py -k test_access_database_csv_workflow`
 - Combined result: pass
-- Current commit: `2b83735f`
+- Current commit: `4ea57170`
 
 The combined run confirmed:
 

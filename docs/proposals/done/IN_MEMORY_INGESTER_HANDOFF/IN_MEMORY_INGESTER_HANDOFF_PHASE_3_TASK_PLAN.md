@@ -17,7 +17,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `in-memory-ingester-handoff`, commit `323443e6`, planning date 2026-10-19. The uncommitted Phase 3 edits in the phase plan were treated as the approved source of scope and timezone behavior. Existing dirty `graphify-out/` files are navigation output and are not deliverables for this plan.
+**Repository basis:** Branch `in-memory-ingester-handoff`, commit `f700b1fe`, planning date 2026-10-19. The uncommitted Phase 3 edits in the phase plan were treated as the approved source of scope and timezone behavior. Existing dirty `graphify-out/` files are navigation output and are not deliverables for this plan.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |
@@ -188,7 +188,7 @@ Run the focused unit suites after implementation. The execution run on 2026-10-1
 
 ### Execution Notes
 
-- Implementation and checks ran on 2026-10-19 on branch `in-memory-ingester-handoff` commit `323443e6` with the Phase 3 changes uncommitted.
+- Implementation and checks ran on 2026-10-19 on branch `in-memory-ingester-handoff` commit `f700b1fe` with the Phase 3 changes uncommitted.
 - Adapter deviation from the planned wording: `sanitize_columns()` rewrites the internal `__existing` suffix, so the adapter sanitizes only caller-visible labels and keeps labels that start with `_` or end with `__existing` unchanged. Without this, existing-row update planning and row-state handling regress. `V-2` covers the preserved internal labels.
 - `_render_copy_csv_timestamp()` carries the timezone-aware rejection inline instead of importing the shared message helper. This keeps `sql_builder.py` importable under both isort and ruff, which disagree on mixing aliased and plain imports from one module.
 - Pylint reports three pre-existing `W0613 unused-argument` warnings on the retired `validate()` and `ingest()` methods. They exist at the planning commit and are not caused by Phase 3.

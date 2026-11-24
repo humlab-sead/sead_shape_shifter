@@ -19,7 +19,7 @@ Acceptance criteria:
 
 ## Repository Findings
 
-**Repository basis:** branch `project-data-provider-scope`, commit `3917cba3`, planning date 2026-10-18. Phase 2 code was inspected before and after its commit; no uncommitted implementation changes remain. This revision updates the existing untracked Phase 3 draft. Graphify was used for navigation; the findings below were checked in source, tests, project data, and the sibling authority-service configuration. The focused baseline run passed with three skipped tests; new Phase 3 cases do not exist yet.
+**Repository basis:** branch `project-data-provider-scope`, commit `e4802e8a`, planning date 2026-10-18. Phase 2 code was inspected before and after its commit; no uncommitted implementation changes remain. This revision updates the existing untracked Phase 3 draft. Graphify was used for navigation; the findings below were checked in source, tests, project data, and the sibling authority-service configuration. The focused baseline run passed with three skipped tests; new Phase 3 cases do not exist yet.
 
 | Source | Verified finding | Planning implication |
 | --- | --- | --- |

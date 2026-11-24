@@ -18,7 +18,7 @@ Sources: [approved proposal](OUTPUT_DATASET_EXPECTATIONS.md) (`P-AC-3`, `P-AC-4`
 
 ## Repository Findings
 
-**Repository basis:** Branch `feature/output-dataset-expectations`, commit `1fb59d02`, planning date `2026-11-13`. The uncommitted Phase 1 and Phase 2 implementation, tests, and planning changes were read and tested as the current worktree; only this Phase 3 task plan is being updated. Graphify identified the execution entry points; the findings below were checked in source and tests.
+**Repository basis:** Branch `feature/output-dataset-expectations`, commit `95b59330`, planning date `2026-11-13`. The uncommitted Phase 1 and Phase 2 implementation, tests, and planning changes were read and tested as the current worktree; only this Phase 3 task plan is being updated. Graphify identified the execution entry points; the findings below were checked in source and tests.
 
 | Evidence | Finding | Planning implication |
 |---|---|---|

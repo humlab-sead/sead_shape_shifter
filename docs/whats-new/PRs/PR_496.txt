@@ -9,10 +9,10 @@ the reviewed content is provisioned. No code, configuration, or script changes.
 In the Phase 3 task plan and the test-environment handoff:
 
  - Ties the release identity to the merged dev revision: image shape-shifter:dev (image ID
-6a487db7…04a8) with OCI source revision dbff5ab95459652354c040b9d4fec6e2ead94f96, the dev merge
+6a487db7…04a8) with OCI source revision 6b8529537ee2bf87f6422590931b46d1ad83b7df, the dev merge
 commit for #495 and the checkout where the focused authorization and full backend suites passed; 
 GIT_REF=dev and IMAGE_NAME=shape-shifter:dev are recorded as the configuration revision, and the
-earlier d27b072c image is retained as documented baseline and rollback target.
+earlier 9062216a image is retained as documented baseline and rollback target.
  - Records release-image re-verification: integrity-check passed and reconciliation reported
 Missing: 0 resources, 0 administrators, 0 grants; a fresh backup
 (authorization-20260922-130050.sqlite3) is byte-identical to the readiness backup, so authorization
@@ -41,7 +41,7 @@ None - no user action required.
 are confirmed as passed by CI.
  - The PR description and the updated handoff/task-plan documents report that .venv/bin/pytest
 backend/tests/authorization -q and .venv/bin/pytest backend/tests -q passed at
-dbff5ab95459652354c040b9d4fec6e2ead94f96, and that git diff --check, scripts/check_doc_links.sh, and
+6b8529537ee2bf87f6422590931b46d1ad83b7df, and that git diff --check, scripts/check_doc_links.sh, and
 shell syntax checks for container/scripts/verify/*.sh and container/scripts/authorization.sh
 passed. These are author-recorded results in the documentation; their execution was not
 independently verified from the available evidence.

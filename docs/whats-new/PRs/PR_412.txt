@@ -52,5 +52,5 @@ Not verified: validation results unavailable. The CI status rollup for this pull
 so no checks are confirmed as passed or failed. The change adds numerous test files (backend
 API/service tests, frontend unit tests, and Python target-model/merged-entity/integration tests),
 but their execution and outcomes are unknown from the available evidence. The pull request was
-merged (merge commit 477c1d5), but no check results were recorded to indicate what, if anything, was
+merged (merge commit 3b95ada), but no check results were recorded to indicate what, if anything, was
 run beforehand.

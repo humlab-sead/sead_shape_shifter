@@ -15,7 +15,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `dev`, commit `50a7e5bc`, planning date 2026-10-19. Existing staged proposal and plan changes were treated as user work. Graphify located the ingester route and service path; the findings below were checked against current code and tests. This records the planning baseline; implementation and current verification are recorded under Execution Evidence.
+**Repository basis:** Branch `dev`, commit `e52f0bc7`, planning date 2026-10-19. Existing staged proposal and plan changes were treated as user work. Graphify located the ingester route and service path; the findings below were checked against current code and tests. This records the planning baseline; implementation and current verification are recorded under Execution Evidence.
 
 | Source | Current behavior | Phase 1 implication |
 | --- | --- | --- |

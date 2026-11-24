@@ -25,7 +25,7 @@ Source phase plan: [DIRECT_TARGET_ID_FOREIGN_KEY_UX_PHASE_PLAN.md](./DIRECT_TARG
 
 ## Repository Findings
 
-**Repository basis:** branch `direct-target-id-foreign-key-ux`, commit `2a17adf9`, planning date 2026-11-10. Uncommitted Phase 1–3 changes are present and are the basis for this plan. Unrelated pending changes (`src/transforms/dsl.py`, `backend/app/api/v1/endpoints/projects.py`, advisor proposal documents) do not touch Phase 4 targets.
+**Repository basis:** branch `direct-target-id-foreign-key-ux`, commit `0edc9efa`, planning date 2026-11-10. Uncommitted Phase 1–3 changes are present and are the basis for this plan. Unrelated pending changes (`src/transforms/dsl.py`, `backend/app/api/v1/endpoints/projects.py`, advisor proposal documents) do not touch Phase 4 targets.
 
 | Evidence | Finding | Planning implication |
 | -------- | ------- | -------------------- |

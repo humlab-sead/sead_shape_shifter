@@ -17,7 +17,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `stage-aware-column-suggestions`, commit `a1b35971`, planning date 2026-10-08. The worktree is clean.
+**Repository basis:** Branch `stage-aware-column-suggestions`, commit `86c371c8`, planning date 2026-10-08. The worktree is clean.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |

@@ -14,7 +14,7 @@ Resume work on the shared-data review proposal without replaying the full sessio
 
 ## Completed Work
 
-- Consolidated post-MVP proposal documents under `CHANGE_REQUEST_INGESTER_POST_MVP`; the consolidation was committed as `b0ed9b05`.
+- Consolidated post-MVP proposal documents under `CHANGE_REQUEST_INGESTER_POST_MVP`; the consolidation was committed as `444a4f88`.
 - Changed `sample_group` from `lookup` to `fact` in the three canonical models and five corresponding test/project copies.
 - Ran `rtk uv run pytest tests/target_model/test_spec_files.py tests/target_model/test_example_projects.py -q`: 18 tests passed. The role scan and `git diff --check` also passed.
 - The proposal and eight model copies are currently unstaged. This handoff is a new file. The `dev` branch was six commits ahead of `origin/dev` at the last status check.

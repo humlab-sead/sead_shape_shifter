@@ -45,5 +45,5 @@ provide those directories themselves.
 
 No validation results are available: the CI check rollup for this pull request is empty, and no test
 or build command outcomes were reported. The pull request was merged into main on 2026-01-14 (merge
-commit ab3fdcf), but no evidence confirms which checks, if any, were run or passed. Not verified:
+commit 72c4f42), but no evidence confirms which checks, if any, were run or passed. Not verified:
 validation results unavailable.

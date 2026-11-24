@@ -3,7 +3,7 @@ description:
 ## Summary
 
 Advances the MITIGATE_SECURITY_ISSUES work by merging security-regression-and-release-verification
-into security-hardening (40 commits, 137 files; fast-forward from base 0cb9d0ca).
+into security-hardening (40 commits, 137 files; fast-forward from base 0810b184).
 
  - Security regression tests — new suites for route authentication and cross-resource access
 (backend/tests/authorization/), filesystem boundaries, response/logging redaction, and SQL/DuckDB

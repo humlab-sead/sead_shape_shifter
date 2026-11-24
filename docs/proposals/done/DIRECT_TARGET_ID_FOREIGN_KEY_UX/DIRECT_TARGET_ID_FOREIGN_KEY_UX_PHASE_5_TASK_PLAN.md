@@ -26,7 +26,7 @@ Source phase plan: [DIRECT_TARGET_ID_FOREIGN_KEY_UX_PHASE_PLAN.md](./DIRECT_TARG
 
 ## Repository Findings
 
-**Repository basis:** branch `direct-target-id-foreign-key-ux`, commit `2a17adf9`, planning date 2026-11-10. Uncommitted changes were present and considered: the Phase 1–4 implementation (`backend/app/*`, `backend/tests/*`, `frontend/src/*`, `docs/AUTHORIZATION_ROUTE_INVENTORY.md`) plus unrelated pending changes (`src/transforms/dsl.py`, advisor proposal documents, `graphify-out/`). None of the unrelated changes touch the Phase 5 targets.
+**Repository basis:** branch `direct-target-id-foreign-key-ux`, commit `0edc9efa`, planning date 2026-11-10. Uncommitted changes were present and considered: the Phase 1–4 implementation (`backend/app/*`, `backend/tests/*`, `frontend/src/*`, `docs/AUTHORIZATION_ROUTE_INVENTORY.md`) plus unrelated pending changes (`src/transforms/dsl.py`, advisor proposal documents, `graphify-out/`). None of the unrelated changes touch the Phase 5 targets.
 
 | Evidence | Finding | Planning implication |
 | -------- | ------- | -------------------- |

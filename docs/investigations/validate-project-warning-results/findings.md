@@ -2,7 +2,7 @@
 
 **Brief:** User report; no separate investigation brief was supplied  
 **Status:** Conclusive; structured normalizer findings are now surfaced by the CLI. The intended treatment of log-only warnings remains open.  
-**Environment / baseline:** `dev` at merge commit `4b67c87831ba6f7b581aab76deb5777be5533f39`, including `ac5694c9` (`fix(validation): surface normalizer findings`); Linux; `tests/test_data/projects/arbodat/shapeshifter.yml`
+**Environment / baseline:** `dev` at merge commit `a5dc19e02baaac8b053be2e8a51ae0d2487aa9b3`, including `99fdd61c` (`fix(validation): surface normalizer findings`); Linux; `tests/test_data/projects/arbodat/shapeshifter.yml`
 
 ## Executive summary
 
@@ -32,13 +32,13 @@ The shell did not have a `python` executable on `PATH`; using `.venv/bin/python`
 | E4 | Full-data and table-store validation share a helper that collects unresolved extra-column and linker issues | [`data_validation_orchestrator.py`](../../../backend/app/validators/data_validation_orchestrator.py#L96-L108), [full-data strategy](../../../backend/app/validators/data_validation_orchestrator.py#L167-L174) | The CLI now uses the same structured issue conversion as backend full-data validation. | Verified |
 | E5 | A row-count change is both logged and appended as a structured linker issue | [`constraints.py`](../../../src/specifications/constraints.py#L433-L449) | The issue exists before output formatting; the CLI omission is downstream of its creation. | Verified |
 | E6 | Empty DataFrames independently produce `EMPTY_RESULT` warnings | [`data_validators.py`](../../../src/validators/data_validators.py#L237-L261), invoked by [`data_validation_orchestrator.py`](../../../backend/app/validators/data_validation_orchestrator.py#L378) | This explains why some empty-result log warnings also appear in the CSV without any general log capture. | Verified |
-| E7 | The merged commit changed backend services, mappers, orchestrator, tests, and frontend validation types; it did not include `scripts/project/validate_project.py` | Merge `4b67c878`; fix commit `ac5694c9` | The fix added structured finding collection to other validation paths, not this CLI path. | Verified |
+| E7 | The merged commit changed backend services, mappers, orchestrator, tests, and frontend validation types; it did not include `scripts/project/validate_project.py` | Merge `a5dc19e0`; fix commit `99fdd61c` | The fix added structured finding collection to other validation paths, not this CLI path. | Verified |
 | E8 | Focused CLI and orchestrator tests | `.venv/bin/pytest -q tests/test_validate_project_script.py backend/tests/validators/test_data_validation_orchestrator.py` | 23 tests passed. Existing tests verify backend full-data linker findings, but this run did not test that the CLI emits those findings. | Verified |
 
 ## Timeline or causal chain
 
-1. Commit `ac5694c9` added structured normalizer-finding collection to backend preview and full-data validation.
-2. Merge commit `4b67c878` brought that change into `dev`.
+1. Commit `99fdd61c` added structured normalizer-finding collection to backend preview and full-data validation.
+2. Merge commit `a5dc19e0` brought that change into `dev`.
 3. The CLI's data executor continued to run `ShapeShifter` itself and pass only its `table_store` into `TableStoreDataFetchStrategy`.
 4. The orchestrator asked the strategy for additional issues. The table-store strategy inherited the base method, which returned no issues. It then ran ordinary data validators, including the empty-result check.
 5. After the reported gap was reproduced and diagnosed, the user approved a structured-findings-only fix. The table-store strategy now accepts the normalizer and returns its structured issues through a shared helper also used by full-data validation.
@@ -95,8 +95,8 @@ The evidence establishes the current path and its cause. It does not establish t
 
 ## References
 
-- Merge commit `4b67c87831ba6f7b581aab76deb5777be5533f39`
-- Fix commit `ac5694c993d73fef2ed364e0539400771ba6b29b`
+- Merge commit `a5dc19e02baaac8b053be2e8a51ae0d2487aa9b3`
+- Fix commit `99fdd61c38413fb979f5e7d3e7c18f7ac4d84a9f`
 - [`scripts/project/validate_project.py`](../../../scripts/project/validate_project.py)
 - [`backend/app/validators/data_validation_orchestrator.py`](../../../backend/app/validators/data_validation_orchestrator.py)
 - [`backend/app/services/shapeshift_service.py`](../../../backend/app/services/shapeshift_service.py)

@@ -7,7 +7,7 @@
 | Reviewed document | [IN_MEMORY_INGESTER_HANDOFF.md](./IN_MEMORY_INGESTER_HANDOFF.md) |
 | Related documents | [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md), its [phase plan](../../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_PLAN.md), [Phase 1 task plan](../../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_1_TASK_PLAN.md), and [review](../../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/REVIEW.md) |
 | Review date | 2026-10-19 |
-| Revision reviewed | Branch `dev` at `50a7e5bc`, including the current uncommitted proposal and companion-plan revisions |
+| Revision reviewed | Branch `dev` at `e52f0bc7`, including the current uncommitted proposal and companion-plan revisions |
 | Method | Read the proposals, prior reviews, cited Ingester Authorization proposal, and relevant Core, backend, ingester, and client code. No tests or live services were run. |
 
 This review replaces the earlier review in this file. It is advice, not design approval. The proposal and companion documents were not changed.

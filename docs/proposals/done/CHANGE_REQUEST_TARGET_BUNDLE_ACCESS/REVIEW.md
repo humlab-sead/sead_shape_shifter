@@ -2,7 +2,7 @@
 
 ## Review Basis
 
-- Reviewed: [proposal](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md), revised on 2026-10-19, against repository commit `ed8a8e4d` on `in-memory-ingester-handoff`.
+- Reviewed: [proposal](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md), revised on 2026-10-19, against repository commit `b8c139cf` on `in-memory-ingester-handoff`.
 - Related: completed [in-memory handoff phase plan](../../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md), this topic's [phase plan](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_PLAN.md) and [Phase 1 task plan](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_1_TASK_PLAN.md).
 - Method: compared the decisions with the project-only routes, direct helper, request models, bundle writer, identity adapter, and client. No tests or deployment checks were run for this review.
 

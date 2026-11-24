@@ -18,13 +18,13 @@ Each issue body follows the repository's preferred `Problem`, `Solution`, and `F
 
 Current status snapshot:
 
-- Issue 1: open as [#447](https://github.com/humlab-sead/sead_shape_shifter/issues/447); implemented on branch in `6103f693` and `0e6a8233`
-- Issue 2: open as [#448](https://github.com/humlab-sead/sead_shape_shifter/issues/448); implemented on branch in `f934760f` and `d8a1ee64`
-- Issue 3: open as [#449](https://github.com/humlab-sead/sead_shape_shifter/issues/449); implemented on branch in `4e21a10f` and `fb770680`
-- Issue 4: open as [#450](https://github.com/humlab-sead/sead_shape_shifter/issues/450); implemented on branch in `f40f96cf`, `5c02cb34`, and `41adecfe`
-- Issue 5: open as [#451](https://github.com/humlab-sead/sead_shape_shifter/issues/451); implemented on branch in `ccc53c66` with promoted shared lookups and explicit out-of-scope decisions
-- Issue 6: open as [#452](https://github.com/humlab-sead/sead_shape_shifter/issues/452); implemented on branch in `68d154c0`
-- Issue 7: open as [#453](https://github.com/humlab-sead/sead_shape_shifter/issues/453); implemented on branch in `30c01497` and `5c02cb34`
+- Issue 1: open as [#447](https://github.com/humlab-sead/sead_shape_shifter/issues/447); implemented on branch in `b416a290` and `7d4c2457`
+- Issue 2: open as [#448](https://github.com/humlab-sead/sead_shape_shifter/issues/448); implemented on branch in `60916aaf` and `a741284f`
+- Issue 3: open as [#449](https://github.com/humlab-sead/sead_shape_shifter/issues/449); implemented on branch in `7cd55227` and `20d34e60`
+- Issue 4: open as [#450](https://github.com/humlab-sead/sead_shape_shifter/issues/450); implemented on branch in `bd0bf99c`, `550b6d86`, and `c44dcd52`
+- Issue 5: open as [#451](https://github.com/humlab-sead/sead_shape_shifter/issues/451); implemented on branch in `eff267f2` with promoted shared lookups and explicit out-of-scope decisions
+- Issue 6: open as [#452](https://github.com/humlab-sead/sead_shape_shifter/issues/452); implemented on branch in `ec4d51ec`
+- Issue 7: open as [#453](https://github.com/humlab-sead/sead_shape_shifter/issues/453); implemented on branch in `9e97d451` and `550b6d86`
 
 ## Issue 1 [feat(target_model): add sample-context entities](https://github.com/humlab-sead/sead_shape_shifter/issues/447)
 
@@ -187,7 +187,7 @@ Files:
 
 Status:
 
-`Open as #451; implemented on branch in ccc53c66`
+`Open as #451; implemented on branch in eff267f2`
 
 Title:
 

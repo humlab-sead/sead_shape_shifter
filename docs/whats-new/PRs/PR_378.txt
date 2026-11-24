@@ -67,5 +67,5 @@ orchestrator; core pytest tests for the extra-columns preflight specification, c
 specification, evaluator dependency/unresolved tracking, and normalizer behavior; and frontend
 vitest tests for extraColumnsEditorUtils and useHelp markdown rendering. Execution and results of
 these tests are unknown from the available evidence.
- - The pull request was merged into main (merge commit 6dd4743), but merging is not evidence that
+ - The pull request was merged into main (merge commit 46105a4), but merging is not evidence that
 any specific test suite passed.

@@ -28,7 +28,7 @@ Source phase plan: [DIRECT_TARGET_ID_FOREIGN_KEY_UX_PHASE_PLAN.md](./DIRECT_TARG
 
 ## Repository Findings
 
-**Repository basis:** branch `dev`, commit `2a17adf9`, planning date 2026-11-09. Uncommitted changes were present and considered: the proposal and phase plan are untracked, `docs/proposals/README.md` and one advisor proposal are modified, and `src/transforms/dsl.py` is modified. None of those changes touch the Phase 1 targets.
+**Repository basis:** branch `dev`, commit `0edc9efa`, planning date 2026-11-09. Uncommitted changes were present and considered: the proposal and phase plan are untracked, `docs/proposals/README.md` and one advisor proposal are modified, and `src/transforms/dsl.py` is modified. None of those changes touch the Phase 1 targets.
 
 | Evidence | Finding | Planning implication |
 | -------- | ------- | -------------------- |

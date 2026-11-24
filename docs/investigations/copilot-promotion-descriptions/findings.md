@@ -2,7 +2,7 @@
 
 **Brief:** User report that VS Code's “Generate with Copilot” button omits the promotion format for `dev` to `staging` and uses the wrong direction for `staging` to `main`.
 **Status:** Partially conclusive
-**Environment / baseline:** `humlab-sead/sead_shape_shifter`, branch `staging`, revision `4c55aa8b`; the worktree was clean before this change. The user confirmed the VS Code GitHub Pull Requests & Issues extension.
+**Environment / baseline:** `humlab-sead/sead_shape_shifter`, branch `staging`, revision `59a3fb86`; the worktree was clean before this change. The user confirmed the VS Code GitHub Pull Requests & Issues extension.
 
 ## Executive summary
 

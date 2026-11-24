@@ -28,7 +28,7 @@ Source proposal: [Foreign-Key Link Troubleshooter](FOREIGN_KEY_LINK_TROUBLESHOOT
 
 ## Repository Findings
 
-**Repository basis:** branch `reconciliation-mvp`, commit `9a24a7ec`, planned 2026-10-31. Uncommitted changes were considered: the working tree modifies only `docs/proposals/` files and `tests/test_generate_whats_new.py`, none of which touch the files below. Graphify (`graphify query`) was used for navigation; all findings below were verified in source.
+**Repository basis:** branch `reconciliation-mvp`, commit `d8b46521`, planned 2026-10-31. Uncommitted changes were considered: the working tree modifies only `docs/proposals/` files and `tests/test_generate_whats_new.py`, none of which touch the files below. Graphify (`graphify query`) was used for navigation; all findings below were verified in source.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |
@@ -252,7 +252,7 @@ No documentation or generated-artifact change is part of this phase. After code 
 
 ## Execution Evidence
 
-Implemented 2026-11-02 on branch `feature/foreign-key-link-troubleshooter` at commit `ed42bd5b`. The plan recorded `reconciliation-mvp` / `9a24a7ec`; every symbol named in Repository Findings was re-verified in the current branch before editing, and no finding differed.
+Implemented 2026-11-02 on branch `feature/foreign-key-link-troubleshooter` at commit `20646c91`. The plan recorded `reconciliation-mvp` / `d8b46521`; every symbol named in Repository Findings was re-verified in the current branch before editing, and no finding differed.
 
 | Check | Result |
 | --- | --- |

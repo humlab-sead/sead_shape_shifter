@@ -57,4 +57,4 @@ classification, planning/orchestration routing, package building, SQL rendering,
 ingester validate/ingest behavior (backend/tests/ingesters/test_sead_change_request_*.py).
  - No CI check results are recorded for this pull request (status check rollup is empty), so
 execution and outcomes of these tests are unknown and are not claimed as passed here.
- - The PR was merged into dev (merge commit 8ad1a84); no other validation evidence is available.
+ - The PR was merged into dev (merge commit 086dc50); no other validation evidence is available.

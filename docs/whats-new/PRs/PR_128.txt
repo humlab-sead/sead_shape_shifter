@@ -63,5 +63,5 @@ the backend for production-like testing.
 
 No validation evidence is available: the pull request metadata reports no CI status checks
 (statusCheckRollup is empty), and no test runs or commands are documented in the supplied diff. The
-pull request was merged into dev (merge commit 000d0d9), but no check results were reported. Not
+pull request was merged into dev (merge commit 8d4e4fe), but no check results were reported. Not
 verified: validation results unavailable.

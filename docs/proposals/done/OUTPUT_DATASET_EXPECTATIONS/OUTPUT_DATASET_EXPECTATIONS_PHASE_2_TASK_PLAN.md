@@ -21,7 +21,7 @@ Sources: [approved proposal](OUTPUT_DATASET_EXPECTATIONS.md) (`P-AC-3`, `P-AC-4`
 
 ## Repository Findings
 
-**Repository basis:** Branch `feature/output-dataset-expectations`, commit `47b50814`, planning date `2026-11-12`. The uncommitted Phase 1 implementation and documentation changes were considered; they remain untouched. Baseline tests were run against the current worktree.
+**Repository basis:** Branch `feature/output-dataset-expectations`, commit `78502b94`, planning date `2026-11-12`. The uncommitted Phase 1 implementation and documentation changes were considered; they remain untouched. Baseline tests were run against the current worktree.
 
 | Evidence | Finding | Planning implication |
 |---|---|---|

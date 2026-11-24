@@ -16,7 +16,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `reconciliation-mvp`, commit `315f9acf`, inspected 2026-10-30. The untracked Phase 2 task plan was present but not modified. The source proposal and phase plan were checked against the current code; Phase 2's UI changes are planned, not shipped.
+**Repository basis:** Branch `reconciliation-mvp`, commit `1b54244c`, inspected 2026-10-30. The untracked Phase 2 task plan was present but not modified. The source proposal and phase plan were checked against the current code; Phase 2's UI changes are planned, not shipped.
 
 | Verified source | Current behavior | Planning implication |
 | --- | --- | --- |

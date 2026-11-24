@@ -18,7 +18,7 @@ Offer read-only inspection for eligible `FK_DATA_INTEGRITY` warnings in the exis
 
 ## Repository Findings
 
-**Repository basis:** `feature/foreign-key-integrity-trouble-shooter` at `c05f2d7d`, 2026-11-06; the worktree was clean during inspection. Graphify identified the dialog's callers and tests; code, response models, endpoint, and tests below were checked directly. Phase 2's completed tracker and passing API/service checks establish its dependency; no new API decision is needed.
+**Repository basis:** `feature/foreign-key-integrity-trouble-shooter` at `31f6486b`, 2026-11-06; the worktree was clean during inspection. Graphify identified the dialog's callers and tests; code, response models, endpoint, and tests below were checked directly. Phase 2's completed tracker and passing API/service checks establish its dependency; no new API decision is needed.
 
 | Evidence | Verified finding | Planning implication |
 | --- | --- | --- |

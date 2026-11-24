@@ -3,7 +3,7 @@ description:
 ## Summary
 
 Widens the default protected paths in scripts/verify_promotion_provenance.sh to include ingesters/
-and the root tests/ directory. Previously the guard (introduced in 8e445c68) only required
+and the root tests/ directory. Previously the guard (introduced in bdf105cf) only required
 provenance for changes under scripts/, src/, backend/, frontend/, and .github/workflows/, so direct
 commits touching shipped ingester code or root-level tests passed unchecked. Both the
 DEFAULT_PROTECTED_PATHS constant and the --help usage text listing the defaults are updated; no

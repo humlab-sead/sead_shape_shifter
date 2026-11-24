@@ -48,7 +48,7 @@
 
 ## Repository Findings
 
-**Repository basis:** branch `documentation-consolidation`, commit `5b12060d`, reviewed 2026-09-16. The recent container deployment, operations documentation, and proposal archive changes are included in this baseline. The working tree was clean when this review was performed. The review findings lived in a scratch file, `TEMP.md`, which was removed on 2026-09-10.
+**Repository basis:** branch `documentation-consolidation`, commit `c71f0d79`, reviewed 2026-09-16. The recent container deployment, operations documentation, and proposal archive changes are included in this baseline. The working tree was clean when this review was performed. The review findings lived in a scratch file, `TEMP.md`, which was removed on 2026-09-10.
 
 | Evidence | Finding | Planning implication |
 |---|---|---|
@@ -159,7 +159,7 @@
 - [x] `T2.1` **Complete:** `container/` is tracked in version control.
   - **Target:** `container/` (tracked in the current tree).
   - **Current → required:** the Podman deployment exists only in the working tree → it is tracked, so deleting `docker/` does not reduce deployment coverage.
-  - **Implementation:** Already satisfied by the container deployment history beginning at `db71c5df`; 31 files are tracked. No additional commit is required before proceeding with the remaining Area 2 tasks.
+  - **Implementation:** Already satisfied by the container deployment history beginning at `0d93ee48`; 31 files are tracked. No additional commit is required before proceeding with the remaining Area 2 tasks.
   - **Validation:** `V-3`; `git ls-files container/` returns the deployment files.
   - **Dependencies:** Satisfied; `T2.2` and `T2.3` may proceed once their other documentation prerequisites are complete.
 

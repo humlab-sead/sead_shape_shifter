@@ -48,6 +48,6 @@ validation; switch such entities to type: sql or remove those fields.
 
  - No CI check results were available for this pull request (statusCheckRollup was empty), so test
 execution and outcomes are unknown; no checks are reported as passed.
- - The pull request was merged into main (merge commit f64b425b86bd181cfedd7e18f73ccf750e4e1d2a on
+ - The pull request was merged into main (merge commit 1723f9e66c8adc07dfea80ad0545f99cee3a686a on
 2026-01-20), but the available evidence does not indicate which checks, if any, ran before the
 merge.

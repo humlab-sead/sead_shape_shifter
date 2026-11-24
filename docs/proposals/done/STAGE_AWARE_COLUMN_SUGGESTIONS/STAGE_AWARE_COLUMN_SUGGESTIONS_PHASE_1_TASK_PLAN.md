@@ -17,7 +17,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `stage-aware-column-suggestions`, commit `abccbb89`, planning date 2026-10-07. The proposal directory is untracked on this branch; its proposal and phase plan were treated as user-provided inputs. No implementation files were changed during planning.
+**Repository basis:** Branch `stage-aware-column-suggestions`, commit `a5cd6667`, planning date 2026-10-07. The proposal directory is untracked on this branch; its proposal and phase plan were treated as user-provided inputs. No implementation files were changed during planning.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |

@@ -17,7 +17,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `in-memory-ingester-handoff`, commit `1ecd31b5`, planning date 2026-10-19. `git status --short` was clean. Graphify identified the workflow and its callers; the findings below were checked in current source and tests. The source proposal's description of active Change Request workbook input is historical: Phase 1 has retired it in this checkout.
+**Repository basis:** Branch `in-memory-ingester-handoff`, commit `ad294279`, planning date 2026-10-19. `git status --short` was clean. Graphify identified the workflow and its callers; the findings below were checked in current source and tests. The source proposal's description of active Change Request workbook input is historical: Phase 1 has retired it in this checkout.
 
 | Source | Verified finding | Planning implication |
 | --- | --- | --- |

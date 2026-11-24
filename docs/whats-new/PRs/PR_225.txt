@@ -52,5 +52,5 @@ and a standalone test_unnest_validation.py script; the old backend/tests/test_da
 removed with the module it tested.
  - No test-run or CI results are available in the provided evidence (statusCheckRollup is empty), so
 execution outcomes of these tests are unknown and are not reported as passed.
- - The pull request was merged into dev (merge commit 263b47d), which evidences the merge only, not
+ - The pull request was merged into dev (merge commit 9c98d00), which evidences the merge only, not
 check results.

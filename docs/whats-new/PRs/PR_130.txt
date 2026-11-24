@@ -64,5 +64,5 @@ execution results for them are available in the provided evidence; their pass/fa
 unknown.
  - No CI check results were reported for this pull request (status check rollup is empty), so it is
 unknown whether the repository's test/lint commands were run.
- - The pull request was merged into dev (merge commit 1836992f745c6979abf95218177727c0ce669978), but
+ - The pull request was merged into dev (merge commit 6f74442a3b5c4888332be848bebba3ab8e753164), but
 no validation outcomes are confirmed by the available evidence.

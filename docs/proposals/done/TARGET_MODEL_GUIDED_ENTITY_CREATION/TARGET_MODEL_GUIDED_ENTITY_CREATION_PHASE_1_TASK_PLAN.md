@@ -18,7 +18,7 @@ Sources: [proposal](TARGET_MODEL_GUIDED_ENTITY_CREATION.md) and [phase plan](TAR
 
 ## Repository Findings
 
-**Repository basis:** Branch `change-request-target-bundle-access`, commit `78f3c16c`, inspected 2026-10-20. The current uncommitted proposal and phase plan were treated as the source documents. Unrelated dirty implementation files and the separate change-request task plan were not used as implementation targets.
+**Repository basis:** Branch `change-request-target-bundle-access`, commit `63212ee7`, inspected 2026-10-20. The current uncommitted proposal and phase plan were treated as the source documents. Unrelated dirty implementation files and the separate change-request task plan were not used as implementation targets.
 
 | Verified source | Current behavior | Planning implication |
 | --- | --- | --- |

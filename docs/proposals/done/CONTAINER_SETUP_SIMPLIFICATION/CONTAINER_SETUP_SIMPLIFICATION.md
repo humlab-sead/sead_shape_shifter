@@ -42,7 +42,7 @@ The release manager currently runs the verifier found inside the candidate archi
 
 ## Current Behavior
 
-Verified 2026-10-11 on branch `container-deploy-versioning`, after commit `a3adcbde`.
+Verified 2026-10-11 on branch `container-deploy-versioning`, after commit `d5759fe4`.
 
 - The Makefile, `scripts/container.sh`, and `scripts/load-env.sh` each apply defaults for shared deployment values.
 - `scripts/container.sh` and `scripts/service.sh` both dispatch actions, and the Makefile repeats their target lists.

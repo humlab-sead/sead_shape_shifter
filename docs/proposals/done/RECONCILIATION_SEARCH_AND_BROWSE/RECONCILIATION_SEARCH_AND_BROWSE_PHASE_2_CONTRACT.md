@@ -38,7 +38,7 @@ re-decide them.
 
 ## Verified Current State
 
-Repository basis: Shape Shifter `reconciliation-search-and-browse` at `5727bed8`.
+Repository basis: Shape Shifter `reconciliation-search-and-browse` at `3e3ba3ce`.
 
 | Area | Current behavior | Consequence |
 |---|---|---|

@@ -60,5 +60,5 @@ backend/tests/services/test_task_service_initialize.py (initialization strategie
 suites were executed, and their results, is unknown: no CI check results were available for this
 pull request.
  - No frontend tests were included in the diff, and no frontend validation evidence is available.
- - The pull request was merged into main (merge commit ac01bae, 2026-01-16); no check rollup results
+ - The pull request was merged into main (merge commit 5e7769e, 2026-01-16); no check rollup results
 were reported.

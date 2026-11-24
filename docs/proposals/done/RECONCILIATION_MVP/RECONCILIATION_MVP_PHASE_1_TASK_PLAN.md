@@ -17,7 +17,7 @@
 
 ## Repository Findings
 
-**Repository basis:** `reconciliation-mvp` at `0ef47865`, inspected 2026-10-30. Uncommitted proposal and index files were read as the requested planning sources; no existing implementation or test changes were assumed. The target task-plan file did not exist.
+**Repository basis:** `reconciliation-mvp` at `7a69a0e7`, inspected 2026-10-30. Uncommitted proposal and index files were read as the requested planning sources; no existing implementation or test changes were assumed. The target task-plan file did not exist.
 
 | Verified source | Current behavior | Planning implication |
 | --- | --- | --- |

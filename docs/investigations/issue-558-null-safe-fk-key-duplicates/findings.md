@@ -2,7 +2,7 @@
 
 - **Brief:** [Issue #558](https://github.com/humlab-sead/sead_shape_shifter/issues/558); no separate investigation brief was supplied
 - **Status:** Root cause confirmed; fix implemented in the working tree, pending commit and merge
-- **Environment / baseline:** The original reproduction was checked on `dev` at `22a1c2c4` (`v2.5.0-1-g22a1c2c4`) on 2026-10-27. The current working tree includes the terminology rename and the fix described below.
+- **Environment / baseline:** The original reproduction was checked on `dev` at `cc0bd1e1` (`v2.5.0-1-g22a1c2c4`) on 2026-10-27. The current working tree includes the terminology rename and the fix described below.
 
 ## Executive summary
 

@@ -8,7 +8,7 @@ Phase 5 work that PR #501 (dev → main, released as v2.2.0) did not include bec
 reached dev yet.
 
  - Deployment record — new PODMAN_DEPLOYMENT_RECORD.md records the frozen release unit (source
-commit dbff5ab9…4f96, image ID 6a487db7…04a8, the locally computed manifest digest, and the OCI
+commit 6b852953…4f96, image ID 6a487db7…04a8, the locally computed manifest digest, and the OCI
 labels), the exposure, container-configuration, grant, proxy-identity, access, route-classification,
 log-review, and rollback results, the limitations, and three approved exceptions with owners: the
 off-host network probe (accepted by Roger Mähler), the unread PostgreSQL server log (owner

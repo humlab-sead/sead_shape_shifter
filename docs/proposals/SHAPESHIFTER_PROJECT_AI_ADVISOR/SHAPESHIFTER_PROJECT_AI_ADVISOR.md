@@ -104,7 +104,7 @@ The skill can use the full codebase and both sibling repositories, a Python runt
 
 ### What the application provides today
 
-The following behavior was checked against `staging` commit `95c56d8ccb779225ee3104c3035c192780519642`. Confirm availability in each supported deployment during grounding foundation.
+The following behavior was checked against `staging` commit `6be3d1090f0fbf2ed972dcd20fa05a6b88b971e1`. Confirm availability in each supported deployment during grounding foundation.
 
 1. Editor-side validation messages without domain-level explanation.
 2. Validation workflows (structural, data, conformance) reachable through `scripts/project/validate_project.py` and the backend validation service.

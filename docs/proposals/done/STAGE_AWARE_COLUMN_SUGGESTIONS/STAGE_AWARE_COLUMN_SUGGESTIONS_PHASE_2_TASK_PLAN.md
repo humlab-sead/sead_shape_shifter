@@ -17,7 +17,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `stage-aware-column-suggestions`, commit `723bef65`, planning date 2026-10-07. Pre-existing staged Phase 1 additions were considered and left untouched. The Phase 2 task-plan target did not exist.
+**Repository basis:** Branch `stage-aware-column-suggestions`, commit `9a82ac8a`, planning date 2026-10-07. Pre-existing staged Phase 1 additions were considered and left untouched. The Phase 2 task-plan target did not exist.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |

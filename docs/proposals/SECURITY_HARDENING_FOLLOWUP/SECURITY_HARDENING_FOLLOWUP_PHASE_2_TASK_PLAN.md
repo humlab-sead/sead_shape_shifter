@@ -19,7 +19,7 @@ Acceptance criteria:
 
 ## Repository Findings
 
-**Repository basis:** `security-hardening-phase-1` at `732c77d0`, 2026-09-24. Unrelated working-tree changes (`uv.lock`, untracked `docs/ai/` note and `gitleaks-report.json`) were not used as implementation inputs. Graphify's scoped query returned general deployment-document nodes, not the controlling scripts; all findings below come from current files.
+**Repository basis:** `security-hardening-phase-1` at `43362d41`, 2026-09-24. Unrelated working-tree changes (`uv.lock`, untracked `docs/ai/` note and `gitleaks-report.json`) were not used as implementation inputs. Graphify's scoped query returned general deployment-document nodes, not the controlling scripts; all findings below come from current files.
 
 | Source | Observed behavior | Consequence for plan |
 |---|---|---|

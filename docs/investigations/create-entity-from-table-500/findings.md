@@ -2,7 +2,7 @@
 
 **Brief:** User report and screenshot in this conversation; no separate brief or server trace provided.
 **Status:** Partially conclusive
-**Environment / baseline:** Local Shape Shifter branch `value-reference-column-pickers`, HEAD `1b929e5e3a307c0c045de435e477877726c680ca`, 2026-10-24. The worktree was already dirty before this investigation. No application source was changed.
+**Environment / baseline:** Local Shape Shifter branch `value-reference-column-pickers`, HEAD `4af288990b0f8ec63ae4e8c4cb0a43f2ebe709e5`, 2026-10-24. The worktree was already dirty before this investigation. No application source was changed.
 
 ## Executive summary
 
@@ -42,12 +42,12 @@ This does not appear to be a newly introduced change or a fix already covered by
 
 ## Timeline or causal chain
 
-1. On 2026-02-05, commit `ab24c2f2` added the generator's default `SchemaIntrospectionService(settings.PROJECTS_DIR)` construction.
+1. On 2026-02-05, commit `db68e6e7` added the generator's default `SchemaIntrospectionService(settings.PROJECTS_DIR)` construction.
 2. On 2026-02-16, [issue #251](https://github.com/humlab-sead/sead_shape_shifter/issues/251) documented that schema/data-source services needed `GLOBAL_DATA_SOURCE_DIR`, not `PROJECTS_DIR`. The general schema API now uses the global directory, but the entity generator still uses the older path.
 3. On 2026-02-05, [issue #217](https://github.com/humlab-sead/sead_shape_shifter/issues/217) and merged [PR #218](https://github.com/humlab-sead/sead_shape_shifter/pull/218) introduced entity generation from database tables. No later matching issue or fix for this endpoint was found.
-4. The separate preview problem in [issue #468](https://github.com/humlab-sead/sead_shape_shifter/issues/468) concerned a mapper-context error in the entity preview flow; commit `b5e41962` changed `ShapeShiftService.preview_entity()`, not the table-generation route.
-5. The recent authorization work in [issue #587](https://github.com/humlab-sead/sead_shape_shifter/issues/587), including `e0ff1a8`, changes authorization for SQL column-introspection requests. It does not change `generate-from-table`.
-6. Commit `5cf2bd4` on 2026-10-24 allows resolver-approved environment variables in server-managed source configurations. It does not change the generator's directory selection or resolve its raw `@include` filename.
+4. The separate preview problem in [issue #468](https://github.com/humlab-sead/sead_shape_shifter/issues/468) concerned a mapper-context error in the entity preview flow; commit `60a226e3` changed `ShapeShiftService.preview_entity()`, not the table-generation route.
+5. The recent authorization work in [issue #587](https://github.com/humlab-sead/sead_shape_shifter/issues/587), including `609d50b`, changes authorization for SQL column-introspection requests. It does not change `generate-from-table`.
+6. Commit `5b90f7a` on 2026-10-24 allows resolver-approved environment variables in server-managed source configurations. It does not change the generator's directory selection or resolve its raw `@include` filename.
 
 ## Root-cause assessment
 
@@ -57,7 +57,7 @@ This does not appear to be a newly introduced change or a fix already covered by
 | --- | --- | --- | --- |
 | The create route cannot reopen this project's shared source reference. | The supplied YAML uses `@include: ${GLOBAL_DATA_SOURCE_DIR}/sead-options.yml`; generator default uses `PROJECTS_DIR`; normal schema API uses `GLOBAL_DATA_SOURCE_DIR`; isolated lookup reproduced a miss. | The deployed server version and exception log are unavailable. Inline dictionary configuration would bypass this file lookup, but it is not the configuration supplied here. | Supported hypothesis; very strong fit |
 | A recent authorization fix already fixed this 500. | Recent issue #587 contains related SQL introspection authorization work. | Its change is in the query-column introspection route; create uses `require_project(Action.EDIT)` and `EntityGeneratorService`. | Ruled out |
-| The recent entity-preview mapper fix covers this failure. | The screenshot includes generated preview YAML. | Preview is computed from a separate schema request; commit `b5e41962` changes the entity preview mapper path, not table generation. | Ruled out |
+| The recent entity-preview mapper fix covers this failure. | The screenshot includes generated preview YAML. | Preview is computed from a separate schema request; commit `60a226e3` changes the entity preview mapper path, not table generation. | Ruled out |
 | A duplicate entity name caused this 500. | The entered name matches the selected table and could already exist. | `ResourceConflictError` is mapped to HTTP 409, not 500 ([`error_handlers.py`](../../../backend/app/utils/error_handlers.py#L77)). | Ruled out for the normal duplicate path |
 | The SEAD database/table itself is unavailable. | The create request may load and introspect the source again. | The dialog already had table metadata; no backend trace or live request was available. | Unverified |
 
@@ -106,5 +106,5 @@ The smallest next check is to inspect the failed request's response body and mat
 - [Issue #251](https://github.com/humlab-sead/sead_shape_shifter/issues/251)
 - [Issue #468](https://github.com/humlab-sead/sead_shape_shifter/issues/468)
 - [Issue #587](https://github.com/humlab-sead/sead_shape_shifter/issues/587)
-- [Commit `5cf2bd4`](https://github.com/humlab-sead/sead_shape_shifter/commit/5cf2bd4ebdc59293393d9f6509f8c59c0597fb7d)
-- [Commit `e0ff1a8`](https://github.com/humlab-sead/sead_shape_shifter/commit/e0ff1a8ed3f24b25df18510c9ba515992c6256ec)
+- [Commit `5b90f7a`](https://github.com/humlab-sead/sead_shape_shifter/commit/5b90f7aea669e836e5f85d4d870829a081dfdfe4)
+- [Commit `609d50b`](https://github.com/humlab-sead/sead_shape_shifter/commit/609d50b2ea5e10db8b2aac77acce3f157fe22c32)

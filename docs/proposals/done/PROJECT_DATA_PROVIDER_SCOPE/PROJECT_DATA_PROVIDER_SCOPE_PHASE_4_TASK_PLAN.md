@@ -22,7 +22,7 @@ Sources: [proposal](./PROJECT_DATA_PROVIDER_SCOPE.md), [phase plan](./PROJECT_DA
 
 ## Repository Findings
 
-**Repository basis:** branch `project-data-provider-scope`, commit `970b40a8`, 2026-10-18 (Europe/Stockholm). The uncommitted proposal, phase plan, and cutover document were read as the current planning inputs; the uncommitted proposals index was left untouched. No implementation files were changed during planning. Graphify was used to locate the ingester service; the behavior below was checked in source and tests.
+**Repository basis:** branch `project-data-provider-scope`, commit `08125868`, 2026-10-18 (Europe/Stockholm). The uncommitted proposal, phase plan, and cutover document were read as the current planning inputs; the uncommitted proposals index was left untouched. No implementation files were changed during planning. Graphify was used to locate the ingester service; the behavior below was checked in source and tests.
 
 | Source | Verified finding | Planning implication |
 | --- | --- | --- |

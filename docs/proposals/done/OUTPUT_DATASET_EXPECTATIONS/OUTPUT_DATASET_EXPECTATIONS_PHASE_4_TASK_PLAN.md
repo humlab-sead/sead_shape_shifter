@@ -23,7 +23,7 @@ No upstream decision blocks this plan.
 
 ## Repository Findings
 
-**Repository basis:** Branch `feature/output-dataset-expectations`, commit `1fb59d02`, planning date `2026-11-13`. Uncommitted Phase 1–3 code, tests, documentation, and phase-plan changes were considered as the current worktree. Graphify was used for navigation; the following findings were checked against current source and tests and re-verified after the phase-plan readiness update.
+**Repository basis:** Branch `feature/output-dataset-expectations`, commit `95b59330`, planning date `2026-11-13`. Uncommitted Phase 1–3 code, tests, documentation, and phase-plan changes were considered as the current worktree. Graphify was used for navigation; the following findings were checked against current source and tests and re-verified after the phase-plan readiness update.
 
 | Evidence | Finding | Planning implication |
 |---|---|---|

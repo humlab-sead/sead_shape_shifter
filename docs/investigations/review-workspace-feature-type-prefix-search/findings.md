@@ -2,7 +2,7 @@
 
 **Brief:** User reports that `sampl` returns no feature-type results, `sample` returns one, and `samples` returns two. They expect “Samples taken by” (ID 4) and “Samples processed by” (ID 3) for all three queries.
 **Status:** Conclusive for the current search behavior and its cause; onset in the user's deployed environment is unknown.
-**Environment / baseline:** Shape Shifter branch `reconciliation-search-and-browse-ux-fixes` at `694c1c35`; Authority Service branch `classifier-fuzzy-reconciliation-tier-2` at `6c284cee`; investigation run 2026-11-23. Both worktrees were clean before testing.
+**Environment / baseline:** Shape Shifter branch `reconciliation-search-and-browse-ux-fixes` at `755cea53`; Authority Service branch `classifier-fuzzy-reconciliation-tier-2` at `6c284cee`; investigation run 2026-11-23. Both worktrees were clean before testing.
 
 ## Executive summary
 
@@ -36,7 +36,7 @@ This reproduces the reported counts and the two displayed scores. It uses synthe
 ## Timeline or causal chain
 
 - The Authority Service's bounded interactive search was added in commit `1f3f1b8` on 2026-11-19.
-- The Shape Shifter review workspace was added in commit `fde6d253` on 2026-11-20. Its Phase 3 task plan describes replacing the prior prefix-suggestion request with the new ranked-search request.
+- The Shape Shifter review workspace was added in commit `d72c1062` on 2026-11-20. Its Phase 3 task plan describes replacing the prior prefix-suggestion request with the new ranked-search request.
 - The user’s report establishes the current symptom, but there is no deployment record or captured response from an earlier version. The first affected deployed version cannot be established from the available evidence.
 
 ## Root-cause assessment
