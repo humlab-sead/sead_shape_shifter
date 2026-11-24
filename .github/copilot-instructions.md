@@ -20,6 +20,7 @@ Keep this file small and always-on. Use `.github/instructions/*.instructions.md`
 - `backend/app/`: FastAPI backend
 - `frontend/`: Vue 3 frontend
 - `ingesters/`: pluggable ingester implementations
+- `docs/sead/`: SEAD schema reference. `columns.csv` and the generated `SCHEMA.md` are current (refresh with `make sead-schema`); the numbered `0*_*.sql` files are a stale historical dump
 - Python uses the root `.venv/`
 
 Core pipeline order matters: Extract → Filter → Link → Unnest → Translate → Store.

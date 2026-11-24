@@ -23,7 +23,7 @@ import yaml
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[4]
 MODEL_PATH: Path = REPO_ROOT / "resources/target_models/sead_standard_model.yml"
-COLUMNS_CSV: Path = REPO_ROOT / "docs/investigations/sead-target-model-completeness/columns.csv"
+COLUMNS_CSV: Path = REPO_ROOT / "docs/sead/columns.csv"
 
 
 def load_source_foreign_keys() -> dict[str, dict[str, str]]:
