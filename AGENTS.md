@@ -16,6 +16,7 @@
 - `make backend-run` (FastAPI :8012), `make frontend-run` (Vue :5173).
 - `make test` — full suite; `uv run pytest tests -v` (Core); `uv run pytest backend/tests -v` (backend).
 - `make lint` / `make tidy` (Black + isort) before committing.
+- `make status` — read-only check of graphify (hooks, graph and wiki freshness, community names), repository hooks, branch promotion and the SEAD schema reference; lists the command for each action needed.
 
 ## Documentation Vocabulary
 
@@ -88,6 +89,7 @@ How the graph is kept current:
 - graphify git hooks (installed by `make install-hooks`) rebuild the code part of the graph in the background after each commit, checkout, merge and rebase. The rebuild is AST-only and makes no LLM calls; its log is `~/.cache/graphify-rebuild.log`.
 - `make semantic-graphify` adds the LLM-based results (documents and community names). Run it only when the user asks.
 - `make update-graphify` and `make semantic-graphify` also rebuild graphify-out/wiki/; `make graphify-wiki` rebuilds only the wiki (local, about a second, no LLM).
+- `make status` shows whether the graph, the LLM-based results, the community names or the wiki need a rebuild.
 
 Rules:
 - When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.

@@ -69,6 +69,7 @@ How the graph is kept current:
 - graphify git hooks (installed by `make install-hooks`) rebuild the code part of the graph in the background after each commit, checkout, merge and rebase. The rebuild is AST-only and makes no LLM calls; its log is `~/.cache/graphify-rebuild.log`.
 - `make semantic-graphify` adds the LLM-based results (documents and community names). It is a long, token-heavy run: run it only when the user asks.
 - The hooks do not rebuild `graphify-out/wiki/`. `make update-graphify` and `make semantic-graphify` rebuild it at the end; `make graphify-wiki` rebuilds only the wiki (local, about a second, no LLM).
+- `make status` shows whether the graph, the LLM-based results, the community names or the wiki need a rebuild, with the command to run.
 
 Rules:
 - When `graphify-out/graph.json` exists, run `graphify query "<question>"` before broad codebase exploration, architecture searches, or relationship searches. Use `graphify path "<source>" "<target>"` for a specific relationship and `graphify explain "<concept>"` for a focused concept.

@@ -10,6 +10,14 @@ install:
 	@$(MAKE) install-hooks
 	@echo "✓ Installed shape-shifter with all dependencies (core + api + dev)"
 
+# Shows the status of the local setup: graphify (hooks, code graph, LLM-based results, community
+# names, wiki), repository hooks, branch promotion and the SEAD schema reference, with the command
+# to run for each action. Read-only and offline. With STATUS_STRICT=1 it fails (non-zero exit)
+# when an action is listed.
+.PHONY: status
+status:
+	@scripts/dev/status.sh
+
 .PHONY: install-hooks
 install-hooks:
 	@uv run --extra all pre-commit install
