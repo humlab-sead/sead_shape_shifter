@@ -24,3 +24,9 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: claude-rules-up-to-date
+        name: Check .claude/rules matches .github/instructions
+        entry: python3 scripts/dev/sync_claude_rules.py --check
+        language: system
+        pass_filenames: false
+        files: ^(\.github/instructions/|\.claude/rules/|scripts/dev/sync_claude_rules\.py$)

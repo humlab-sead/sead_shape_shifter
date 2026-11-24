@@ -76,7 +76,7 @@ Core FK links use local `system_id` values. A change-request package can use an 
 - SIMS client: `backend/app/clients/sims_client.py` (env vars: `SHAPE_SHIFTER_SIMS_SERVICE_URL`, `SHAPE_SHIFTER_SIMS_CONTRACT_CALLER`, `SHAPE_SHIFTER_SIMS_CONTRACT_REGISTRATION_TOKEN`).
 - Docs: `docs/DESIGN.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`.
 - SEAD schema: `docs/sead/columns.csv` (current tables and columns with types, nullability, PKs and FK targets) and `docs/sead/SCHEMA.md` (the same per table, generated). Refresh with `make sead-schema`. The numbered `docs/sead/0*_*.sql` files are a stale historical dump; do not use them to decide tables or columns. See `docs/sead/README.md`.
-- Scoped instructions (VS Code Copilot): `.github/instructions/` — auto-injected by `applyTo` patterns.
+- Scoped instructions: `.github/instructions/` is the source (VS Code Copilot injects it by `applyTo` pattern). `.claude/rules/` is generated from it for Claude Code (`applyTo` becomes `paths`). Edit only the sources, then run `make claude-rules`; `make lint`, pre-commit and CI fail when the two differ. Instruction files without `applyTo` (`writing-style`, `diagrams`, `github-workflow`, `phase-plan`) are not converted: read them directly when the task matches.
 - Planning instructions: use `.github/instructions/phase-plan.instructions.md` when the user asks for phased implementation sequencing, and use `.github/instructions/task-plan.instructions.md` when the user asks for work breakdown, checklists, or definition-of-done planning for one phase.
 - Prompt templates: `.github/prompts/` — invoke via `/` in Copilot Chat.
 - UCanAccess setup: `scripts/dev/install-uncanccess.sh` (requires Java JRE).

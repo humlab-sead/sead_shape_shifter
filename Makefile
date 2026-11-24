@@ -152,7 +152,15 @@ tidy:
 	@uv run black src tests backend ingesters scripts
 
 .PHONY: lint
-lint: tidy ruff pylint check-target-model-schema-reference sead-schema-check check-doc-links
+lint: tidy ruff pylint check-target-model-schema-reference sead-schema-check check-claude-rules check-doc-links
+
+.PHONY: claude-rules check-claude-rules
+# Generates .claude/rules/ from .github/instructions/ (applyTo becomes paths). Edit the sources, never the generated files.
+claude-rules:
+	@python3 scripts/dev/sync_claude_rules.py
+
+check-claude-rules:
+	@python3 scripts/dev/sync_claude_rules.py --check
 
 .PHONY: check-doc-links
 check-doc-links:
