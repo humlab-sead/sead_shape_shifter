@@ -361,11 +361,6 @@ rtk-install:
 	@rtk init -g --copilot
 	@rtk init -g --codex
 
-create-graphify:
-	@graphify extract . --project
-	@graphify cluster-only $(HOME)/source/sead_shape_shifter
-	@graphify export callflow-html
-
 # Rebuilds the code part of the local graph (AST only, no LLM). The git hooks normally do
 # this after each commit, checkout, merge and rebase; graphify-out/ is not committed.
 # graphify is a uv tool (~/.local/bin), not part of the project .venv.
