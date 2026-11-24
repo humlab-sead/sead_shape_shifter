@@ -72,6 +72,12 @@ resources/reconciliation_policies/
 /CLAUDE.md
 /GEMINI.md
 
+# Generated SEAD schema reference: SCHEMA.md (~90 KB) repeats docs/sead/columns.csv as one
+# section per table and is too large for a local LLM to extract in one response; columns.sql
+# yields no symbols. Read docs/sead/columns.csv directly instead.
+/docs/sead/SCHEMA.md
+/docs/sead/columns.sql
+
 # Old-to-new commit hashes from the 2026-11-23 history rewrite (data, not docs)
 scripts/_shared/history_rewrite_commit_map.txt
 
