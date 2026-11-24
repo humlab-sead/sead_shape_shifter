@@ -90,7 +90,7 @@ worked examples.
 | `generate_whats_new.py` | Build a versioned What's New note and the rolling `PENDING.md` snapshot from merged pull requests. |
 | `generate_user_release_notes.py` | Build a release-note draft from `CHANGELOG.md` entries. |
 | `prepare_copilot_release_notes.py` | Produce a heuristic release-note draft plus a ready-to-paste Copilot CLI prompt. |
-| `promote_dev_to_staging.sh` | Verify provenance, open a draft promotion pull request, and prepare its description. |
+| `promote_dev_to_staging.sh` | Verify provenance, open a draft promotion pull request, and write its description to GitHub. |
 
 ### `project/`
 
@@ -563,8 +563,11 @@ python3 scripts/workflow/prepare_copilot_release_notes.py --version X.Y.Z
 # Draft into docs/whats-new/PRs/PR_<number>.txt
 python3 scripts/workflow/update_pr_descriptions.py 620-634 --draft
 
-# Override the detected included pull requests for a promotion
-python3 scripts/workflow/update_pr_descriptions.py 627 --draft --included-prs 621,626
+# Write a promotion PR's description straight to GitHub (no draft file)
+python3 scripts/workflow/update_pr_descriptions.py 627 --update-promotion
+
+# Same, but list these included pull requests instead of detecting them
+python3 scripts/workflow/update_pr_descriptions.py 627 --update-promotion --included-prs 621,626
 
 # Record commits that reached the base branch without a pull request
 python3 scripts/workflow/update_pr_descriptions.py 620-634 --draft --include-orphaned
@@ -578,6 +581,8 @@ python3 scripts/workflow/update_pr_descriptions.py 620-634 --draft --include-orp
 # Publish the reviewed files
 python3 scripts/workflow/update_pr_descriptions.py 620-634 --publish
 ```
+
+Use `--update-promotion` for promotion pull requests. It writes the description to the pull request on GitHub and stores nothing under `docs/whats-new/PRs/`; review or edit the description on GitHub. It refuses pull requests that are not promotions. `--draft` still writes draft files for promotions too, so the bulk backfill in `draft_all_pr_descriptions.py` never changes GitHub.
 
 Promotion pull requests (`dev` into `staging`, or `staging` into `main`) are drafted from branch history without a model, listing the pull requests merged into the source branch and absent from the target branch. Issues resolved by those pull requests are listed as `Closes #<issue>` lines in `Summary`, so merging the promotion into `main` closes them; they are kept out of `Included PRs`, which the release generator reads as pull request numbers. GitHub records no closing reference for a pull request into `dev`, so the issues come from `Closes` lines at the start of a line in each included pull request's `Summary`, with any recorded reference used as well. A keyword quoted inside a sentence is ignored.
 
@@ -826,15 +831,30 @@ commit provenance, create a draft promotion pull request, and prepare its
 description from branch history:
 
 ```bash
-# Create the draft PR and generate its local description
+# Create the draft PR and write its description to GitHub
 make promote-dev-to-staging
 
 # Or run the script directly
 scripts/workflow/promote_dev_to_staging.sh prepare
 
-# Review or edit docs/whats-new/PRs/PR_<number>.txt, then publish it
+# Review or edit the description on GitHub, then mark the PR ready for review
 scripts/workflow/promote_dev_to_staging.sh publish <pull-request-number>
 ```
+
+No draft file is written. `publish` checks commit provenance again and keeps the
+description as it is on GitHub, including your edits.
+
+For `staging` into `main`, open a draft pull request and write its description
+the same way:
+
+```bash
+gh pr create --draft --base main --head staging --title "chore: promote staging into main" --body "<!-- promotion-pr -->"
+.venv/bin/python scripts/workflow/update_pr_descriptions.py <pull-request-number> --update-promotion
+```
+
+Until promotions are expanded automatically (#793), a `staging` into `main` draft
+lists the `dev` into `staging` promotions; add `--included-prs` with the change
+pull requests they carried.
 
 The script requires authenticated `gh` access, the repository `.venv`, and an
 `origin` remote pointing to `humlab-sead/sead_shape_shifter`. It does not merge

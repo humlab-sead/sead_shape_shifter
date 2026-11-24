@@ -78,7 +78,7 @@ Draft and publish an individual PR description with:
 .venv/bin/python scripts/workflow/update_pr_descriptions.py <pr-number> --publish
 ```
 
-Review and edit `docs/whats-new/PRs/PR_<number>.txt` between the commands. Publishing replaces the PR's full title and body, so keep any existing text you want to retain. For provider setup, bulk drafting, and other options, see [the scripts guide](../../scripts/README.md).
+Review and edit `docs/whats-new/PRs/PR_<number>.txt` between the commands. Publishing replaces the PR's full title and body, so keep any existing text you want to retain. For a promotion pull request, use `--update-promotion` instead: it writes the description straight to the pull request and stores no file. For provider setup, bulk drafting, and other options, see [the scripts guide](../../scripts/README.md).
 
 For a direct commit that should be described with the next PR, add `--include-orphaned` when drafting:
 

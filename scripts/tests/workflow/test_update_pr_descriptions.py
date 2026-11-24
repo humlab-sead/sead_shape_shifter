@@ -655,7 +655,7 @@ def test_include_orphaned_requires_draft_mode(monkeypatch: pytest.MonkeyPatch, c
     monkeypatch.setattr(sys, "argv", ["update_pr_descriptions.py", "627", "--publish", "--include-orphaned"])
 
     assert update_pr_descriptions.main() == 2
-    assert "--include-orphaned can only be used with --draft." in capsys.readouterr().err
+    assert "--include-orphaned can only be used with --draft or --update-promotion." in capsys.readouterr().err
 
 
 def test_show_all_orphaned_requires_include_orphaned(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
@@ -864,7 +864,58 @@ def test_included_prs_requires_draft_mode(monkeypatch: pytest.MonkeyPatch, capsy
     monkeypatch.setattr(sys, "argv", ["update_pr_descriptions.py", "627", "--publish", "--included-prs", "621"])
 
     assert update_pr_descriptions.main() == 2
-    assert "--included-prs can only be used with --draft." in capsys.readouterr().err
+    assert "--included-prs can only be used with --draft or --update-promotion." in capsys.readouterr().err
+
+
+PROMOTION_METADATA = {
+    "number": 802,
+    "headRefName": "staging",
+    "baseRefName": "main",
+    "body": "<!-- promotion-pr -->\nDescription pending.",
+    "url": "https://github.com/o/r/pull/802",
+}
+
+
+def test_update_promotion_writes_description_to_github_without_a_draft_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    published: list[tuple[int, dict[str, str]]] = []
+    monkeypatch.setattr(update_pr_descriptions, "PR_DRAFTS_DIR", tmp_path)
+    monkeypatch.setattr(update_pr_descriptions.shutil, "which", lambda command: f"/usr/bin/{command}")
+    monkeypatch.setattr(update_pr_descriptions, "load_pr_context", lambda number, repo: {"metadata": dict(PROMOTION_METADATA)})
+    monkeypatch.setattr(
+        update_pr_descriptions,
+        "fetch_pull_requests",
+        lambda numbers, repo: [{"number": number, "title": f"Change {number}"} for number in numbers],
+    )
+    monkeypatch.setattr(update_pr_descriptions, "publish_draft", lambda number, draft, repo: published.append((number, draft)))
+    monkeypatch.setattr(sys, "argv", ["update_pr_descriptions.py", "802", "--update-promotion", "--included-prs", "792,794"])
+
+    assert update_pr_descriptions.main() == 0
+
+    assert [number for number, _ in published] == [802]
+    assert "Change 792" in published[0][1]["body"] and "Change 794" in published[0][1]["body"]
+    assert not list(tmp_path.iterdir())
+    assert "Updated the description of promotion PR #802 on GitHub." in capsys.readouterr().out
+
+
+def test_update_promotion_refuses_a_change_pull_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(update_pr_descriptions, "PR_DRAFTS_DIR", tmp_path)
+    monkeypatch.setattr(update_pr_descriptions.shutil, "which", lambda command: f"/usr/bin/{command}")
+    monkeypatch.setattr(
+        update_pr_descriptions,
+        "load_pr_context",
+        lambda number, repo: {"metadata": {"number": number, "headRefName": "fix/x", "baseRefName": "dev", "body": ""}},
+    )
+    monkeypatch.setattr(update_pr_descriptions, "publish_draft", lambda *args: pytest.fail("a change PR was published"))
+    monkeypatch.setattr(sys, "argv", ["update_pr_descriptions.py", "799", "--update-promotion"])
+
+    assert update_pr_descriptions.main() == 1
+
+    assert "PR #799 is not a promotion PR" in capsys.readouterr().err
+    assert not list(tmp_path.iterdir())
 
 
 PREAMBLE_RESPONSE = """I have reviewed the full diff, metadata, and template. This is a feature PR
