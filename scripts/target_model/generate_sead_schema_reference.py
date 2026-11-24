@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+"""Generate a Markdown reference for the SEAD schema from docs/sead/columns.csv.
+
+Reads the column export written by `make sead-schema` (one row per column, with type,
+nullability, primary key and foreign-key target) and writes docs/sead/SCHEMA.md with one
+section per table. Each section lists the table's columns, the tables it references and the
+tables that reference it, so the graphify knowledge graph can index table relations, which
+it cannot read from the CSV file itself.
+
+Uses only the standard library and does not connect to a database.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import sys
+from collections import defaultdict
+from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
+
+REPO_ROOT: Path = Path(__file__).resolve().parents[2]
+DEFAULT_CSV: Path = REPO_ROOT / "docs" / "sead" / "columns.csv"
+DEFAULT_OUTPUT: Path = REPO_ROOT / "docs" / "sead" / "SCHEMA.md"
+
+REQUIRED_FIELDS: tuple[str, ...] = (
+    "table_name",
+    "column_name",
+    "ordinal_position",
+    "data_type",
+    "numeric_precision",
+    "numeric_scale",
+    "character_maximum_length",
+    "is_nullable",
+    "is_pk",
+    "is_fk",
+    "fk_table_name",
+    "fk_column_name",
+)
+
+
+@dataclass(frozen=True)
+class Column:
+    """One column of a SEAD table, as exported to columns.csv."""
+
+    table: str
+    name: str
+    position: int
+    data_type: str
+    numeric_precision: str | None
+    numeric_scale: str | None
+    max_length: str | None
+    nullable: bool
+    primary_key: bool
+    fk_table: str | None
+    fk_column: str | None
+
+    @property
+    def type_text(self) -> str:
+        """Returns the type with its length or precision, such as `character varying(100)`."""
+        if self.max_length:
+            return f"{self.data_type}({self.max_length})"
+        if self.data_type == "numeric" and self.numeric_precision:
+            scale = f",{self.numeric_scale}" if self.numeric_scale else ""
+            return f"numeric({self.numeric_precision}{scale})"
+        return self.data_type
+
+
+def _value(raw: str | None) -> str | None:
+    """Returns None for the empty string and the text `NULL`, which psql writes for SQL nulls."""
+    if raw is None:
+        return None
+    text = raw.strip()
+    return None if text in ("", "NULL") else text
+
+
+def load_columns(csv_path: Path) -> list[Column]:
+    """Reads columns.csv and returns its rows ordered by table and column position.
+
+    Raises `ValueError` when a required field is missing from the header or a row has an
+    invalid column position.
+    """
+    with csv_path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        missing = [field for field in REQUIRED_FIELDS if field not in (reader.fieldnames or [])]
+        if missing:
+            raise ValueError(f"{csv_path}: missing columns in header: {', '.join(missing)}")
+        columns: list[Column] = []
+        for line_number, row in enumerate(reader, start=2):
+            try:
+                position = int(row["ordinal_position"])
+            except ValueError as error:
+                raise ValueError(f"{csv_path}:{line_number}: invalid ordinal_position {row['ordinal_position']!r}") from error
+            is_fk = _value(row["is_fk"]) == "YES"
+            columns.append(
+                Column(
+                    table=row["table_name"].strip(),
+                    name=row["column_name"].strip(),
+                    position=position,
+                    data_type=row["data_type"].strip(),
+                    numeric_precision=_value(row["numeric_precision"]),
+                    numeric_scale=_value(row["numeric_scale"]),
+                    max_length=_value(row["character_maximum_length"]),
+                    nullable=_value(row["is_nullable"]) == "YES",
+                    primary_key=_value(row["is_pk"]) == "YES",
+                    fk_table=_value(row["fk_table_name"]) if is_fk else None,
+                    fk_column=_value(row["fk_column_name"]) if is_fk else None,
+                )
+            )
+    return sorted(columns, key=lambda column: (column.table, column.position))
+
+
+def _code_list(names: Sequence[str]) -> str:
+    return ", ".join(f"`{name}`" for name in names)
+
+
+def render_markdown(columns: Sequence[Column], source_name: str = "docs/sead/columns.csv") -> str:
+    """Returns the Markdown reference for the given columns, one section per table."""
+    tables: dict[str, list[Column]] = defaultdict(list)
+    referenced_by: dict[str, set[tuple[str, str]]] = defaultdict(set)
+    for column in columns:
+        tables[column.table].append(column)
+        if column.fk_table:
+            referenced_by[column.fk_table].add((column.table, column.name))
+    foreign_keys = sum(1 for column in columns if column.fk_table)
+
+    lines = [
+        "# SEAD Schema Reference",
+        "",
+        f"Generated from `{source_name}` by `scripts/target_model/generate_sead_schema_reference.py`.",
+        "Do not edit this file by hand. Run `make sead-schema` to export the schema from the database",
+        "and regenerate this file, or `make sead-schema-docs` to regenerate it from the current CSV.",
+        "",
+        f"{len(tables)} tables, {len(columns)} columns, {foreign_keys} foreign keys.",
+        "Legacy tables and columns are excluded; `docs/sead/columns.sql` lists them.",
+        "",
+        "## Tables",
+        "",
+    ]
+    lines.extend(f"- [{table}](#{table})" for table in sorted(tables))
+
+    for table in sorted(tables):
+        table_columns = tables[table]
+        primary_key = [column.name for column in table_columns if column.primary_key]
+        references = sorted({column.fk_table for column in table_columns if column.fk_table})
+        lines.extend(["", f"## {table}", ""])
+        lines.append(f"Primary key: {_code_list(primary_key) if primary_key else 'none'}.")
+        if references:
+            lines.append(f"References: {_code_list(references)}.")
+        if table in referenced_by:
+            sources = [f"`{source}` (`{column}`)" for source, column in sorted(referenced_by[table])]
+            lines.append(f"Referenced by: {', '.join(sources)}.")
+        lines.extend(["", "| Column | Type | Nullable | Key | References |", "| --- | --- | --- | --- | --- |"])
+        for column in table_columns:
+            key = "PK" if column.primary_key else ("FK" if column.fk_table else "")
+            target = f"`{column.fk_table}.{column.fk_column}`" if column.fk_table else ""
+            nullable = "yes" if column.nullable else "no"
+            lines.append(f"| `{column.name}` | {column.type_text} | {nullable} | {key} | {target} |")
+    return "\n".join(lines) + "\n"
+
+
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--csv", type=Path, default=DEFAULT_CSV, help="Column export to read (default: docs/sead/columns.csv)")
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="Markdown file to write (default: docs/sead/SCHEMA.md)")
+    parser.add_argument("--check", action="store_true", help="Exit with status 1 if the output file is out of date; write nothing")
+    return parser.parse_args(argv)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Writes or checks the Markdown reference. Returns the process exit status."""
+    args = parse_args(argv)
+    try:
+        markdown = render_markdown(load_columns(args.csv))
+    except (OSError, ValueError) as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
+    if args.check:
+        current = args.output.read_text(encoding="utf-8") if args.output.is_file() else ""
+        if current != markdown:
+            print(f"{args.output} is out of date; run `make sead-schema-docs`.", file=sys.stderr)
+            return 1
+        print(f"{args.output} is up to date.")
+        return 0
+    args.output.write_text(markdown, encoding="utf-8")
+    print(f"Wrote {args.output}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

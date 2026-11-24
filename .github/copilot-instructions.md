@@ -20,6 +20,7 @@ Keep this file small and always-on. Use `.github/instructions/*.instructions.md`
 - `backend/app/`: FastAPI backend
 - `frontend/`: Vue 3 frontend
 - `ingesters/`: pluggable ingester implementations
+- `docs/sead/`: SEAD schema reference. `columns.csv` and the generated `SCHEMA.md` are current (refresh with `make sead-schema`); the numbered `0*_*.sql` files are a stale historical dump
 - Python uses the root `.venv/`
 
 Core pipeline order matters: Extract → Filter → Link → Unnest → Translate → Store.
@@ -62,7 +63,20 @@ Core pipeline order matters: Extract → Filter → Link → Unnest → Translat
 
 ## graphify
 
-graphify is a uv tool (`~/.local/bin/graphify`), not part of the project `.venv`. The graph in `graphify-out/` is built locally and is not committed; graphify git hooks (installed by `make install-hooks`) rebuild it after each commit, checkout, merge and rebase. When `graphify-out/graph.json` exists, run `graphify query "<question>"` before broad codebase exploration, architecture searches, or relationship searches. Use `graphify path "<source>" "<target>"` for a specific relationship and `graphify explain "<concept>"` for a focused concept. Verify graphify results against current source code, tests, configuration, and applicable instructions. Use `rg` or targeted file reads for exact text and local implementation details. Do not run `graphify update` after every edit; run `GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update .` only when the graph is missing or older than the latest commit, or when you changed code and need to query the graph again before committing. Follow the hook and freshness checks in `AGENTS.md`.
+graphify is a uv tool (`~/.local/bin/graphify`), not part of the project `.venv`. The graph in `graphify-out/` is built locally and is not committed.
+
+How the graph is kept current:
+- graphify git hooks (installed by `make install-hooks`) rebuild the code part of the graph in the background after each commit, checkout, merge and rebase. The rebuild is AST-only and makes no LLM calls; its log is `~/.cache/graphify-rebuild.log`.
+- `make semantic-graphify` adds the LLM-based results (documents and community names). It is a long, token-heavy run: run it only when the user asks.
+- The hooks do not rebuild `graphify-out/wiki/`. `make update-graphify` and `make semantic-graphify` rebuild it at the end; `make graphify-wiki` rebuilds only the wiki (local, about a second, no LLM).
+
+Rules:
+- When `graphify-out/graph.json` exists, run `graphify query "<question>"` before broad codebase exploration, architecture searches, or relationship searches. Use `graphify path "<source>" "<target>"` for a specific relationship and `graphify explain "<concept>"` for a focused concept.
+- If a name matches several nodes, graphify lists them; retry with `path/to/file.py::Symbol`, for example `graphify explain "backend/app/mappers/project_mapper.py::ProjectMapper"`. If `graphify path` finds no directed path, retry with `--undirected`.
+- Use `graphify-out/wiki/index.md` only for broad orientation; it can lag behind recent commits. Read `graphify-out/GRAPH_REPORT.md` only for broad architecture review or when query, path and explain do not give enough context.
+- Before the first graph query in a session, check that the graph is usable. If `graphify hook status` reports a hook as `not installed`, tell the user and suggest `make install-hooks`; do not install hooks yourself. If `graph.json` is missing or older than the latest commit (`git log -1 --format=%ct`), run `GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update .` first and mention it to the user.
+- Do not run `graphify update` after every edit; the hooks handle that at commit time. Run `GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update .` only when you changed code and need to query the graph again before committing. The variable blocks graph.html, which this project does not use.
+- Verify graphify results against current source code, tests, configuration, and applicable instructions; if they conflict, trust the source. Use `rg` or targeted file reads for exact text and local implementation details.
 
 <!-- rtk-instructions v2 -->
 **rtk** is a CLI proxy that filters and compresses command outputs, saving 60-90% tokens.

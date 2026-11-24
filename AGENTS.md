@@ -74,6 +74,7 @@ Core FK links use local `system_id` values. A change-request package can use an 
 - Backend entry: `backend/app/main.py`; validation: `backend/app/services/validation_service.py`.
 - SIMS client: `backend/app/clients/sims_client.py` (env vars: `SHAPE_SHIFTER_SIMS_SERVICE_URL`, `SHAPE_SHIFTER_SIMS_CONTRACT_CALLER`, `SHAPE_SHIFTER_SIMS_CONTRACT_REGISTRATION_TOKEN`).
 - Docs: `docs/DESIGN.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`.
+- SEAD schema: `docs/sead/columns.csv` (current tables and columns with types, nullability, PKs and FK targets) and `docs/sead/SCHEMA.md` (the same per table, generated). Refresh with `make sead-schema`. The numbered `docs/sead/0*_*.sql` files are a stale historical dump; do not use them to decide tables or columns. See `docs/sead/README.md`.
 - Scoped instructions (VS Code Copilot): `.github/instructions/` — auto-injected by `applyTo` patterns.
 - Planning instructions: use `.github/instructions/phase-plan.instructions.md` when the user asks for phased implementation sequencing, and use `.github/instructions/task-plan.instructions.md` when the user asks for work breakdown, checklists, or definition-of-done planning for one phase.
 - Prompt templates: `.github/prompts/` — invoke via `/` in Copilot Chat.
@@ -86,10 +87,12 @@ This project has a knowledge graph at graphify-out/ with god nodes, community st
 How the graph is kept current:
 - graphify git hooks (installed by `make install-hooks`) rebuild the code part of the graph in the background after each commit, checkout, merge and rebase. The rebuild is AST-only and makes no LLM calls; its log is `~/.cache/graphify-rebuild.log`.
 - `make semantic-graphify` adds the LLM-based results (documents and community names). Run it only when the user asks.
+- `make update-graphify` and `make semantic-graphify` also rebuild graphify-out/wiki/; `make graphify-wiki` rebuilds only the wiki (local, about a second, no LLM).
 
 Rules:
 - When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- If a name matches several nodes, graphify lists them; retry with `path/to/file.py::Symbol`, for example `graphify explain "backend/app/mappers/project_mapper.py::ProjectMapper"`. If `graphify path` finds no directed path, retry with `--undirected`.
+- If graphify-out/wiki/index.md exists, use it for broad orientation instead of raw source browsing. The git hooks do not rebuild the wiki; only `make update-graphify`, `make semantic-graphify` and `make graphify-wiki` do, so it can lag behind recent commits. Use `graphify explain` or `graphify query` for anything specific, because they read the current graph.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - Before your first graph query in a session, check that the graph is usable:
   - If `graphify hook status` reports a hook as `not installed`, tell the user and suggest `make install-hooks`. Do not install hooks yourself.

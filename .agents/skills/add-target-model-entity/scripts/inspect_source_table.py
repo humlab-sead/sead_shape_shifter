@@ -21,7 +21,7 @@ from pathlib import Path
 import yaml
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[4]
-COLUMNS_CSV: Path = REPO_ROOT / "docs/investigations/sead-target-model-completeness/columns.csv"
+COLUMNS_CSV: Path = REPO_ROOT / "docs/sead/columns.csv"
 CONSTRAINTS_SQL: Path = REPO_ROOT / "docs/sead/05_constraints.sql"
 MODEL_PATH: Path = REPO_ROOT / "resources/target_models/sead_standard_model.yml"
 
