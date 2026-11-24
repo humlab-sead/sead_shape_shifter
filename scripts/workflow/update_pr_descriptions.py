@@ -1277,6 +1277,14 @@ def parse_args() -> argparse.Namespace:
     mode_group.add_argument("--draft", action="store_true", help="Generate drafts in docs/whats-new/PRs/")
     mode_group.add_argument("--publish", action="store_true", help="Publish reviewed draft files from docs/whats-new/PRs/")
     mode_group.add_argument(
+        "--update-promotion",
+        action="store_true",
+        help=(
+            "Build the description of a promotion PR from branch history and write it straight to the PR on GitHub. "
+            "Nothing is stored on disk; review and edit the description on GitHub. Refuses non-promotion PRs"
+        ),
+    )
+    mode_group.add_argument(
         "--clean-drafts",
         action="store_true",
         help="Rewrite draft files to remove terminal escape sequences and validate them, without publishing",
@@ -1320,6 +1328,41 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def update_promotion_descriptions(
+    numbers: Sequence[int],
+    repo: str | None,
+    included_prs: Sequence[int] | None,
+    include_orphaned: bool,
+    show_all_orphaned: bool,
+) -> int:
+    """Build each promotion PR's description and write it to the PR on GitHub.
+
+    Does not read or write files under docs/whats-new/PRs/. A pull request that is not a
+    promotion is reported and left unchanged, so change PRs keep their reviewed draft files.
+    Returns 1 when any pull request failed or was refused, otherwise 0.
+    """
+    if shutil.which("gh") is None:
+        print("Required command not found: gh", file=sys.stderr)
+        return 2
+    had_failures = False
+    for number in numbers:
+        try:
+            context = load_pr_context(number, repo)
+            if not is_promotion_pull_request(context["metadata"]):
+                had_failures = True
+                print(f"PR #{number} is not a promotion PR; use --draft and --publish instead.", file=sys.stderr)
+                continue
+            draft = build_draft(context, None, repo=repo, included_prs=included_prs)
+            if include_orphaned:
+                draft = attach_detected_commits(draft, context["metadata"], repo, show_all_orphaned)
+            publish_draft(number, draft, repo)
+            print(f"Updated the description of promotion PR #{number} on GitHub.")
+        except (CommandError, ValueError) as error:
+            had_failures = True
+            print(f"Failed PR #{number}: {error}", file=sys.stderr)
+    return 1 if had_failures else 0
+
+
 def main() -> int:
     args = parse_args()
     try:
@@ -1339,11 +1382,11 @@ def main() -> int:
     if args.show_all_orphaned and not args.include_orphaned:
         print("--show-all-orphaned requires --include-orphaned.", file=sys.stderr)
         return 2
-    if args.include_orphaned and not args.draft:
-        print("--include-orphaned can only be used with --draft.", file=sys.stderr)
+    if args.include_orphaned and not (args.draft or args.update_promotion):
+        print("--include-orphaned can only be used with --draft or --update-promotion.", file=sys.stderr)
         return 2
-    if args.included_prs and not args.draft:
-        print("--included-prs can only be used with --draft.", file=sys.stderr)
+    if args.included_prs and not (args.draft or args.update_promotion):
+        print("--included-prs can only be used with --draft or --update-promotion.", file=sys.stderr)
         return 2
     try:
         included_prs = parse_included_prs(args.included_prs) if args.included_prs else None
@@ -1359,6 +1402,9 @@ def main() -> int:
             print(f"PR #{number}: {description}")
         print(f"Cleaned {changed} of {len(numbers)} draft file(s).", file=sys.stderr)
         return 0
+
+    if args.update_promotion:
+        return update_promotion_descriptions(numbers, args.repo, included_prs, args.include_orphaned, args.show_all_orphaned)
 
     draft_numbers: list[int] = []
     if args.draft:

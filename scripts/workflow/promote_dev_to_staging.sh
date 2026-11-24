@@ -25,8 +25,10 @@ Usage:
 
 Commands:
   prepare             Fetch branches, verify provenance, create a draft promotion PR,
-                      and generate its local description draft.
-  publish <number>    Publish the reviewed description and mark the PR ready for review.
+                      and write its description to the PR on GitHub (nothing is
+                      stored on disk). Review or edit the description on GitHub.
+  publish <number>    Verify provenance again and mark the PR ready for review.
+                      Keeps the description as it is on GitHub.
   -h, --help          Show this help.
 
 After review and required checks pass, merge with:
@@ -147,13 +149,12 @@ EOF
   pull_request_number="${pull_request_url##*/}"
   validate_pull_request_number "$pull_request_number"
 
-  if ! "$python" "$description_script" "$pull_request_number" --draft; then
-    die "Created ${pull_request_url}, but could not generate its description draft. Run: ${python} ${description_script} ${pull_request_number} --draft"
+  if ! "$python" "$description_script" "$pull_request_number" --update-promotion; then
+    die "Created ${pull_request_url}, but could not write its description. Run: ${python} ${description_script} ${pull_request_number} --update-promotion"
   fi
 
   printf '\nCreated draft promotion PR: %s\n' "$pull_request_url"
-  printf 'Review or edit: %s/docs/whats-new/PRs/PR_%s.txt\n' "$repository_root" "$pull_request_number"
-  printf 'Then publish it with: %s publish %s\n' "$cli_path" "$pull_request_number"
+  printf 'Review or edit its description on GitHub, then mark it ready with: %s publish %s\n' "$cli_path" "$pull_request_number"
 }
 
 publish_promotion() {
@@ -175,21 +176,14 @@ publish_promotion() {
     || die "Pull request #${pull_request_number} is not a ${source_branch}-to-${target_branch} promotion."
   [[ "$is_draft" == "true" ]] || die "Pull request #${pull_request_number} is not a draft."
 
-  local description_draft="${repository_root}/docs/whats-new/PRs/PR_${pull_request_number}.txt"
-  [[ -f "$description_draft" ]] \
-    || die "Description draft not found: ${description_draft}. Run the prepare command first."
-
   fetch_branches
   verify_provenance
 
-  "$python" "$description_script" "$pull_request_number" --publish \
-    || die "Could not publish the reviewed description for PR #${pull_request_number}."
-
   if ! gh pr ready "$pull_request_number" --repo "$repository"; then
-    die "Description published, but PR #${pull_request_number} remains a draft. Run: gh pr ready ${pull_request_number}"
+    die "Could not mark PR #${pull_request_number} ready for review. Run: gh pr ready ${pull_request_number}"
   fi
 
-  printf 'Published the description and marked PR #%s ready for review.\n' "$pull_request_number"
+  printf 'Marked PR #%s ready for review.\n' "$pull_request_number"
   printf 'After required reviews and checks pass, merge with: gh pr merge %s --merge\n' "$pull_request_number"
 }
 
