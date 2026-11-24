@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/roger/source/sead_shape_shifter/.venv/bin/graphify hook-check"
+            "command": "graphify hook-check"
           }
         ]
       }
