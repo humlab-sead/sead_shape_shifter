@@ -19,7 +19,7 @@ Keep `graphify-out/` useful for future tasks and reviews without forcing broad s
 
 ## Tasks
 
-1. Make sure the local graph is current. graphify git hooks rebuild it after each commit, checkout, merge and rebase; if `graphify-out/graph.json` is missing or older than the latest commit, run `GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update .`. If `graphify hook status` reports missing hooks, tell the user to run `make install-hooks`.
+1. Make sure the local graph is current. graphify git hooks rebuild it after each commit, checkout, merge and rebase; if `graphify-out/graph.json` is missing or older than the latest commit, run `GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update .`. The hooks do not rebuild `graphify-out/wiki/`; if `wiki/index.md` is older than `graph.json`, run `make graphify-wiki`. If `graphify hook status` reports missing hooks, tell the user to run `make install-hooks`.
 2. Confirm whether the graph changed in a meaningful way (nodes, edges, communities).
 3. Produce a short summary of new or changed clusters, major nodes, or paths.
 4. Point other agents to the smallest graph artifact that answers the next question.
