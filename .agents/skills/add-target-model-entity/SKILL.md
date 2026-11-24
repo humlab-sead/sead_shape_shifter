@@ -20,12 +20,13 @@ most time:
 
 ## Facts that decide the edit
 
-- **Schema source of truth:** `docs/investigations/sead-target-model-completeness/columns.csv`
-  (a run of `exported-columns.sql` against `sead_staging`). `docs/sead/01_tables.sql`
-  is a stale historical dump; do not use it to decide columns.
+- **Schema source of truth:** `docs/sead/columns.csv` (a run of `docs/sead/columns.sql`
+  against `sead_staging`; refresh with `make sead-schema`). `docs/sead/SCHEMA.md` shows
+  the same data per table, including which tables reference it. The numbered
+  `docs/sead/0*_*.sql` files are a stale historical dump; do not use them to decide columns.
 - **One editable model file.** `tests/test_data/target_models/sead_standard_model.yml`
-  and `resources/target_models/sead_superset_model.yml` are symlinks to
-  `resources/target_models/sead_standard_model.yml`. Never copy; edit the target.
+  is a symlink to `resources/target_models/sead_standard_model.yml`. Never copy; edit
+  the target.
 - **Entities are a top-level `entities:` key**, not nested under `model:`.
 - **Do not declare the entity's own primary-key/public-id column** in `columns:`
   unless it is a generated bridge key (see `site_location`). `public_id` names it.
