@@ -405,6 +405,8 @@ graphify-wiki:
 #   make semantic-graphify GRAPHIFY_MODE=deep       # more aggressive inferred-edge extraction
 #   make semantic-graphify GRAPHIFY_RELABEL=1       # rename all communities, not only unnamed ones
 #   make semantic-graphify GRAPHIFY_CONCURRENCY=1   # parallel LLM requests (graphify default: 4)
+#   make semantic-graphify GRAPHIFY_ALLOW_PARTIAL=1 # save the graph even if some LLM chunks failed or it lost
+#                                                   # nodes (graphify refuses this by default; check the log first)
 # Make variable names avoid BACKEND (used further down in this Makefile) and names graphify
 # itself reads from the environment (GRAPHIFY_FORCE, GRAPHIFY_LLM_*).
 .PHONY: semantic-graphify
@@ -431,7 +433,8 @@ semantic-graphify:
 		OPENAI_API_KEY="$${api_key:-none}"; \
 	echo "Using $$model at $$base_url"; \
 	graphify extract $(CURDIR) --backend openai $(if $(GRAPHIFY_CONCURRENCY),--max-concurrency $(GRAPHIFY_CONCURRENCY)) \
-		$(if $(GRAPHIFY_MODE),--mode $(GRAPHIFY_MODE)) $(if $(GRAPHIFY_REEXTRACT),--force); \
+		$(if $(GRAPHIFY_MODE),--mode $(GRAPHIFY_MODE)) $(if $(GRAPHIFY_REEXTRACT),--force) \
+		$(if $(GRAPHIFY_ALLOW_PARTIAL),--allow-partial); \
 	graphify label $(CURDIR) --backend openai $(if $(GRAPHIFY_CONCURRENCY),--max-concurrency $(GRAPHIFY_CONCURRENCY)) \
 		$(if $(GRAPHIFY_RELABEL),,--missing-only); \
 	graphify export wiki; \
