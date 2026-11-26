@@ -320,12 +320,20 @@ class MaterializationConfig:
 class TableConfig:
     """Configuration for a database table. Read-Only. Wraps table setting from entities config."""
 
-    def __init__(self, *, entities_cfg: dict[str, dict[str, Any]], entity_name: str, project_options: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        entities_cfg: dict[str, dict[str, Any]],
+        entity_name: str,
+        project_options: dict[str, Any] | None = None,
+        inherited_extra_columns: frozenset[str] = frozenset(),
+    ) -> None:
 
         self.entities_cfg: dict[str, dict[str, Any]] = entities_cfg
         self.entity_name: str = entity_name
         self.entity_cfg: dict[str, Any] = entities_cfg[entity_name]
         self._project_options: dict[str, Any] = project_options or {}
+        self.inherited_extra_columns: frozenset[str] = inherited_extra_columns
 
         assert self.entity_cfg, f"No configuration found for entity '{entity_name}'"
 
@@ -1072,7 +1080,14 @@ class TableConfig:
             for idx, append_data in enumerate(self.append_configs):
                 append_entity_name: str = f"{self.entity_name}__append_{idx}"
                 self.entities_cfg[append_entity_name] = self.create_append_config(append_data)
-                yield TableConfig(entities_cfg=self.entities_cfg, entity_name=append_entity_name)
+                inherited_extra_columns = (
+                    frozenset(self.extra_columns) if append_data.get("source") and "extra_columns" not in append_data else frozenset()
+                )
+                yield TableConfig(
+                    entities_cfg=self.entities_cfg,
+                    entity_name=append_entity_name,
+                    inherited_extra_columns=inherited_extra_columns,
+                )
                 del self.entities_cfg[append_entity_name]
 
     def get_key_columns(self) -> set[str]:

@@ -42,6 +42,15 @@ class SubsetService:
         # Ignore keys that will be added via extra_columns (they don't exist in source yet)
         if table_cfg.extra_columns:
             columns = [col for col in columns if col not in table_cfg.extra_columns.keys()]
+            if detected_columns is not None and table_cfg.inherited_extra_columns:
+                source_cfg = table_cfg.entities_cfg.get(table_cfg.source or "", {})
+                identity_columns = {table_cfg.system_id, table_cfg.public_id, source_cfg.get("public_id")}
+                available_columns = set(detected_columns)
+                columns.extend(
+                    col
+                    for col in table_cfg.extra_columns
+                    if col in table_cfg.inherited_extra_columns and col in available_columns and col not in identity_columns
+                )
         return columns
 
     def get_subset(

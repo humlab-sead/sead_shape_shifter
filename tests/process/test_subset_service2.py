@@ -29,6 +29,7 @@ class FakeTableConfig:
     foreign_keys: list[FakeFK] = field(default_factory=list)
 
     extra_columns: dict[str, Any] | None = None
+    inherited_extra_columns: frozenset[str] = frozenset()
     drop_duplicates: bool | list[str] = False
 
     check_functional_dependency: bool = False
