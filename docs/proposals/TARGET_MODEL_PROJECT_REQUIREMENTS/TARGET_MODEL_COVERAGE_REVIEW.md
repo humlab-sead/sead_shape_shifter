@@ -3,7 +3,7 @@
 ## Status
 
 - Closed review record, frozen 2026-11-12.
-- Scope: the coverage and completeness state of `resources/target_models/sead_standard_model.yml` (version 2.8.0), and the close-out of the three earlier target-model working documents.
+- Scope: the coverage and completeness state of `resources/target_models/sead_standard_model.yml` (version 2.9.0), and the close-out of the three earlier target-model working documents.
 - Companion to the [Target Model Project Requirements](TARGET_MODEL_PROJECT_REQUIREMENTS.md) proposal, which now carries the remaining decisions.
 
 This document replaces three working documents that were closed on 2026-11-12. It records what they established and where the remaining work went. It is a snapshot, not a live tracker; refresh it only when a fresh measurement is taken.
@@ -20,26 +20,30 @@ The archived copies keep their original findings. Their open items are not resta
 
 ## Coverage snapshot (2026-11-12)
 
+The counts below were measured again on 2026-11-26 against `docs/sead/columns.csv`, after `dendro_date` was added. Other findings keep their 2026-11-12 basis, except where `dendro_date` is named.
+
 Measured against the declared source of truth, `docs/investigations/sead-target-model-completeness/columns.csv`, exported from `sead_staging`.
 
 | Measure | Value |
 |---|---|
-| Model entities | 136 (135 declare a `target_table`) |
+| Model entities | 137 (136 declare a `target_table`) |
 | Effective source tables | 150 (156 exported, minus 6 `%colours` / `%images` exclusions) |
-| Mapped by a model entity | 133 |
-| Unmapped | 17 |
+| Mapped by a model entity | 134 |
+| Unmapped | 16 |
 | Model `target_table` values absent from the source | 0 |
 | Duplicate model `target_table` values | 0 |
 | Target-model specification validation | 0 issues |
-| Foreign-key audit across 135 modelled tables | 0 problems |
+| Foreign-key audit across 136 modelled tables | 0 problems |
 
 ## What remains unmapped
 
-Seventeen source tables have no model entity. All Tier 1 and Tier 2 tables are modelled; the rest are reference and subsystem tables that need an inclusion decision.
+Sixteen source tables have no model entity. All Tier 1 and Tier 2 tables are modelled; the rest are reference and subsystem tables that need an inclusion decision.
 
 - Taxonomy and reference: `tbl_imported_taxa_replacements`, `tbl_temperatures`, `tbl_text_biology`, `tbl_text_distribution`, `tbl_text_identification_keys`, `tbl_years_types`.
 - Vocabulary-context bridges: `tbl_sample_description_sample_group_contexts`, `tbl_sample_group_description_type_sampling_contexts`, `tbl_sample_location_type_sampling_contexts`.
-- Subsystem tables: `tbl_ceramics`, `tbl_ceramics_lookup`, `tbl_ceramics_measurements`, `tbl_dendro`, `tbl_dendro_date_notes`, `tbl_dendro_dates`, `tbl_dendro_lookup`, `tbl_image_types`.
+- Subsystem tables: `tbl_ceramics`, `tbl_ceramics_lookup`, `tbl_ceramics_measurements`, `tbl_dendro`, `tbl_dendro_date_notes`, `tbl_dendro_lookup`, `tbl_image_types`.
+
+`dendro_date` has two columns without a foreign key. `dendro_lookup_id` needs one when `tbl_dendro_lookup` is modelled. `season_id` has none because `columns.csv` declares no foreign key for it on `tbl_dendro_dates`.
 
 ## Model-to-source differences
 
@@ -47,7 +51,7 @@ These are comparisons, not automatic defects. Column `required` is a project req
 
 - 17 non-key source columns, across 15 entities, are not declared by their modelled entity. Most are UUID columns (`dataset.dataset_uuid`, `site.site_uuid`, `method.method_uuid`, and similar).
 - One model column is absent from its source table: `site_location.site_location_id`, the model's generated bridge key.
-- 6 declared type differences: `analysis_entity_age.age_range` (`int4range` as `string`), `chronology.date_prepared` (timestamp as `date`), and four UUID columns typed `string`.
+- 7 declared type differences: `analysis_entity_age.age_range` and `dendro_date.age_range` (`int4range` as `string`), `chronology.date_prepared` (timestamp as `date`), and four UUID columns typed `string`.
 - 47 nullability differences, split between model-stricter and model-looser.
 - 7 foreign keys imply a column that does not exist in the target table: six analysis-value/range entities reference `value_qualifier_symbol` through text columns `qualifier` / `low_qualifier` / `high_qualifier`, and `value_qualifier_symbol` → `value_qualifier` has the real column `cardinal_qualifier_id`.
 

@@ -1,7 +1,7 @@
 model:
   name: SEAD Clearinghouse Extended
   format_version: "1"
-  version: 2.8.0
+  version: 2.9.0
   description: SEAD archaeological research data model with enhanced spatial, dating, and metadata coverage
 
 entities:
@@ -3479,6 +3479,53 @@ entities:
         required: false
       - entity: method
         required: false
+      - entity: dating_uncertainty
+        required: false
+
+  dendro_date:
+    role: fact
+    required: false
+    description: Date derived from tree-ring analysis of an analysis entity.
+    aggregate_parent: analysis_entity
+    domains: [dating]
+    target_table: tbl_dendro_dates
+    public_id: dendro_date_id
+    unique_sets:
+      - [analysis_entity_id, dendro_lookup_id]
+    columns:
+      analysis_entity_id:
+        required: true
+        type: integer
+        nullable: false
+      dendro_lookup_id:
+        required: true
+        type: integer
+        nullable: false
+      age_type_id:
+        required: true
+        type: integer
+        nullable: false
+      age_older:
+        type: integer
+        nullable: true
+      age_younger:
+        type: integer
+        nullable: true
+      age_range:
+        type: string
+        nullable: true
+      season_id:
+        type: integer
+        nullable: true
+      dating_uncertainty_id:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: analysis_entity
+        required: true
+      - entity: age_type
+        required_when:
+          has_new_rows: dendro_date
       - entity: dating_uncertainty
         required: false
 

@@ -2,23 +2,23 @@
 
 This folder contains target model specification files for the SEAD database.
 This README is the authoritative record of the standard target model's current
-completeness state. Last verified 2026-11-12 against the source declared by the
+completeness state. Counts last verified 2026-11-26 against the source declared by the
 target-model completeness investigation (`docs/investigations/sead-target-model-completeness/`,
 now closed; see its `findings.md` for how the investigation resolved).
 
-`sead_standard_model.yml` (version 2.8.0) is the shared standard target model.
+`sead_standard_model.yml` (version 2.9.0) is the shared standard target model.
 `sead_superset_model.yml` is a symlink to it, so both names resolve to one file.
 
-## Current status (verified 2026-11-12)
+## Current status (verified 2026-11-26)
 
 Measured against the declared source of truth below:
 
 | Measure | Value |
 |---|---|
-| Model entities | 136 (135 declare a `target_table`; `abundance_element_group` declares none) |
+| Model entities | 137 (136 declare a `target_table`; `abundance_element_group` declares none) |
 | Source-of-truth tables (effective surface) | 150 |
-| Mapped by a model entity | 133 |
-| Unmapped (candidate gaps) | 17 — listed in [TARGET_MODEL_COVERAGE_REVIEW.md](../../docs/proposals/TARGET_MODEL_PROJECT_REQUIREMENTS/TARGET_MODEL_COVERAGE_REVIEW.md) |
+| Mapped by a model entity | 134 |
+| Unmapped (candidate gaps) | 16 — listed in [TARGET_MODEL_COVERAGE_REVIEW.md](../../docs/proposals/TARGET_MODEL_PROJECT_REQUIREMENTS/TARGET_MODEL_COVERAGE_REVIEW.md) |
 | Model `target_table` values absent from the source | 0 |
 
 ### Source of truth
@@ -63,7 +63,9 @@ import snapshot) are historical context only.
 
 Every foreign key that `columns.csv` declares for a modelled table is present in
 the model, and every FK column the model declares has a matching FK entity. The
-2026-11-12 audit checked 135 modelled tables and reported zero foreign-key problems.
+2026-11-26 audit checked 136 modelled tables and reported zero foreign-key problems.
+`dendro_date.dendro_lookup_id` is declared without a foreign key because
+`tbl_dendro_lookup` has no model entity; add the foreign key when it is modelled.
 The 2026-11-10 pass resolved ten dangling references: it added the missing
 `property_type_group` and `site_preservation_status` entities, added the
 `site.site_preservation_status_id`, `method.unit_id`, `dataset.updated_dataset_id`,
