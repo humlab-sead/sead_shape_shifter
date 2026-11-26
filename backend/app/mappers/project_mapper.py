@@ -59,7 +59,11 @@ from src.reconciliation.mapping_validator import SidecarValidationError, validat
 
 
 class ProjectMapper:
-    """Bidirectional mapper between core and API project models."""
+    """Converts project configuration between parsed YAML, API models, and Core models.
+
+    Builds API projects from YAML dictionaries, serializes API projects to sparse dictionaries
+    while preserving directives, and resolves paths and directives when creating Core projects.
+    """
 
     @staticmethod
     def _validate_mapping_sidecar(project: ShapeShiftProject, project_path: str | None) -> None:
