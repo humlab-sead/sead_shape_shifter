@@ -104,10 +104,7 @@ Never invent findings merely to produce a review.
 
 ## Severity
 
-- **Critical**: Security compromise, data loss, or catastrophic failure.
-- **High**: Significant functional defect or requirement violation.
-- **Medium**: Incorrect behavior under specific realistic conditions.
-- **Low**: Minor but actionable issue.
+Use `P0` to `P3` as defined in [the PR review criteria](../../.agents/skills/review-pr/references/review-criteria.md).
 
 Do not inflate severity.
 
@@ -124,7 +121,7 @@ Briefly state:
 
 For each finding:
 
-**[Severity] Short descriptive title**
+**[P0–P3] Short descriptive title**
 
 - **Location:** `path/to/file.py:123`
 - **Issue:** What is wrong and under which conditions.
