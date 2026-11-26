@@ -193,4 +193,4 @@ These are code or workflow problems. No code was changed.
 
 - [x] In a live Claude Code session, confirm that opening a matching file loads its rule, and that creating a new file does or does not (see "Behavior to verify"). Here "opening" means Claude reading the file; opening it in the editor did not load rules before the read.
 - [x] In a live Copilot Chat session, confirm that the new instruction files are attached for matching files. They are not attached automatically in the session type tested; the agent read `mappers` and `python` before an edit. See "Copilot rule loading".
-- [ ] Open the pull request for branch `claude-rules-sync` into `dev` and confirm the new `claude-rules-check` workflow runs and passes.
+- [x] Open the pull request for branch `claude-rules-sync` into `dev` and confirm the new `claude-rules-check` workflow runs and passes. [Pull request #817](https://github.com/humlab-sead/sead_shape_shifter/pull/817); the check passed on commit `e2a89a5d` on 2026-11-26.
