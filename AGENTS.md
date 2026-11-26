@@ -32,9 +32,7 @@
 
 - Use plain, concrete language in generated code, comments, docstrings, PR text, and documentation.
 - Prefer words that name the actual thing, action, rule, input, output, or result directly.
-- Do not treat any word as forbidden, but use abstract or overloaded terms carefully. If a technical term is necessary, define it nearby or pair it with a plain-language explanation.
-- Use these terms carefully unless they are established project vocabulary: `evidence`, `boundary`, `framing`, `canonical`, `surface`, `facing`, `slice`, `signal`.
-- Prefer explicit wording such as `data`, `result`, `source`, `check`, `validation result`, `limit`, `responsibility`, `allowed range`, `rule`, `purpose`, `reason`, `background`, `request details`, `standard`, `preferred`, `normalized`, `official`, `interface`, `page`, `endpoint`, `entry point`, `used by`, `shown to`, `exposed to`, `part`, `section`, `subset`, `step`, `indicator`, `warning`, `metric`, `status`, `input`, `output`, `error`, and `side effect`.
+- If a technical term is necessary, define it nearby or pair it with a plain-language explanation. Words to use carefully, and what to write instead, are listed in `.github/instructions/writing-style.instructions.md`.
 - Write for a mixed audience: junior developers, maintainers, testers, data managers, researchers, and non-technical stakeholders.
 - The closer text is to code or user-visible behavior, the more concrete the vocabulary should be.
 - Comments and docstrings should explain behavior, responsibility, assumptions, inputs, outputs, and side effects. Avoid metaphorical or fashion-driven wording when a simpler phrase is equally accurate.
@@ -87,14 +85,16 @@ Core FK links use local `system_id` values. A change-request package can use an 
 - SIMS client: `backend/app/clients/sims_client.py`. Environment variables are listed in `.github/instructions/backend-api.instructions.md`.
 - Docs: `docs/DESIGN.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`.
 - SEAD schema: `docs/sead/columns.csv` (current tables and columns with types, nullability, PKs and FK targets) and `docs/sead/SCHEMA.md` (the same per table, generated). Refresh with `make sead-schema`. The numbered `docs/sead/0*_*.sql` files are a stale historical dump; do not use them to decide tables or columns. See `docs/sead/README.md`.
-- Scoped instructions: `.github/instructions/` is the source (VS Code Copilot uses the `applyTo` pattern to match rules to files; in some session types the agent gets only a list and has to read the rule itself). `.claude/rules/` is generated from it for Claude Code (`applyTo` becomes `paths`). Edit only the sources, then run `make claude-rules`; `make lint`, pre-commit and CI fail when the two differ. `github-workflow` has no `applyTo` because it applies to a task, not to files, so it is not converted: read it directly before creating an issue or preparing a commit. `writing-style` also applies to comments, docstrings, PR text and issues, which its `**/*.md` pattern does not cover: read it directly for those.
+- Scoped instructions: `.github/instructions/` is the source (VS Code Copilot uses the `applyTo` pattern to match rules to files; in some session types the agent gets only a list and has to read the rule itself). `.claude/rules/` is generated from it for Claude Code (`applyTo` becomes `paths`). Edit only the sources, then run `make claude-rules`; `make lint`, pre-commit and CI fail when the two differ. `github-workflow` has no `applyTo` because it applies to a task, not to files, so it is not converted: read it directly before creating an issue or preparing a commit. `writing-style` also applies to PR text and issues, which are not files its patterns can match: read it directly for those.
 - UCanAccess setup: `scripts/dev/install-uncanccess.sh` (requires Java JRE).
 
 ## graphify
 
 graphify-out/ holds a local knowledge graph of the codebase. It is git-ignored. It is a navigation aid: if it conflicts with source or tests, trust the source.
 
-- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts.
+- When graphify-out/graph.json exists and you need to find code or learn how parts of it relate, run `graphify query "<question>"` before your first grep, search or source-file read. Then read raw files only for lines the graph or an earlier read located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts.
+- You do not need the graph when you already know which files to read, for questions about documentation, configuration, CI or AI instruction files, or to search for exact text.
+- Put these two rules in every subagent prompt that explores code.
 - Before your first graph query in a session, check that the graph is usable:
   - If `graphify hook status` reports a hook as `not installed`, tell the user and suggest `make install-hooks`. Do not install hooks yourself.
   - If graphify-out/graph.json is missing, or older than the latest commit (compare its modification time with `git log -1 --format=%ct`), run `GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update .` first. A stale graph usually means the hooks are missing or a background rebuild failed; mention it to the user.
