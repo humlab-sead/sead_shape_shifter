@@ -404,7 +404,7 @@ class MaterializationService:
         2. Run full normalization pipeline for entity
         3. Extract DataFrame result
         4. Save DataFrame to storage (parquet/csv/inline)
-        5. Snapshot current entity config to saved_state
+        5. Snapshot the previous entity config to materialized.source_state
         6. Update entity config: type=fixed, add materialized section
         7. Save updated project config
         """
@@ -564,12 +564,12 @@ class MaterializationService:
 
         Steps:
         1. Check if entity is materialized
-        2. Find dependent materialized entities (warn user)
+        2. Find dependent materialized entities; fail if there are any and cascade is False
         3. If cascade=True, unmaterialize dependents first
-        4. Restore saved_state config
-        5. Remove materialized section
-        6. Delete data file (optional - keep for backup)
-        7. Save project
+        4. Replace the entity config with materialized.source_state
+        5. Save project
+
+        Does not delete the saved data file.
         """
         try:
             api_project: Project = self.project_service.load_project(project_name)

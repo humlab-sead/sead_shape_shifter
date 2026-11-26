@@ -1,7 +1,7 @@
 ---
 paths:
   - "src/transforms/**"
-  - "tests/process/**"
+  - "tests/transforms/**"
   - "tests/test_dispatch*"
 ---
 
@@ -11,7 +11,7 @@ paths:
 
 ## Pipeline Position
 
-Transforms run in this fixed order inside `ShapeShifter.normalize()`: **Filter → Link → Unnest → Translate → Store**. Extra columns are evaluated initially before linking and unnesting; deferred entries are retried when their inputs become available. Never reorder.
+Inside `ShapeShifter.normalize()` the stages run as Extract → Filter → Link → Unnest. Never reorder them. `extra_columns` are first evaluated during extraction and before linking; deferred entries are retried after linking, after unnest and after the second link pass. `replacements` are applied during extraction. Translate (column renaming) and Store run after `normalize()`. `.claude/rules/features/execution.md` lists the exact order.
 
 ## Replace Rules (`src/transforms/replace.py`)
 
@@ -38,7 +38,7 @@ Three spec forms per column (evaluated in order, most specific first):
 3. **Interpolated string** — string containing `{col_name}` placeholders
 4. **Constant** — any other value
 
-- DSL functions: `concat`, `upper`, `lower`, `trim`, `substr`, `coalesce`, `map_value` — no others.
+- Formulas may call only the functions registered in `DEFAULT_FUNCTIONS` (`src/transforms/dsl.py`). Check that dictionary for the current names.
 - Deferred evaluation: if a referenced column doesn't exist yet, the entry is returned as deferred and retried after initial FK linking. If it still depends on an unnest output, it is retried immediately after unnest and before the post-unnest FK link. It is retried again after that link for columns the link adds. Do not raise on missing columns during an earlier pass.
 - Escaped braces `{{ }}` produce literal `{ }` — do not treat them as column references.
 - `collect_source_dependencies()` returns the set of columns required — use this to detect forward references.
@@ -54,16 +54,17 @@ Three spec forms per column (evaluated in order, most specific first):
 
 ## Filter (`src/transforms/filter.py`)
 
-- Filters are applied to the raw source DataFrame **before** linking — FK targets are not yet available.
-- Do not reference FK-added columns in filter expressions.
+- Registered filters: `exists_in` and `query`.
+- A filter runs at the stage it names: `extract` (default), `after_link` or `after_unnest`.
+- An `extract` filter cannot use FK columns or unnest output.
 
 ## Common Mistakes
 
 - Writing a `ReplacementRule` that forward-fills — only the legacy scalar form does this.
-- Referencing a post-link column in a filter.
+- Referencing a post-link column in an `extract` filter.
 - Treating interpolated strings and DSL formulas as the same — `=` prefix is the discriminator.
 - Forgetting deferred evaluation: raising on a missing column in `extra_columns` instead of deferring.
-- Using DSL functions not in the allowlist (`concat`, `upper`, `lower`, `trim`, `substr`, `coalesce`, `map_value`).
+- Using DSL functions that are not in `DEFAULT_FUNCTIONS`.
 - Assuming `value_vars` columns exist before `extra_columns` runs — they may be defined as `extra_columns` themselves.
 
 ## Testing Expectations

@@ -5,7 +5,7 @@ applyTo: "docs/proposals/**/*_TASK_PLAN.md"
 ---
 
 
-# Copilot Instructions: Phase Task Plans
+# Phase Task Plan Instructions
 
 When asked to plan a development phase, produce a Markdown implementation plan detailed enough for another coding agent to execute.
 

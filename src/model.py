@@ -1046,7 +1046,7 @@ class TableConfig:
                 # Get the source entity's configuration
                 source_cfg: dict[str, Any] = self.entities_cfg.get(branch_source, {})
 
-                # Include the source entity's system_id column so _process_merged_branch
+                # Include the source entity's system_id column so process_merged_branch
                 # can use it as the FK value for this branch's rows.
                 source_system_id: str = source_cfg.get("system_id", "system_id")
 

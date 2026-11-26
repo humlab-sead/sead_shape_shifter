@@ -6,38 +6,34 @@ applyTo: "backend/app/services/materialization*,backend/app/api/v1/endpoints/mat
 
 ## What Materialization Does
 
-Materialization freezes a dynamic entity (type `entity`, `sql`, or `merged`) into a `type: fixed` snapshot stored as a file (Parquet or CSV) alongside the project.
+Materialization replaces a dynamic entity with a saved `type: fixed` snapshot of its rows.
 
-After materialization:
-- Entity `type` remains the same in YAML, but `materialized.enabled: true` is set with a `source_state` block.
-- The entity is loaded from the materialized file during normalization instead of re-running its pipeline.
-- `entity.is_materialized` returns `True` on `TableConfig`.
+After materialization, the entity config in YAML has:
+- `type: fixed`, with `public_id`, `keys`, `columns` (data columns only) and `column_types` when needed.
+- `values`: inline rows, or an `@load:` reference to a sidecar file (CSV or Parquet).
+- `materialized` with `enabled: true`, `source_state` (the previous entity config) and `materialized_at`.
 
-## Materialization Lifecycle
+`TableConfig.is_materialized` is `True`. Use it to tell a materialized snapshot apart from a hand-written fixed entity.
 
-```
-1. CanMaterializeSpecification.is_satisfied_by(entity=...) → must pass
-2. ShapeShifter(core_project).normalize() → full pipeline run
-3. _sanitize_materialized_dataframe() → strip _merge_indicator_* columns, drop duplicates
-4. _normalize_materialized_dataframe() → align to fixed-entity canonical columns (system_id, keys, public_id)
-5. EntityPersistenceStrategyRegistry.get_strategy_for_type("fixed").save()
-6. Update YAML: set materialized.enabled=true, source_state, file path
-7. Save project
-```
+## Materialization Lifecycle (`MaterializationService.materialize_entity()`)
 
-## Unmaterialization
+1. `CanMaterializeSpecification.is_satisfied_by(entity=...)` must pass.
+2. `ShapeShifter(project=..., target_entities={entity}).normalize()` runs.
+3. `_prepare_materialized_values()` sanitizes the data, normalizes it to the fixed-entity column order, infers column types and serializes the rows.
+4. Storage: rows are stored inline when the caller asks for `inline` or the row count is below `MATERIALIZATION_INLINE_THRESHOLD`. Otherwise `values` becomes `@load:materialized/{entity}.{csv|parquet}` and `EntityValuesService.update_values()` writes the file.
+5. `_create_materialized_entity()` builds the new config and the project is saved. With external storage the project is saved before the data file is written.
 
-Reverses step 6: removes `materialized` block from YAML, deletes sidecar file.
+## Unmaterialization (`unmaterialize_entity()`)
 
-- Must verify entity is materialized before attempting (`is_materialized == True`).
-- Sidecar file deletion is best-effort — log warning if file missing, do not raise.
+- Fails if the entity is not materialized.
+- Fails if other materialized entities depend on it, unless `cascade=True`, which unmaterializes the dependents first.
+- Replaces the entity config with `materialized.source_state` and saves the project.
+- Does not delete the sidecar data file.
 
-## Sidecar File Management
+## Sidecar Files
 
-- Files saved to `materialized/{entity_name}.{extension}` relative to the project folder.
-- Path is tracked in `materialized.path` in YAML.
-- On unmaterialization: delete the sidecar file, clear the `materialized` block.
-- On re-materialization: overwrite existing sidecar file.
+- Path: `materialized/{entity_name}.{extension}` relative to the project folder, built by `_get_materialized_file_path()`.
+- The path is recorded only in the `values: "@load:..."` reference.
 
 ## Cascading Dependencies
 
@@ -49,20 +45,20 @@ Before materializing an entity, check all its FK dependencies and `depends_on` e
 
 Always call before persisting. Removes:
 - Columns starting with `_merge_indicator_` (merge join helper columns).
-- Duplicate column labels (keeps first occurrence).
+- Duplicate column labels (keeps first occurrence). It does not remove duplicate rows.
 
 ## Common Mistakes
 
 - Skipping `CanMaterializeSpecification` before running the pipeline.
 - Not calling `_sanitize_materialized_dataframe()` — merge indicators will corrupt the fixed entity.
 - Hard-coding the sidecar path instead of using `_get_materialized_file_path()`.
-- Raising on missing sidecar during unmaterialization — log warning and continue.
-- Assuming entity type changes to `"fixed"` after materialization — it does not. Check `is_materialized`.
+- Using `type == "fixed"` to detect a materialized entity. Check `is_materialized`.
+- Dropping or editing `materialized.source_state`; unmaterialization restores the entity from it.
 
 ## Testing Expectations
 
 - Mock `ProjectService` and `ShapeShifter` — do not run a full pipeline in unit tests.
 - Test `CanMaterializeSpecification` pre-conditions: fixed entity (fail), already-materialized (fail), non-materialized dep (fail).
 - Test `_sanitize_materialized_dataframe()` with merge indicator columns and duplicate labels.
-- Test unmaterialization: YAML block cleared, sidecar deleted.
-- Use `pytest.mark.asyncio` for all service tests.
+- Test unmaterialization: the config is restored from `source_state` and the `materialized` block is gone.
+- Use `pytest.mark.asyncio` for all async service tests.

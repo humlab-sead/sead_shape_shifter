@@ -21,25 +21,25 @@ Rules here apply when working in `src/`. Also read the root `AGENTS.md` for cros
 
 ## Transforms
 
-- **Filter**: runs on raw source DataFrame — FK-added columns are not yet available. Never reference post-link columns.
+- **Filter**: each filter names a stage (`extract` default, `after_link`, `after_unnest`). An `extract` filter cannot use FK-added or unnest output columns.
 - **Extra columns**: four modes in order: DSL formula (`=`), column copy, interpolated string (`{col}`), constant. If a referenced column doesn't exist, defer — do not raise.
 - **Replace**: three forms: advanced rule list, mapping, legacy scalar/list. Never mix forms per column. `ffill` applies only to the legacy form.
 - **Unnest**: `id_vars` and `value_vars` must exist at unnest time — raises `ValueError` if missing. Skips silently if `value_name` already exists as a column.
-- DSL functions allowlist: `concat`, `upper`, `lower`, `trim`, `substr`, `coalesce`, `map_value` — no others.
+- DSL functions are limited to the entries in `DEFAULT_FUNCTIONS` (`src/transforms/dsl.py`).
 
 ## Specifications (`src/specifications/`)
 
 - Pure Core — zero `backend.*` imports permitted.
 - Subclass `ProjectSpecification`, implement `is_satisfied_by()` calling `add_error()` / `add_warning()` — never raise exceptions.
 - Call `clear()` at the top of `is_satisfied_by()` when reusing an instance.
-- Add new project-level specs to `CompositeProjectSpecification.__init__()` and merge results with `self.merge(sub_spec)`.
+- Add new project-level specs to `CompositeProjectSpecification.get_default_specifications()` and merge results with `self.merge(sub_spec)`.
 - `CanMaterializeSpecification` must pass before any materialization — never skip it.
 
 ## Validators (`src/validators/`)
 
-- Pure functions: accept `pd.DataFrame` and config, return `list[ValidationIssue]` — no I/O, no side effects.
+- Pure functions: accept `pd.DataFrame` and config, return `list[DataValidationIssue]` — no I/O, no side effects.
 - Never import `backend.*` from `src/validators/`.
-- `ValidationIssue` carries: `entity_name`, `column_name` (optional), `message`, `severity` (`error` / `warning`).
+- `DataValidationIssue` carries `severity`, `message`, `entity`, `field`, `column` and a required `code`.
 
 ## Data Loaders (`src/loaders/`)
 

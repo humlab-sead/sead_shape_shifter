@@ -18,6 +18,7 @@ Specifications live in `src/specifications/` — pure Core with no backend impor
 | `foreign_key.py` | FK configuration integrity |
 | `materialize.py` | `CanMaterializeSpecification` — pre-flight check before materialization |
 | `fd.py` | Functional dependency checks |
+| `output_expectations.py` | Checks `options.output_expectations` declarations |
 
 ## Base Classes
 
@@ -27,8 +28,8 @@ Specifications live in `src/specifications/` — pure Core with no backend impor
 
 ## Composable Pattern
 
-- `CompositeProjectSpecification` aggregates all individual specs in its `__init__()`.
-- To add a new project-level check: subclass `ProjectSpecification`, implement `is_satisfied_by()`, add to `CompositeProjectSpecification.__init__()`.
+- `CompositeProjectSpecification` runs `IsProjectSpecification` first, then the specs returned by `get_default_specifications()`.
+- To add a new project-level check: subclass `ProjectSpecification`, implement `is_satisfied_by()`, add it to the list in `CompositeProjectSpecification.get_default_specifications()`.
 - Merge results from sub-specs with `self.merge(sub_spec)`.
 
 ## Entity Type Registries
@@ -50,7 +51,7 @@ Call this spec in the backend service before writing the materialized snapshot; 
 
 - Importing `backend.*` inside any `src/specifications/` file — these are pure Core.
 - Raising exceptions from `is_satisfied_by()` instead of calling `add_error()` and returning `False`.
-- Calling `is_satisfied_by()` without calling `clear()` first when reusing a spec instance — always call `clear()` at the top of `is_satisfied_by()`.
+- Reusing a spec instance without clearing earlier issues. New specs should call `self.clear()` at the top of `is_satisfied_by()`; some existing specs do not.
 - Adding a new entity type without registering it in `ENTITY_TYPE_SPECIFICATION`.
 - Skipping `CanMaterializeSpecification` before materializing an entity.
 

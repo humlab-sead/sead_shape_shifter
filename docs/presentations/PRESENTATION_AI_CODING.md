@@ -175,7 +175,7 @@ Each file is an index plus the few rules that matter locally. For example `.gith
 - `features/validation`, `features/materialization` (emitting target tables), `features/reconciliation` (matching incoming values to reference data)
 - `features/ingesters` (pluggable importers), `features/graph` (frontend dependency graph)
 
-Example rule style (from `features/ingesters`): a new ingester is a directory under `ingesters/<name>/`, implements the `Ingester` protocol, and registers with `@Ingesters.register(key=...)`.
+Example rule style (from `features/ingesters`): a new ingester is a directory under `ingesters/<name>/`, implements the `Ingester` protocol, and registers with `@get_ingester_registry().register(key=...)`.
 
 > These encode the *hard-won* subsystem contracts so an agent does not re-derive or silently break them.
 

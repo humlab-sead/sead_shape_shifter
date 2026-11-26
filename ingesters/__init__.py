@@ -5,7 +5,7 @@ discovered and loaded by the backend registry system.
 
 Each ingester should:
 1. Implement the Ingester protocol from backend.app.ingesters.protocol
-2. Register itself using @Ingesters.register(key="<name>") decorator
+2. Register itself using @get_ingester_registry().register(key="<name>") decorator
 3. Provide get_metadata() class method
 4. Implement validate() and ingest() methods
 

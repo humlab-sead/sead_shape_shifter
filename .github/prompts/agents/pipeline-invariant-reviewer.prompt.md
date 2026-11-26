@@ -14,7 +14,7 @@ Protect the core pipeline and identity rules:
 - Stage order: Extract -> Filter -> Link -> Unnest -> Translate -> Store
 - FK values use local `system_id`
 - `public_id` names target columns and ends with `_id`
-- Filters run before FK-added columns exist
+- Each filter runs at its declared stage (`extract`, `after_link` or `after_unnest`); an `extract` filter cannot use FK-added columns
 - Extra-column, replace, unnest, and DSL rules stay intact
 - Loaders remain async and return the expected result types
 

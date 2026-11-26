@@ -42,16 +42,9 @@ async def test_loader_success():
     assert isinstance(result, pd.DataFrame)
 ```
 
-### Constraint Validators (`tests/test_constraints.py`)
+### Constraint Validators (`tests/specifications/test_constraints.py`)
 
-```python
-def test_validator():
-    validator = ValidatorClass()
-    config = {"entity": {"field": "value"}}
-    issues = validator.validate(config, entity_name="test")
-    assert len(issues) == 0  # or check specific codes
-    # assert issues[0]["code"] == "ERROR_CODE"
-```
+Build the validator with an entity, FK and constraints config, then call `validate(ValidationContext(...))`. A violation raises `ForeignKeyConstraintViolation` unless `raise_on_violation=False`. Follow the existing tests in that file for setup.
 
 ### Core Pipeline (`tests/process/` or `tests/integration/`)
 

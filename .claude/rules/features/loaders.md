@@ -48,7 +48,7 @@ class MyLoader(DataLoader):
 ## UCanAccess (MS Access)
 
 - `init_jvm_for_ucanaccess(ucanaccess_dir)` must be called **once** at application startup — JPype cannot restart the JVM.
-- Call it before any `UCanAccessLoader` is instantiated.
+- The backend calls it at startup (`backend/app/main.py`). `UCanAccessSqlLoader` also starts the JVM on demand, with a warning, when it is not running (for example in worker processes).
 - JAR files are loaded from `lib/ucanaccess/` — see `scripts/dev/install-uncanccess.sh` for setup.
 - All UCanAccess operations use `jaydebeapi` over the JDBC bridge — SQL syntax is MS Access SQL, not PostgreSQL.
 

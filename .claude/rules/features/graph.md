@@ -27,7 +27,7 @@ Three layout types, mapped in `getLayoutConfig()`:
 |-------------|---------------------|---------|
 | `'hierarchical'` | `dagre` | Directed dependency trees |
 | `'force'` | `cose-bilkent` | Organic force-directed layout |
-| `'custom'` | User-saved positions | Frozen manual layout |
+| `'custom'` | `preset` with user-saved positions | Frozen manual layout |
 
 - Default in `useCytoscape` is `'hierarchical'`; default in `ProjectDetailView` is `'force'`.
 - Layouts are registered once at module load: `cytoscape.use(dagre)`, `cytoscape.use(coseBilkent)`. Never call `cytoscape.use()` again.

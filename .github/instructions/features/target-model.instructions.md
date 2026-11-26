@@ -9,32 +9,24 @@ applyTo: "src/target_model/**,backend/app/validators/target_model_validator.py,b
 - `src/target_model/` is pure Core — zero backend/API imports permitted.
 - Conformance validators receive `TargetModel` (Pydantic) + `ShapeShiftProject` (already resolved). They never fetch data or files.
 - `@include:` in `metadata.target_model` is resolved by `ProjectMapper.to_core()` at the API→Core boundary. Core always receives an expanded `dict`, never a file path.
-- `TargetModelValidator` (backend adapter) is the only component that converts `ConformanceIssue` → `ValidationError` and touches `ValidationCategory.CONFORMANCE`.
+- `TargetModelValidator` (backend adapter) runs conformance for the API and converts issues with `ValidationMapper`.
 - `ValidationService.validate_target_model()` owns loading, resolving, and delegating. It never constructs `TargetModel` objects itself.
 
 ## Required Invariants
 
 - Always call `table_cfg.get_target_facing_columns()` and `table_cfg.get_target_facing_foreign_key_targets()` to inspect project output — **never** access `table_cfg.columns` directly. Materialized entities are treated as fixed views and only expose their explicit `columns` list as target-facing.
 - Conformance is **additive and optional**: structural validation runs first; conformance adds `ValidationCategory.CONFORMANCE` issues.
-- A project without `metadata.target_model` is not an error — return an empty valid `ValidationResult`.
+- A project without `metadata.target_model` is normally not an error: return an empty valid `ValidationResult`. Exception: `ValidationService` returns an error when the project declares direct FK value sources that need the target model.
 - `guard()` skips entities absent from the project — this is expected, not a bug.
 - Only FK specs with `required: true` generate `MISSING_REQUIRED_FOREIGN_KEY_TARGET` issues.
-- For bridge FKs (`via:`): check source→bridge FK first; if missing, stop. Then check bridge→ultimate target (advisory, code `BRIDGE_MISSING_TARGET_FK`).
+- For bridge FKs (`via:`): check that the bridge entity exists in the project (`MISSING_BRIDGE_ENTITY`); if it is missing, stop. Then check that the bridge has an FK to the target (`BRIDGE_MISSING_TARGET_FK`). The source entity never has a direct FK to the bridge.
 - `TargetModelSpecValidator` validates the spec file itself for self-consistency (e.g. FK references unknown entity, identity column not in columns dict). Run this before conformance in new tooling.
 
 ## Registered Conformance Validators
 
-| Key | Class | What it checks |
-|-----|-------|----------------|
-| `required_entity` | `RequiredEntityConformanceValidator` | All `required: true` entities are present in project |
-| `public_id` | `PublicIdConformanceValidator` | `public_id` matches spec (present + correct name) |
-| `foreign_key` | `ForeignKeyConformanceValidator` | Required FK targets present; bridge chain intact |
-| `required_columns` | `RequiredColumnsConformanceValidator` | Required target-facing columns declared |
-| `naming_convention` | `NamingConventionConformanceValidator` | `public_id` ends with `naming.public_id_suffix` |
-| `induced_requirements` | `InducedRequirementConformanceValidator` | Entities pulled in by required FKs are also present |
-| `source_type_appropriateness` | `SourceTypeAppropriatenessConformanceValidator` | Classifiers use `fixed` or `sql`, not `entity` |
-
-New validators must be decorated `@CONFORMANCE_VALIDATORS.register(key="...")` and extend `ConformanceValidator` or `EntityConformanceValidator`.
+- The registered rules are the classes decorated with `@CONFORMANCE_VALIDATORS.register(key="...")` in `src/target_model/conformance.py`. Check that file for the current keys.
+- New validators use the same decorator and extend `EntityConformanceValidator` (one entity at a time) or `GlobalConformanceValidator` (whole model or project graph).
+- Projects can turn rules off or change their severity with `options.validation.disabled_rules` and `options.validation.severity_overrides`, keyed by the registry key.
 
 ## Common Mistakes
 

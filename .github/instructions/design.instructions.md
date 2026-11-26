@@ -48,12 +48,12 @@ Target 1000–2200 words. Stay under 3000. Move detailed subsystem material into
 
 `AGENTS.md` and `docs/DIAGRAMS.md` are the canonical references for architecture rules and visual design. Do not invent component responsibilities or integration points.
 
-Do not proactively scan the codebase to verify prose. If a claim seems inconsistent with what the user has described, flag it as an inline question rather than searching autonomously. A full design accuracy audit against the codebase is a separate explicit task — use the `proposal-implementation-plan` prompt for that.
+Do not proactively scan the codebase to verify prose. If a claim seems inconsistent with what the user has described, flag it as an inline question rather than searching autonomously. A full design accuracy audit against the codebase is a separate explicit task.
 
-## Working With Copilot
+## Working With AI Assistants
 
 - **Prose editing** (restructuring sections, improving wording, cutting bloat) is a standard-model task. Use a non-premium model for it.
-- **Design accuracy audits** (verifying claims against real code) justify a premium model with tool access. Request that explicitly using the `proposal-implementation-plan` prompt.
+- **Design accuracy audits** (verifying claims against real code) justify a premium model with tool access. Request that explicitly.
 - Draft or edit in a single pass. Do not iterate section by section across multiple turns.
 
 ## Common failure modes

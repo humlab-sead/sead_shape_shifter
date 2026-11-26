@@ -9,35 +9,25 @@ Choose one of the two validator types below and follow its pattern:
 
 ---
 
-## Constraint Validator (config-level, pre/post-merge stage)
+## Constraint Validator (foreign-key check during linking)
 
 **File**: `src/specifications/constraints.py`
 
 ```python
-from src.specifications.constraints import ConstraintValidator, Validators
-
-@Validators.register(key="{validator_key}", stage="{pre-merge|post-merge}")
+@Validators.register(key="{constraint_key}", stage="{stage}")
 class {ValidatorName}(ConstraintValidator):
-    def validate(self, config: dict, entity_name: str | None = None) -> list[dict]:
-        issues = []
-        # Validation logic here
-        return issues
+    """{What the check rejects.}"""
+
+    def is_applicable(self) -> bool:
+        return ...  # read self.constraints or self.runtime_options
+
+    def validate(self, context: ValidationContext) -> None:
+        if ...:
+            self.handle_violation("{message}")
 ```
 
-Issue structure:
-```python
-{
-    "severity": "error|warning|info",
-    "entity": entity_name,
-    "field": field_name,
-    "message": "Description",
-    "code": "ERROR_CODE",
-    "suggestion": "How to fix",
-}
-```
-
-- **pre-merge**: validates before entity merges with inherited config
-- **post-merge**: validates after full entity config resolution
+- Use a stage that existing validators in the file use (for example `pre-merge`).
+- `handle_violation()` raises `ForeignKeyConstraintViolation` or logs it.
 
 **Tests** go in `tests/specifications/test_constraints.py`.
 
@@ -52,7 +42,7 @@ import pandas as pd
 
 class {ValidatorName}:
     @staticmethod
-    def validate(df: pd.DataFrame, {params}, entity_name: str) -> list[ValidationIssue]:
+    def validate(df: pd.DataFrame, {params}, entity_name: str) -> list[DataValidationIssue]:
         """Pure function — receives data, returns issues."""
         issues = []
         # Validation logic here
@@ -66,7 +56,7 @@ Rules:
 - No infrastructure imports in `src/validators/`
 - Orchestration (fetch + call + collect) lives in the backend layer
 
-**Tests** go in `backend/tests/test_validation.py` using plain DataFrames — no mocks needed.
+**Tests** go in `tests/validators/test_data_validators.py` using plain DataFrames — no mocks needed.
 
 ---
 

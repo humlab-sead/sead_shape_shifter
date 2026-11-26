@@ -19,15 +19,15 @@ Rules here apply when working in `backend/`. Also read the root `AGENTS.md` for 
 
 - `DataValidationOrchestrator` lives in the backend — it is the only component that may call infrastructure (HTTP, file I/O).
 - Pure domain validators (`src/validators/`) receive DataFrames; the orchestrator fetches and passes them.
-- Returns `list[ValidationIssue]`; caller converts to API errors.
+- Returns `list[DataValidationIssue]`; caller converts to API errors.
 - Run structural and constraint validation before data validation — structural errors may prevent data loading.
 
 ## Materialization
 
 - Lifecycle: `CanMaterializeSpecification` → `ShapeShifter.normalize()` → `_sanitize_materialized_dataframe()` → persist → update YAML.
 - Always call `_sanitize_materialized_dataframe()` before persisting — removes `_merge_indicator_*` columns and duplicate labels.
-- Entity `type` does not change after materialization — check `is_materialized`, not `type`.
-- Unmaterialization: delete sidecar file (best-effort — log warning if missing, do not raise), clear `materialized` block from YAML.
+- Materialization changes the entity to `type: fixed` — use `is_materialized` to tell a snapshot apart from a hand-written fixed entity.
+- Unmaterialization restores the entity config from `materialized.source_state`. It does not delete the sidecar data file.
 - Sidecar path: `materialized/{entity_name}.{extension}` relative to project folder — always use `_get_materialized_file_path()`.
 
 ## Reconciliation

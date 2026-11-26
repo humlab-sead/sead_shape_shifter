@@ -6,7 +6,7 @@ Rules here apply when working in `ingesters/`. Also read the root `AGENTS.md` fo
 
 - Each ingester lives in its own directory: `ingesters/<name>/`.
 - Implement the protocol defined in `backend/app/ingesters/protocol.py`.
-- Register with `@Ingesters.register(key="<name>")` — discovery is automatic via `IngesterRegistry.discover()`.
+- Register with `@get_ingester_registry().register(key="<name>")` — discovery is automatic via `IngesterRegistry.discover()`.
 - Do not add manual imports into `backend/app/ingesters/__init__.py` unless the existing system requires it.
 
 ## Implementation Rules

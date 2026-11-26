@@ -452,7 +452,7 @@ class ExtraColumnEvaluator:
     3. Column copies: String matching an existing column name
     4. Interpolated strings: String containing {column_name} patterns
     DSL formulas support:
-    - Safe function calls: concat, upper, lower, trim, substr, coalesce, map_value
+    - Safe function calls: the functions registered in DEFAULT_FUNCTIONS (src/transforms/dsl.py)
     - Column references and literals (strings, numbers, null, true, false)
     - Nested function calls
     - Deferred evaluation (for columns not yet available)

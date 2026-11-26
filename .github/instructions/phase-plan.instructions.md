@@ -2,7 +2,7 @@
 description: "Use when creating or updating phased implementation plans, delivery sequencing documents, migration phase plans, or other multi-phase execution plans. Covers structure, section priority, phase ordering, cross-phase rules, and validation strategy."
 ---
 
-# Copilot Instructions: Phase Plans
+# Phase Plan Instructions
 
 When asked to create a phase plan, generate a concise Markdown implementation plan that breaks a larger development effort into ordered phases.
 

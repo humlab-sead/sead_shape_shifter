@@ -36,7 +36,7 @@
 - **Layer boundary**: API models stay in `backend/app/models/`; domain logic stays in `src/`. Never import `backend.*` from `src/`.
 - **Mapper**: all API↔Core conversions go through `ProjectMapper`. Never bypass it.
 - **Directives** (`@include:`, `@value:`, `@load:`, `${ENV_VAR}`) are resolved **only** in `ProjectMapper.to_core()` — API and YAML layers preserve them raw.
-- **Registries**: use `@Validators.register(...)`, `@DataLoaders.register(...)`, `@Ingesters.register(...)` — never bypass the registry.
+- **Registries**: use `@Validators.register(...)`, `@DataLoaders.register(...)`, `@get_ingester_registry().register(...)` — never bypass the registry.
 - **Circular imports**: use constructor injection or `TYPE_CHECKING` — never restructure imports as a workaround.
 - **Async**: `ShapeShifter.normalize()` and all data loaders are async — never call with `asyncio.run()` inside a loader or service.
 
@@ -64,8 +64,8 @@ Core FK links use local `system_id` values. A change-request package can use an 
 - **Backend endpoint**: router in `backend/app/api/v1/endpoints/`, models in `backend/app/models/`, service in `backend/app/services/`, register in `backend/app/api/v1/api.py`. See `.github/prompts/add-endpoint.prompt.md`.
 - **Constraint validator**: `@Validators.register(key=..., stage=...)` in `src/specifications/constraints.py`. See `.github/prompts/add-validator.prompt.md`.
 - **Data loader**: `@DataLoaders.register(key=...)` in `src/loaders/`, `ClassVar` schema on the class. See `.github/prompts/add-loader.prompt.md`.
-- **Specification**: subclass `ProjectSpecification`, implement `is_satisfied_by()`, add to `CompositeProjectSpecification.__init__()`.
-- **Ingester**: directory under `ingesters/<name>/`, implement `Ingester` protocol, `@Ingesters.register(key="<name>")`. See `ingesters/AGENTS.md`.
+- **Specification**: subclass `ProjectSpecification`, implement `is_satisfied_by()`, add to `CompositeProjectSpecification.get_default_specifications()`.
+- **Ingester**: directory under `ingesters/<name>/`, implement `Ingester` protocol, `@get_ingester_registry().register(key="<name>")`. See `ingesters/AGENTS.md`.
 - **Phase plan**: when asked to create or update a phased implementation plan, delivery sequencing document, or migration phase plan, use `.github/instructions/phase-plan.instructions.md`.
 - **Task plan**: when asked to create or update a task plan for one development phase, use `.github/instructions/task-plan.instructions.md`.
 

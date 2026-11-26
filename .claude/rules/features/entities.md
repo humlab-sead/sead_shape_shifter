@@ -1,7 +1,6 @@
 ---
 paths:
   - "src/model.py"
-  - "src/specifications/**"
   - "backend/app/services/entity*"
   - "frontend/src/components/entities/**"
   - "tests/model/**"
@@ -48,7 +47,7 @@ Classifiers should use `type: fixed` or `type: sql` — using `type: entity` for
 ## Circular / Deferred Dependencies
 
 - Use `defer_dependency: true` on a FK config to break circular dependency chains.
-- `ProcessState.get_next_entity_to_process()` skips entities with unmet dependencies — deferred FKs are retried via `DeferredLinkingTracker` after the main topological pass.
+- `ProcessState.get_next_entity_to_process()` skips entities with unmet dependencies — deferred FKs are tracked in `DeferredLinkingTracker` and retried after each entity and again after the main loop.
 - `CircularDependencySpecification` detects cycles; `defer_dependency` is the sanctioned workaround, not a spec bypass.
 
 ## `TableConfig` API
@@ -63,7 +62,7 @@ Classifiers should use `type: fixed` or `type: sql` — using `type: entity` for
 - Using external IDs (SEAD IDs) as Core FK values — Core FK values must be `system_id`. The only exception is the change-request package FK declared with `foreign_key_value_sources.<target>: public_id`.
 - Setting `public_id` to a value not ending in `_id`.
 - Using `type: entity` for a classifier entity.
-- Adding a merged branch without a discriminator column — always call `_process_merged_branch()`.
+- Adding a merged branch without a discriminator column — branch rows must go through `process_merged_branch()` (`src/transforms/branch.py`).
 - Assuming `system_id` is stable across runs — it is local and sequential only.
 - Forgetting to set `defer_dependency: true` on circular FK references; topological sort will deadlock.
 
