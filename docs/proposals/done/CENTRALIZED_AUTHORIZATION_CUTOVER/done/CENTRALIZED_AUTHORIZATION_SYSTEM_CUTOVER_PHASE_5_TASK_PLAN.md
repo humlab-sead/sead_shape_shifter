@@ -125,7 +125,7 @@
   * **Current -> required:** Grant verification was last run on 2026-09-18 against a different image.
   * **Implementation:** Run `./scripts/verify/verify_postgres_grants.sh --database sead_staging --role sead_ro --schema public --sqlite "$DATA_DIR/state/authorization.sqlite3"` and record the grant results and the store's ownership and mode.
   * **Constraints:** Do not change grants or store permissions.
-  * **Validation:** `V-5.5`. Passed 2026-09-22. The first attempt failed on a command error: no `--host` or `--port` was given, so psql used a local Unix socket. Re-run host-side against `127.0.0.1:9023`, the address this host uses for the server that `backend.env` names to the container as `host.docker.internal`: `sead_ro` is read-only against `sead_staging.public`, and the store is mode `600` inside the data directory. The firewalled wildcard listener on `9023` is recorded in the deployment record.
+  * **Validation:** `V-5.5`. Passed 2026-09-22. The first attempt failed on a command error: no `--host` or `--port` was given, so psql used a local Unix socket. Re-run host-side against `127.0.0.1:PORT`, the address this host uses for the server that `backend.env` names to the container as `host.docker.internal`: `sead_ro` is read-only against `sead_staging.public`, and the store is mode `600` inside the data directory. The firewalled wildcard listener on `PORT` is recorded in the deployment record.
 * [x] `T5.6` **Change:** Run the verification orchestrator for the frozen unit and file its evidence.
   * **Target:** `<DATA_DIR>/deployment-verification/`.
   * **Current -> required:** The orchestrator has not been run against the frozen unit; this is the single capture pass for the check families it owns.

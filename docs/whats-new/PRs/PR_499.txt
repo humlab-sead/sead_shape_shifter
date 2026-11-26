@@ -41,7 +41,7 @@ as used.
 results can be reported as passed or failed.
  - The PR body reports the following checks, which are author attestations rather than independently
 verified results: POST /api/v1/data-sources/sead-options/test returned success: true with
-table_count: 167; psycopg.connect inside the container to host.docker.internal:9023 returned
+table_count: 167; psycopg.connect inside the container to host.docker.internal:PORT returned
 PostgreSQL 16.4; git diff --check passed; and scripts/check_doc_links.sh passed, covering the new
 link from the handoff to the deployment guide.
  - Execution status of the repository's test suites for this documentation-only change is unknown

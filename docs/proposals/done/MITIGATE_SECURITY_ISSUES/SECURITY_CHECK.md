@@ -545,7 +545,7 @@ attribute. The deployed account is verified separately below.
 ### Live read-only role verification (2026-09-16)
 
 The deployed account was checked against the live test database `sead_staging`
-on `humlabsead.srv.its.umu.se:9023` as user `sead_ro`. The connection settings
+on `humlabsead.srv.its.umu.se:PORT` as user `sead_ro`. The connection settings
 come from `tests/.env`, and
 `backend/tests/integration/test_data_source_connections.py::test_postgresql_connection`
 passes against that server.
@@ -774,7 +774,7 @@ OCI `revision` label is the identity that travels across hosts.
   identity, so it carries its weight for this unit; a reopen would require a
   fresh exercise.
 - **An adjacent observation, outside `PH5-AC-2`.** The host has a wildcard
-  listener on database port `9023`, shielded only by the firewall, and the exact
+  listener on database port `PORT`, shielded only by the firewall, and the exact
   packet path the container uses was not traced. The intended posture is worth
   confirming.
 - **A standalone `rollback_exercise.sh` run** leaves the systemd unit reporting
