@@ -41,7 +41,7 @@
 ## Cross-Cutting Rules
 
 - **Absolute imports only**: `from src...` and `from backend.app...` — never relative across packages.
-- **Layer boundary**: API models stay in `backend/app/models/`; domain logic stays in `src/`. Never import `backend.*` from `src/`. Put business logic in services and domain code, not in API models or route handlers.
+- **Layer boundary**: API models stay in `backend/app/models/`; domain logic stays in `src/`. Never import `backend.*` from `src/` (`make check-layer-imports`, also run by pre-commit and CI). Put business logic in services and domain code, not in API models or route handlers.
 - **Mapper**: API↔Core conversions go through the mappers in `backend/app/mappers/`; projects go through `ProjectMapper`. Never bypass them.
 - **Directives** (`@include:`, `@value:`, `@load:`, `${ENV_VAR}`): API models and saved YAML keep them as written. `ProjectMapper.to_core()` resolves them when it converts a project. Do not add other places that resolve them, and never save a resolved config. Existing exceptions are listed in `.github/instructions/mappers.instructions.md`.
 - **Registries**: use `@Validators.register(...)`, `@DataLoaders.register(...)`, `@get_ingester_registry().register(...)`, and the matching registry for filters and other extension types — never bypass a registry.

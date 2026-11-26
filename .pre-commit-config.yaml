@@ -24,6 +24,12 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: layer-imports
+        name: Check that src does not import backend
+        entry: python3 scripts/ci/check_layer_imports.py
+        language: system
+        pass_filenames: false
+        files: ^(src/|scripts/ci/check_layer_imports\.py$)
       - id: claude-rules-up-to-date
         name: Check .claude/rules matches .github/instructions
         entry: python3 scripts/dev/sync_claude_rules.py --check

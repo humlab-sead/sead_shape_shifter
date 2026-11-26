@@ -13,7 +13,7 @@ Scripts are grouped by who runs them and when:
 | Folder | Purpose | Examples |
 | --- | --- | --- |
 | `_shared/` | Import bootstrap and environment-file helpers used by the scripts below | `paths.py`, `env.py` |
-| `ci/` | Checks run by `make` and CI | `check_doc_links.sh`, `check_instruction_references.py`, `verify_promotion_provenance.sh` |
+| `ci/` | Checks run by `make` and CI | `check_doc_links.sh`, `check_instruction_references.py`, `check_layer_imports.py`, `verify_promotion_provenance.sh` |
 | `workflow/` | Pull request, promotion, and release automation | `create_change_pr.py`, `update_pr_descriptions.py`, `generate_whats_new.py` |
 | `project/` | Shape Shifter project configuration and data tooling | `validate_project.py`, `sort_project_yaml.py`, `auto_reconcile.py` |
 | `target_model/` | Target-model generation, export, and audits | `print_target_model_entity.py`, `export_target_tables.py` |
@@ -79,6 +79,7 @@ worked examples.
 | --- | --- |
 | `check_doc_links.sh` | Report relative Markdown links that no longer resolve inside `README.md`, `docs/*.md`, and `deployment/container/*.md`. |
 | `check_instruction_references.py` | Report links and backticked paths in the AI instruction files that point at missing files. |
+| `check_layer_imports.py` | Report `backend` imports in `src/`. |
 | `verify_promotion_provenance.sh` | Fail a promotion when a commit on a protected path reached the source branch without its own pull request. |
 
 ### `workflow/`

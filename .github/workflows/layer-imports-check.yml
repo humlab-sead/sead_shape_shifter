@@ -1,0 +1,21 @@
+name: Layer Imports Check
+
+# Core code in src/ must not import backend. The check uses only the standard library.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  layer-imports:
+    name: Core does not import backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The check parses the source files, so it needs the project's Python version.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Check imports in src
+        run: python3 scripts/ci/check_layer_imports.py
