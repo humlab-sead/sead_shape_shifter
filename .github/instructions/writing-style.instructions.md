@@ -1,6 +1,6 @@
 ---
 description: "Use when writing or editing documentation, comments, docstrings, PR text, issues, proposals, user-facing messages, or AI coding-agent instructions."
-applyTo: "**/*.md"
+applyTo: "**/*.md,**/*.py,**/*.ts,**/*.vue"
 ---
 
 # Writing Style Instructions
@@ -29,10 +29,24 @@ Readers should understand:
 
 ## Wording and Docstrings
 
-Follow "Documentation Vocabulary" in the root `AGENTS.md` for word choice and docstrings. In addition:
+"Documentation Vocabulary" in the root `AGENTS.md` has the main wording rules and docstring examples. In addition:
 
 * Start a docstring with what the function, class, or module does.
 * Use technical terms when they are the correct project terms.
+* Name the actual thing where you can, such as the input, output, error, side effect, or request details.
+
+No word is forbidden. Use the terms below carefully unless they are established project vocabulary. Pick the replacement that says what you mean.
+
+| Use carefully | Write instead, for example |
+|---|---|
+| `evidence` | data, result, validation result, check, source |
+| `boundary` | limit, responsibility, allowed range, rule |
+| `framing` | purpose, reason, background |
+| `canonical` | standard, preferred, normalized, official |
+| `surface` | interface, page, endpoint, entry point |
+| `facing` | used by, shown to, exposed to |
+| `slice` | part, section, subset, step |
+| `signal` | indicator, warning, metric, status |
 
 ## Documentation
 
