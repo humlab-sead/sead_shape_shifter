@@ -1,100 +1,10 @@
 # Shape Shifter - AI Coding Instructions
 
-Keep this file small and always-on. Use `.github/instructions/*.instructions.md` for task-specific guidance.
+The shared rules for this repository are in the root [`AGENTS.md`](../AGENTS.md): documentation and code, architecture, identity, code conventions, workflow, graphify and rtk. Copilot loads that file itself. If it is not in your context, read it before starting work.
 
-## Documentation scope
+Do not copy rules from `AGENTS.md` into this file. Add a shared rule there.
 
-- Use `docs/` as the source of truth.
-- Ignore `docs/archive/`.
-- Treat `docs/features/` as backlog, not authoritative implementation guidance, unless the user asks about roadmap or planned features.
+## Where other rules are
 
-## Documentation Evidence
-
-- Treat current code, configuration, scripts, workflows, and generated artifacts as authoritative for the behavior each implements.
-- Treat `docs/archive/` as historical context, not current practice.
-- Verify documentation claims against the source that implements or executes the described behavior.
-
-## Repository structure
-
-- `src/`: core Python transformation engine
-- `backend/app/`: FastAPI backend
-- `frontend/`: Vue 3 frontend
-- `ingesters/`: pluggable ingester implementations
-- `docs/sead/`: SEAD schema reference. `columns.csv` and the generated `SCHEMA.md` are current (refresh with `make sead-schema`); the numbered `0*_*.sql` files are a stale historical dump
-- Python uses the root `.venv/`
-
-Core pipeline order matters: Extract → Filter → Link → Unnest → Translate → Store.
-
-## Always-on architecture rules
-
-- Keep API models in `backend/app/models/` and domain logic in `src/`.
-- Convert API and core models with mappers.
-- Keep environment variables and directives unresolved in API models and saved YAML. Do not add new places that resolve them; see `.github/instructions/mappers.instructions.md`.
-- Do not put business logic in API DTOs.
-- Do not import API-layer models into `src/`.
-- Prefer constructor injection or factory functions when services depend on each other.
-- Use `TYPE_CHECKING` imports for type hints.
-- Validators in `src/validators/` must receive data and config; they do not fetch data.
-- Return domain validation issues, not API DTOs.
-- Use local `system_id` values for relationships.
-- `keys` are business keys for matching and deduplication.
-- `public_id` names target and export identity columns and should end with `_id`.
-- Do not use external IDs as internal foreign-key values.
-- Directives such as `@include:`, `@load:`, and `@value:` belong in YAML and API-layer models; core models should receive resolved values.
-- Use the registry pattern for validators, loaders, filters, and ingesters.
-- Loader schemas belong on loader classes as `schema: ClassVar[DriverSchema]`.
-- Use absolute imports only: `from src...` and `from backend.app...`.
-- Await loaders and check sync/async service boundaries carefully.
-
-## Workflow expectations
-
-- Use the unified environment at `.venv/` for Python work.
-- Run targeted tests for the changed area before finishing.
-- Run broader tests when a change crosses layers.
-- When completing work tracked by a task or phase plan, update its progress tracker, checklist, status, and deliverables in the same change; do not leave completed work marked as not started.
-- When touching project YAML, validate against `.github/instructions/shapeshifter-configuration.instructions.md`.
-- When drafting a pull request title or description, follow `.github/pr-description-instructions.md`. Use `.github/promotion_pr_template.md` for promotions (`dev` into `staging` or `staging` into `main`), and `.github/pull_request_template.md` for other pull requests.
-
-## Cross-cutting instructions
-
-- `writing-style.instructions.md`: prose, docstrings, PR text, and AI coding-agent instructions
-- `diagrams.instructions.md`: Mermaid diagram style and conventions
-- `github-workflow.instructions.md`: issue creation and commit workflow
-
-## graphify
-
-graphify is a uv tool (`~/.local/bin/graphify`), not part of the project `.venv`. The graph in `graphify-out/` is built locally and is not committed.
-
-How the graph is kept current:
-- graphify git hooks (installed by `make install-hooks`) rebuild the code part of the graph in the background after each commit, checkout, merge and rebase. The rebuild is AST-only and makes no LLM calls; its log is `~/.cache/graphify-rebuild.log`.
-- `make semantic-graphify` adds the LLM-based results (documents and community names). It is a long, token-heavy run: run it only when the user asks.
-- The hooks do not rebuild `graphify-out/wiki/`. `make update-graphify` and `make semantic-graphify` rebuild it at the end; `make graphify-wiki` rebuilds only the wiki (local, about a second, no LLM).
-- `make status` shows whether the graph, the LLM-based results, the community names or the wiki need a rebuild, with the command to run.
-
-Rules:
-- When `graphify-out/graph.json` exists, run `graphify query "<question>"` before broad codebase exploration, architecture searches, or relationship searches. Use `graphify path "<source>" "<target>"` for a specific relationship and `graphify explain "<concept>"` for a focused concept.
-- If a name matches several nodes, graphify lists them; retry with `path/to/file.py::Symbol`, for example `graphify explain "backend/app/mappers/project_mapper.py::ProjectMapper"`. If `graphify path` finds no directed path, retry with `--undirected`.
-- Use `graphify-out/wiki/index.md` only for broad orientation; it can lag behind recent commits. Read `graphify-out/GRAPH_REPORT.md` only for broad architecture review or when query, path and explain do not give enough context.
-- Before the first graph query in a session, check that the graph is usable. If `graphify hook status` reports a hook as `not installed`, tell the user and suggest `make install-hooks`; do not install hooks yourself. If `graph.json` is missing or older than the latest commit (`git log -1 --format=%ct`), run `GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update .` first and mention it to the user.
-- Do not run `graphify update` after every edit; the hooks handle that at commit time. Run `GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update .` only when you changed code and need to query the graph again before committing. The variable blocks graph.html, which this project does not use.
-- Verify graphify results against current source code, tests, configuration, and applicable instructions; if they conflict, trust the source. Use `rg` or targeted file reads for exact text and local implementation details.
-
-<!-- rtk-instructions v2 -->
-**rtk** is a CLI proxy that filters and compresses command outputs, saving 60-90% tokens.
-
-Use `rtk` for shell commands unless raw output, shell built-ins, or interactive commands require otherwise.
-
-Examples:
-```bash
-rtk uv run pytest
-rtk make test
-rtk pylint src/
-rtk git status
-rtk git log -10
-rtk cat docs/proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md
-```
-
-If `rtk` fails, retry without it.
-
-Meta: `rtk gain`, `rtk gain --history`, `rtk discover`, `rtk proxy <cmd>`
-<!-- /rtk-instructions -->
+- `.github/instructions/*.instructions.md`: rules for particular files and tasks. Copilot matches them to files with `applyTo`. If you get only a list, read the matching file yourself.
+- `src/`, `backend/`, `frontend/`, `ingesters/` and the test folders have their own `AGENTS.md`. Read it when working there.

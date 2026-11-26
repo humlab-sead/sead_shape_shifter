@@ -34,7 +34,8 @@ paths:
 
 - Routes without a project requirement: `TestClient`.
 - Routes protected by `require_project(...)`: the `authorized_client` fixture in `backend/tests/conftest.py`. It is async, so `await` every request.
-- Create the project for a protected route with `POST /api/v1/projects`. Writing `shapeshifter.yml` to disk does not register it for authorization.
+- Create the project for a protected route with `POST /api/v1/projects`. Writing `shapeshifter.yml` to disk does not register it for authorization. Write other files the test needs, such as reconciliation catalogs, mapping sidecars and `materialized/*.parquet`, into the created project directory.
+- A `401` means the request is not authenticated. A `404 "Resource not found"` for a project the test wrote to disk means the project was never registered.
 
 ## Isolation and Mocks
 
@@ -42,6 +43,7 @@ paths:
 - Change shared modules such as `click` or `loguru` only through `monkeypatch`. Direct assignment changes them for the whole test process and breaks other test files.
 - In loader tests, patch the connection or internal methods, and test both `load()` and `test_connection()`, including failure.
 - Never make real network calls. Do not run the full pipeline in endpoint unit tests.
+- In Core tests, build `ShapeShiftProject(cfg={...})` from a dict instead of loading files.
 - Test domain validators with small inline `pd.DataFrame` values. They return objects, so read `issue.code`, not `issue["code"]`.
 - Use `tmp_path` for files. Do not write into the repository.
 - Tests that need local data, Java or an external service must skip when it is missing, as the `local_data_directory` and `ucanaccess_required` fixtures do.

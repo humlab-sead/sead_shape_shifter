@@ -15,7 +15,7 @@ paths:
 # Monaco Editors
 
 - Keep Monaco; do not replace it.
-- Workers are bundled with the application. `configureMonacoWorkers()` (`src/monaco.ts`) is called once from `main.ts`. Do not load workers from a CDN.
+- Workers are bundled with the application. `configureMonacoWorkers()` (`frontend/src/monaco.ts`) is called once from `main.ts`. Do not load workers from a CDN.
 - Use `components/common/YamlEditor.vue` for YAML instead of creating another Monaco YAML editor.
 
 ## YAML Schemas
@@ -24,7 +24,7 @@ paths:
 - A schema applies by model path. The path must have the form `inmemory://shapeshifter/<mode>-<id>.yaml`.
 - A new mode needs a schema entry in `useMonacoYamlIntelligence.ts` and the mode added to the types there and in the `YamlEditor.vue` props.
 - `monaco-yaml` validation and hover are turned off on purpose (hover caused errors). Do not turn them on without testing in a browser.
-- The JSON files in `src/schemas/` are generated from backend Pydantic models. Do not edit them: change the model, then run `make generate-schemas`. `make check-schemas` reports differences. Schemas drive editor help only; the backend does the validation.
+- The JSON files in `frontend/src/schemas/` are generated from backend Pydantic models. Do not edit them: change the model, then run `make generate-schemas`. `make check-schemas` reports differences. Schemas drive editor help only; the backend does the validation.
 
 ## Validation and Completions
 

@@ -56,7 +56,7 @@ Never reorder these stages. `ShapeShifter.normalize()` covers Extract to Unnest 
 - An `extract` filter must not reference FK-added or unnest output columns. Use `after_link` or `after_unnest` for those.
 - `extra_columns` may reference columns added by linking or unnest; they are deferred until those columns exist, not an error on the first pass.
 - `unnest` `id_vars` and `value_vars` must exist at unnest time — they may be defined as `extra_columns` or FK columns, so do not assume they come from the source.
-- `system_id` is assigned per entity and is stable within a run; Core FK values always reference the parent's `system_id`, never external IDs. The change-request package FK declared with `foreign_key_value_sources.<target>: public_id` is the only exception and creates no Core link.
+- `system_id` is assigned per entity and is stable within a run; FK values follow the identity rules in the root `AGENTS.md`.
 
 ## Orchestrator: `ShapeShifter`
 
@@ -82,15 +82,12 @@ Never reorder these stages. `ShapeShifter.normalize()` covers Extract to Unnest 
 
 ## Merged Entity Branches
 
-- `get_subset()` calls `process_merged_branch()` (`src/transforms/branch.py`) for `type: merged` entities.
-- Each branch gets: discriminator column (`{entity}_branch` = branch name) and one nullable `Int64` FK column per branch source. Only the current branch's column has values.
-- Source `system_id` is dropped from branches.
-- Branch DataFrames are concatenated with `pd.concat(..., ignore_index=True)` — columns are unioned, missing values are `pd.NA`.
+See "Merged Entities" in `.claude/rules/features/entities.md`.
 
 ## Local File Resolution
 
 - `apply_local_file_options()` in `src/normalizer.py` rewrites relative `filename` paths when `location: local`.
-- This runs at load time, not at config parse time.
+- Applies to `location: local` in an entity's `options`. This runs at load time, not at config parse time.
 - Uses `resolve_managed_file_path()` — do not construct paths manually.
 
 ## Common Mistakes

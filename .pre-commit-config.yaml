@@ -30,3 +30,10 @@ repos:
         language: system
         pass_filenames: false
         files: ^(\.github/instructions/|\.claude/rules/|scripts/dev/sync_claude_rules\.py$)
+      - id: instruction-references
+        name: Check links and paths in AI instruction files
+        entry: python3 scripts/ci/check_instruction_references.py
+        language: system
+        pass_filenames: false
+        # Renaming or deleting any file can break a reference, so run on every commit.
+        always_run: true

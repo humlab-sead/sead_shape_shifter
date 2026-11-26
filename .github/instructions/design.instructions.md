@@ -48,7 +48,7 @@ Target 1000–2200 words. Stay under 3000. Move detailed subsystem material into
 
 `AGENTS.md` and `docs/DIAGRAMS.md` are the canonical references for architecture rules and visual design. Do not invent component responsibilities or integration points.
 
-Do not proactively scan the codebase to verify prose. If a claim seems inconsistent with what the user has described, flag it as an inline question rather than searching autonomously. A full design accuracy audit against the codebase is a separate explicit task.
+When editing `docs/DESIGN.md`, do not proactively scan the codebase to verify its prose. This applies only to `docs/DESIGN.md`, and is an exception to the rule in the root `AGENTS.md` to verify documentation claims against the source. If a claim seems inconsistent with what the user has described, flag it as an inline question rather than searching autonomously. A full design accuracy audit against the codebase is a separate explicit task.
 
 ## Working With AI Assistants
 

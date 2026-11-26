@@ -53,6 +53,16 @@ Each promotion is usually built from another pull request in this repository, so
 
 List the issues the promotion resolves as `Closes #<issue>` lines in `## Summary`, copied from the closing references of the included pull requests, or from the `Closes` lines in their `## Summary` when GitHub recorded no closing reference. Merging the promotion into `main` closes them. Keep those issue references out of `Included PRs`, which the release generator reads as pull request numbers.
 
+### Level of detail
+
+Later commits can make a description wrong, and nothing updates it automatically. Leave out details that are likely to change and that reviewers do not need.
+
+- Do not give counts that the diff or a test run already shows, such as the number of new or passing tests, changed files, or changed lines.
+- Describe behavior. Do not list the files, functions, or test cases that the diff already shows.
+- Keep an exact value when it is part of the change or a reviewer needs it, such as a configuration default, a size or time limit, or a measured performance result.
+
+When a later commit makes a statement in the description wrong or incomplete, update the description.
+
 ### Summary
 
 State what changed and why. Explain the main behavior or result, focusing on information useful to reviewers. Include implementation detail only when needed to understand the change. Distinguish implemented changes from planned or proposed work.
@@ -86,5 +96,7 @@ Report only checks and outcomes supported by available evidence. Distinguish:
 - Checks confirmed as passed or failed, including the relevant command or test suite when known.
 - Checks explicitly known not to have been run, with the reason when known.
 - Checks whose execution or results are unknown.
+
+Name each command or test suite and its outcome, for example `pytest scripts/tests: passed.` Name any failures. Leave out pass counts.
 
 Do not infer that checks passed or were not run merely because results are unavailable. If no validation evidence is available, write: `Not verified: validation results unavailable.`

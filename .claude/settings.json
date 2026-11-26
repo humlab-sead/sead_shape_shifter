@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/data/roger/.local/bin/graphify hook-guard search",
+            "command": "g=$(command -v graphify || echo \"$HOME/.local/bin/graphify\"); [ ! -x \"$g\" ] || \"$g\" hook-guard search",
             "timeout": 10
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/data/roger/.local/bin/graphify hook-guard read",
+            "command": "g=$(command -v graphify || echo \"$HOME/.local/bin/graphify\"); [ ! -x \"$g\" ] || \"$g\" hook-guard read",
             "timeout": 10
           }
         ]

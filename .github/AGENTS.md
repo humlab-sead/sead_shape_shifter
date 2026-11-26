@@ -2,7 +2,7 @@
 
 This directory holds Copilot and Codex instruction files, custom agents, and workflow definitions for the Shape Shifter repository.
 
-> Repo-wide architecture rules are in the root [`AGENTS.md`](../AGENTS.md). Read that file first. This file adds the instruction index below, which is the main thing Codex does not get automatically when working in this directory.
+> Shared rules are in the root [`AGENTS.md`](../AGENTS.md). Read that file first. This file adds the instruction index below, which is the main thing Codex does not get automatically when working in this directory.
 
 ## Instruction file index
 
@@ -76,6 +76,3 @@ These files live under `instructions/features/` and cover specific subsystems.
 ## Notes for Codex
 
 - These `.instructions.md` files are the detailed source for Copilot users and are injected automatically by path-based `applyTo` rules. Codex must read the relevant file explicitly before starting work in the matching area.
-- `docs/archive/` is reference-only; ignore it unless the user specifically asks about historical content.
-- `docs/features/` is a backlog, not authoritative implementation guidance.
-- The root `AGENTS.md` remains the primary always-on reference. This file adds directory-level context and the instruction index only.

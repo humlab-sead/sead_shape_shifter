@@ -53,10 +53,18 @@ if ! command -v graphify >/dev/null 2>&1; then
 else
   ok "graphify $(graphify --version 2>/dev/null | awk '{print $NF}') installed"
 
-  missing_hooks=$(graphify hook status 2>/dev/null | awk -F': ' '/^post-(commit|checkout|merge|rewrite):/ && $2 !~ /^installed/ {print $1}' | tr '\n' ' ')
+  # graphify reports each hook as "installed", "installed (out of date...)" or "not installed...".
+  # Upgrading graphify does not rewrite the hook files, so they stay out of date until reinstalled.
+  hook_status=$(graphify hook status 2>/dev/null | grep -E '^post-(commit|checkout|merge|rewrite):' || true)
+  missing_hooks=$(awk -F': ' 'NF && $2 !~ /^installed/ {print $1}' <<< "$hook_status" | tr '\n' ' ')
+  outdated_hooks=$(awk -F': ' '$2 ~ /^installed \(out of date/ {print $1}' <<< "$hook_status" | tr '\n' ' ')
   if [[ -n "$missing_hooks" ]]; then
     action "graphify git hooks missing: ${missing_hooks% }" "make install-hooks"
-  else
+  fi
+  if [[ -n "$outdated_hooks" ]]; then
+    action "graphify git hooks out of date: ${outdated_hooks% }" "make install-hooks"
+  fi
+  if [[ -z "$missing_hooks$outdated_hooks" ]]; then
     ok "graphify git hooks installed (code graph rebuilds after commit, checkout, merge, rebase)"
   fi
 

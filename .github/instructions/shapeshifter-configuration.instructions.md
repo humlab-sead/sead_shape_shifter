@@ -157,7 +157,6 @@ Do treat an omitted non-merged entity `type` as a Core structural issue. Do not 
   ```bash
   rtk uv run python scripts/project/validate_project.py <path-to-shapeshifter.yml> --workflow structural --log-level ERROR
   ```
-  If `rtk` fails because of its wrapper, retry the same command without it.
 - The CLI accepts `structural`, `data`, `conformance`, and `all`; `target-model-conformance` is an alias for `conformance`. Every choice runs structural validation first and skips the other workflows when it reports errors. `data` normalizes the project and may read external files or databases. `conformance` needs a resolved target model. `all` runs structural, data, and conformance.
 - The CLI exits 0 after it loads the project, even when it prints error-severity findings. Read the reported issue severities and workflow statuses (`--output-format report` shows them); exit status does not prove validation passed, and a skipped workflow did not validate that layer.
 - Core CLI structural validation does not check the deployment provider registry or the bound project's fixed `data_provider` row. Use Backend YAML Validation for those checks. Neither check proves that an external SEAD database contains the selected provider row.

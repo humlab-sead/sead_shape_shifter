@@ -2,4 +2,4 @@
 
 Before making changes, read and follow:
 
-.github/copilot-instructions.md
+AGENTS.md

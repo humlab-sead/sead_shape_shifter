@@ -43,6 +43,7 @@ Change the source, run the generator, and commit both.
 | Workflow | Runs on | Purpose |
 |----------|---------|---------|
 | `claude-rules-check.yml` | Pull requests that change rules or the generator | Rules match the instruction files |
+| `instruction-references-check.yml` | All pull requests | Links and paths in the instruction files exist |
 | `promotion-guard.yml` | Pull requests into `staging` and `main` | Code commits arrived through pull requests |
 | `release.yml` | Push to `main`, or manual | semantic-release |
 | `container-release.yml` | Pull requests, and pushes to `container-release` | Checks and publishes the container bundle |

@@ -14,7 +14,8 @@ applyTo: "src/target_model/**,backend/app/validators/target_model_validator.py,b
 
 ## Required Invariants
 
-- Always call `table_cfg.get_target_facing_columns()` and `table_cfg.get_target_facing_foreign_key_targets()` to inspect project output — **never** access `table_cfg.columns` directly. Materialized entities are treated as fixed views and only expose their explicit `columns` list as target-facing.
+- To check which columns or FK targets an entity provides to a target model, call `table_cfg.get_target_facing_columns()` and `table_cfg.get_target_facing_foreign_key_targets()`. `table_cfg.columns` is only the configured list and does not include columns added by FKs, `extra_columns` or unnest. Read it only when you need that list itself, such as when mapping append columns.
+- Both methods read the current entity config. For a materialized entity, they ignore the settings saved in `materialized.source_state`.
 - Conformance is **additive and optional**: structural validation runs first; conformance adds `ValidationCategory.CONFORMANCE` issues.
 - A project without `metadata.target_model` is normally not an error: return an empty valid `ValidationResult`. Exception: `ValidationService` returns an error when the project declares direct FK value sources that need the target model.
 - `guard()` skips entities absent from the project — this is expected, not a bug.
@@ -30,7 +31,7 @@ applyTo: "src/target_model/**,backend/app/validators/target_model_validator.py,b
 
 ## Common Mistakes
 
-- Accessing `table_cfg.columns` directly — skips materialized entity logic.
+- Using `table_cfg.columns` to check what an entity provides — it misses columns added by FKs, `extra_columns` and unnest.
 - Calling `TargetModelConformanceValidator` with an unresolved project (e.g. before `ProjectMapper.to_core()`).
 - Importing anything from `backend.app` inside `src/target_model/`.
 - Mixing conformance issues into structural or data validation categories.

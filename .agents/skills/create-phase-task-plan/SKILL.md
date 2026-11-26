@@ -48,7 +48,7 @@ Before writing or revising a task plan, read:
 - Do not modify implementation, tests, configuration, or unrelated documentation.
 - Preserve `PH*-AC-*` and source `P-AC-*` mappings. Map phase criteria to `T*` task IDs and `V*` validation IDs.
 - Use verified repository facts. Do not invent files, symbols, commands, APIs, or test names.
-- Treat Graphify as a navigation aid, not the source of truth. If it conflicts with source or tests, plan from current source and note the discrepancy.
+- If Graphify results conflict with source or tests, plan from current source and note the difference.
 - Repository inspection outside the target document must be read-only.
 - Modify only the target document.
 - If the target already exists, update it only when the user clearly requested an update. Otherwise, ask before replacing it.

@@ -13,7 +13,7 @@ Scripts are grouped by who runs them and when:
 | Folder | Purpose | Examples |
 | --- | --- | --- |
 | `_shared/` | Import bootstrap and environment-file helpers used by the scripts below | `paths.py`, `env.py` |
-| `ci/` | Checks run by `make` and CI | `check_doc_links.sh`, `verify_promotion_provenance.sh` |
+| `ci/` | Checks run by `make` and CI | `check_doc_links.sh`, `check_instruction_references.py`, `verify_promotion_provenance.sh` |
 | `workflow/` | Pull request, promotion, and release automation | `create_change_pr.py`, `update_pr_descriptions.py`, `generate_whats_new.py` |
 | `project/` | Shape Shifter project configuration and data tooling | `validate_project.py`, `sort_project_yaml.py`, `auto_reconcile.py` |
 | `target_model/` | Target-model generation, export, and audits | `print_target_model_entity.py`, `export_target_tables.py` |
@@ -78,6 +78,7 @@ worked examples.
 | Script | Purpose |
 | --- | --- |
 | `check_doc_links.sh` | Report relative Markdown links that no longer resolve inside `README.md`, `docs/*.md`, and `deployment/container/*.md`. |
+| `check_instruction_references.py` | Report links and backticked paths in the AI instruction files that point at missing files. |
 | `verify_promotion_provenance.sh` | Fail a promotion when a commit on a protected path reached the source branch without its own pull request. |
 
 ### `workflow/`
@@ -155,6 +156,25 @@ scripts/ci/check_doc_links.sh
 Broken links print to standard error as `Broken link: <document> -> <link>` and
 the script exits 1. `make lint` runs it, so a broken link fails the standard
 quality gate.
+
+## Instruction File Reference Checking
+
+`scripts/ci/check_instruction_references.py` checks links and backticked paths in
+the AI instruction files: every `AGENTS.md`, `RTK.md`, `.clinerules/`,
+`.agents/skills/` and the instruction, agent and prompt files under `.github/`.
+The script docstring lists what counts as a path and what is skipped. It runs in
+`make lint`, in pre-commit and in CI.
+
+```bash
+make check-instruction-refs
+```
+
+When it reports a path, correct the path in the instruction file. Write the path
+from the repository root when a shorter form is reported. If the text is an
+invented example, add it to `EXAMPLES` in the script, under the file that uses
+it. The script also reports `EXAMPLES` entries that no longer match any text.
+For rules generated into `.claude/rules/`, edit the source in
+`.github/instructions/` and run `make claude-rules`.
 
 ## Read-Only PostgreSQL Role
 
