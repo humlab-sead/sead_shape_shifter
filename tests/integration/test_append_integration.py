@@ -145,6 +145,83 @@ class TestAppendIntegration:
         assert result["category"].tolist()[2:] == ["A", "B"]  # Last 2 rows have categories
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "source_columns, source_values, append_item, expected",
+        [
+            (["label", "C"], ["B row", 4], {"source": "B"}, 4),
+            (["label", "C"], ["B row", 4], {"source": "B", "columns": ["label", "C"]}, 4),
+            (["label", "C"], ["B row", None], {"source": "B"}, None),
+            (["label"], ["B row"], {"source": "B"}, 5),
+            (["label", "C"], ["B row", 4], {"source": "B", "extra_columns": {"C": 9}}, 9),
+            (["label", "C"], ["B row", 4], {"source": "B", "columns": ["label", "C"], "extra_columns": {}}, 4),
+        ],
+        ids=["inherited-columns", "explicit-columns", "null-source-value", "missing-source-column", "explicit-override", "opt-out"],
+    )
+    async def test_source_append_extra_column_precedence(self, source_columns, source_values, append_item, expected):
+        """Preserve source values unless the append item explicitly defines the extra column."""
+        cfg = {
+            "entities": {
+                "B": {
+                    "type": "fixed",
+                    "public_id": "b_id",
+                    "keys": [],
+                    "columns": source_columns,
+                    "values": [[1, None, *source_values]],
+                },
+                "A": {
+                    "type": "fixed",
+                    "public_id": "a_id",
+                    "keys": [],
+                    "columns": ["label"],
+                    "values": [[2, None, "A row"]],
+                    "extra_columns": {"C": 5},
+                    "append": [append_item],
+                },
+            }
+        }
+        normalizer = ShapeShifter(
+            table_store=TableStore({}),
+            project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
+            default_entity="B",
+        )
+
+        await normalizer.normalize()
+
+        result = normalizer.table_store["A"].set_index("label")["C"]
+        assert result["A row"] == 5
+        if expected is None:
+            assert pd.isna(result["B row"])
+        else:
+            assert result["B row"] == expected
+
+    @pytest.mark.asyncio
+    async def test_fixed_append_still_applies_inherited_extra_column(self):
+        """Keep existing extra-column behavior for non-source append items."""
+        cfg = {
+            "entities": {
+                "A": {
+                    "type": "fixed",
+                    "public_id": "a_id",
+                    "keys": [],
+                    "columns": ["label"],
+                    "values": [[1, None, "A row"]],
+                    "extra_columns": {"C": 5},
+                    "append": [{"type": "fixed", "columns": ["label", "C"], "values": [[2, None, "fixed row", 7]]}],
+                }
+            }
+        }
+        normalizer = ShapeShifter(
+            table_store=TableStore({}),
+            project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
+            default_entity="A",
+        )
+
+        await normalizer.normalize()
+
+        result = normalizer.table_store["A"].set_index("label")["C"]
+        assert result.to_dict() == {"A row": 5, "fixed row": 5}
+
+    @pytest.mark.asyncio
     async def test_append_with_distinct_mode(self):
         """Test append with distinct mode removes duplicates."""
         # Create survey with duplicates

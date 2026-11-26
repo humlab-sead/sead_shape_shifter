@@ -2793,6 +2793,7 @@ These properties are automatically inherited unless explicitly overridden:
 - `replacements`: Value replacement mappings
 - `filters`: Post-load data filters
 - `check_column_names`: Column name validation (for SQL sources)
+- `extra_columns`: The whole mapping, unless the append item supplies its own mapping (including `{}`)
 
 **Example - Inherited columns:**
 ```yaml
@@ -2828,6 +2829,8 @@ These properties are specific to the parent entity and are NOT inherited:
 - `sql`: Alternative SQL specification
 
 This behavior ensures that source-based append fetches data from the referenced entity's `table_store` rather than executing a new data load. Safe properties like `drop_duplicates`, `filters`, and `columns` continue to inherit normally.
+
+For a source-based append, a field already present in the source entity takes precedence over a same-named **inherited** `extra_columns` expression, even if the append item does not list the field in `columns`. A null in a present source field stays null; if the source has no such field, the inherited expression creates it. An explicit append-level `extra_columns` mapping overrides the source field instead. Setting `extra_columns: {}` disables inheritance; to retain a source field in that case, list it in the append item's `columns`. Fixed and SQL append items retain their existing extra-column behavior.
 
 ### Column Name Handling
 
