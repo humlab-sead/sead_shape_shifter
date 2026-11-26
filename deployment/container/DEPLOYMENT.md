@@ -286,7 +286,7 @@ connect. When the address is unreachable, the API reports a generic
 switches to `host.docker.internal` needs its own entry:
 
 ```
-host.docker.internal:9023:sead_staging:sead_ro:<password>
+host.docker.internal:9033:sead_staging:sead_ro:<password>
 ```
 
 The alias resolves only inside the container, so host-facing values are

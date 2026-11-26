@@ -161,7 +161,7 @@ Accepted 2026-09-23 by Roger Mähler. `PH5-AC-2` is met by the listener, firewal
 
 ### `T5.5` / `V-5.5` — PostgreSQL grants and store placement: passed
 
-Run 2026-09-22 as the deployment user, host-side against `127.0.0.1:9023`.
+Run 2026-09-22 as the deployment user, host-side against `127.0.0.1:HIDDEN_PORT`.
 
 | Check | Result |
 | --- | --- |
@@ -169,9 +169,9 @@ Run 2026-09-22 as the deployment user, host-side against `127.0.0.1:9023`.
 | `rolinherit` | `t`, inert while the account holds no memberships, matching the Phase 3 record |
 | Authorization store | `container-data/state/authorization.sqlite3`, owner `test-shape-shifter.sead.se` (1021), mode `600`, size 106496 bytes, inside the data directory |
 
-**The first attempt failed on a command error, and the reason is worth keeping.** `verify_postgres_grants.sh` ran from the host with no `--host` or `--port`, so libpq used a local Unix socket, where no server listens. `config/backend.env` sets `SEAD_HOST=host.docker.internal`, which resolves only inside the container, so a host-side run needs the address this host uses for the same server. The host listens on `9023`, and libpq matches a password-file entry on host, port, database, and user, so the retry used `--host 127.0.0.1 --port 9023` with a temporary password-file copy whose host field was rewritten from `host.docker.internal`. Nothing about the deployment changed.
+**The first attempt failed on a command error, and the reason is worth keeping.** `verify_postgres_grants.sh` ran from the host with no `--host` or `--port`, so libpq used a local Unix socket, where no server listens. `config/backend.env` sets `SEAD_HOST=host.docker.internal`, which resolves only inside the container, so a host-side run needs the address this host uses for the same server. The host listens on `HIDDEN_PORT`, and libpq matches a password-file entry on host, port, database, and user, so the retry used `--host 127.0.0.1 --port HIDDEN_PORT` with a temporary password-file copy whose host field was rewritten from `host.docker.internal`. Nothing about the deployment changed.
 
-**Adjacent observation, outside `PH5-AC-2`.** The host has a wildcard listener on the database port: `ss -ltn` reported `LISTEN 0 4096 *:9023 *:*`, and the check connected to it successfully as `sead_ro` against `sead_staging`. The input chain drops by default, accepts loopback, and contains no rule for `9023`, so the port is reachable only over loopback from the host, and the container reaches it as `host.docker.internal:9023`. The firewall is therefore the only control shielding a database port that is bound on every interface; the exact packet path the container uses was not traced here, and the intended posture is worth confirming.
+**Adjacent observation, outside `PH5-AC-2`.** The host has a wildcard listener on the database port: `ss -ltn` reported `LISTEN 0 4096 *:HIDDEN_PORT *:*`, and the check connected to it successfully as `sead_ro` against `sead_staging`. The input chain drops by default, accepts loopback, and contains no rule for `HIDDEN_PORT`, so the port is reachable only over loopback from the host, and the container reaches it as `host.docker.internal:HIDDEN_PORT`. The firewall is therefore the only control shielding a database port that is bound on every interface; the exact packet path the container uses was not traced here, and the intended posture is worth confirming.
 
 ## Area 3: Proxy Identity Handling And Access Behavior
 
