@@ -1,5 +1,6 @@
 ---
 description: "Use when writing or editing documentation, comments, docstrings, PR text, issues, proposals, user-facing messages, or AI coding-agent instructions."
+applyTo: "**/*.md"
 ---
 
 # Writing Style Instructions

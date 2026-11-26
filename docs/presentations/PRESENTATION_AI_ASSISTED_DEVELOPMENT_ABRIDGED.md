@@ -73,8 +73,6 @@ The repository contains about 30 instruction files and 2,120 lines in total. Onl
 - Developer · Backend · Frontend · Configuration Engineer
 - Explore provides a read-only option for investigation
 
-**Reusable prompts** support recurring work such as adding endpoints, loaders, validators, and tests. Others support review, routing, and concise domain reference.
-
 Together, these resources make project conventions easier to apply consistently without placing all supporting material in every session.
 
 ---
@@ -123,7 +121,7 @@ At present, `CLAUDE.md` and `GEMINI.md` are symbolic links to `AGENTS.md`. This 
                     └─► other supported entry points
 ```
 
-Tool-specific instructions, roles, prompts, skills, and hooks would remain hand-authored. A `make rules-sync-check` command in pre-commit or CI could detect generated files that are out of date.
+Tool-specific instructions, roles, skills, and hooks would remain hand-authored. A `make rules-sync-check` command in pre-commit or CI could detect generated files that are out of date.
 
 **Status: proposed, not yet adopted.**
 
@@ -173,7 +171,6 @@ The supporting material is ordinary Markdown and YAML, stored and reviewed with 
 | Add a path-specific rule | `.github/instructions/<area>.instructions.md`      | Keep the `applyTo` scope narrow           |
 | Add detailed guidance    | `.github/skills/<name>/SKILL.md` and `references/` | Define when it should be used             |
 | Add a specialist role    | `.github/agents/<name>.agent.md`                   | State scope, tools, and validation        |
-| Add a reusable prompt    | `.github/prompts/<name>.prompt.md`                 | Distinguish delegated work from questions |
 | Change shared rules      | `AGENTS.md` and subtree files                      | Keep tool entry points consistent         |
 
 The most reusable ideas are modest ones: a small repository-wide core, path-specific guidance, detailed material loaded when needed, automated output reduction, reviewable plans, and a check against configuration drift.
@@ -184,7 +181,7 @@ The most reusable ideas are modest ones: a small repository-wide core, path-spec
 
 1. **Scope matters more than volume.** Instructions are most useful when they match the code being changed.
 2. **Keep the common core small.** Detailed guidance can be loaded for tasks that need it.
-3. **Encode recurring project conventions.** Reusable roles and prompts reduce repeated explanation.
+3. **Encode recurring project conventions.** Reusable roles and skills reduce repeated explanation.
 4. **Automate routine context reduction.** `rtk` condenses output; `graphify` narrows exploration.
 5. **Treat cross-tool consistency as a maintenance problem.** A generated shared layer and drift check may be preferable to symbolic links.
 6. **Separate decisions from implementation.** Proposals and task plans make scope and verification explicit.

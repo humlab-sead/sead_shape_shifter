@@ -14,7 +14,7 @@ The rules are mostly correct, specific and consistent with `AGENTS.md`. Problems
 
 - Some content was out of date (identity rule, renamed function, a file path that no longer exists).
 - Some `paths:` globs matched no files, so those rules did not load for the files they were meant for.
-- Several areas have no rule at all (mappers and directives, backend API, frontend stores and tests, tooling).
+- Several areas had no rule at all (mappers and directives, backend API, frontend stores and tests, tooling). Rules were added later; see "Added rules for G1–G5".
 
 ## Findings
 
@@ -93,13 +93,13 @@ Not verified: SIMS behavior (the HTTP 409 statement comes from the code's docstr
 
 | # | Gap | Status |
 |---|-----|--------|
-| G1 | No rule scoped to `backend/app/mappers/**` for the `ProjectMapper` and directive rules (`@include:`, `@value:`, `@load:` and `${ENV_VAR}` are resolved only in `ProjectMapper.to_core()`). Only one line in `python.md` mentions it. | Open |
-| G2 | No rule for backend API code: `backend/app/api/**`, `models/**`, `authorization/**`, `clients/**` (the `require_project` pattern, SIMS client and its environment variables). The `add-endpoint` prompt is not available to Claude. | Open |
-| G3 | The frontend has one generic rule and `graph`. Nothing covers Pinia stores, the Monaco YAML editor or Vitest conventions. The `frontend-test` prompt is not available to Claude. | Open |
-| G4 | General test conventions exist only inside `python.md`. `testing.md` covers writing `docs/TESTING.md`, not writing tests. | Open |
-| G5 | No rule for `scripts/**`, the Makefile, `.github/workflows/` or branch promotion. | Open |
-| G6 | Four instruction files have no `applyTo` and are skipped by the generator: `writing-style`, `diagrams`, `github-workflow`, `phase-plan`. Claude reads them only when pointed at them. | Decision needed |
-| G7 | The prompts in `.github/prompts/` and the agents in `.github/agents/` have no Claude version. Only three prompts are named in `AGENTS.md`. | Open |
+| G1 | No rule scoped to `backend/app/mappers/**` for the `ProjectMapper` and directive rules (`@include:`, `@value:`, `@load:` and `${ENV_VAR}` are resolved only in `ProjectMapper.to_core()`). Only one line in `python.md` mentions it. | Closed: `mappers` |
+| G2 | No rule for backend API code: `backend/app/api/**`, `models/**`, `authorization/**`, `clients/**` (the `require_project` pattern, SIMS client and its environment variables). The `add-endpoint` prompt is not available to Claude. | Closed: `backend-api` |
+| G3 | The frontend has one generic rule and `graph`. Nothing covers Pinia stores, the Monaco YAML editor or Vitest conventions. The `frontend-test` prompt is not available to Claude. | Closed: `frontend-stores`, `frontend-monaco`, `frontend-test` |
+| G4 | General test conventions exist only inside `python.md`. `testing.md` covers writing `docs/TESTING.md`, not writing tests. | Closed: `test-writing` |
+| G5 | No rule for `scripts/**`, the Makefile, `.github/workflows/` or branch promotion. | Closed: `tooling` |
+| G6 | Four instruction files have no `applyTo` and are skipped by the generator: `writing-style`, `diagrams`, `github-workflow`, `phase-plan`. Claude reads them only when pointed at them. | Closed: `applyTo` added to three; `github-workflow` left skipped |
+| G7 | The prompts in `.github/prompts/` and the agents in `.github/agents/` have no Claude version. Only three prompts are named in `AGENTS.md`. | Closed: prompts removed; custom agents unchanged |
 
 ### Behavior to verify
 
@@ -129,20 +129,46 @@ Not verified: SIMS behavior (the HTTP 409 statement comes from the code's docstr
 - [x] Check the remaining behavior statements in `shapeshifter-configuration` (see "Review of `shapeshifter-configuration`").
 - [x] Fix the 2 failing tests in `backend/tests/authorization/test_route_authentication.py`. Three reconciliation `selection/*` routes are missing from the authorization route metadata. They failed before the rename.
 
-### Open: add rules (new files in `.github/instructions/`, then `make claude-rules`)
+### Added rules for G1–G5
 
-- [ ] Mapper and directive rule for `backend/app/mappers/**` (G1).
-- [ ] Backend API rule for `backend/app/api/**`, `models/**`, `authorization/**`, `clients/**` (G2). Include the `add-endpoint` steps and the SIMS client.
-- [ ] Frontend rules for stores, the Monaco editor and Vitest tests (G3). Include the `frontend-test` steps.
-- [ ] Test-writing rule for `tests/**` and `backend/tests/**`, moved out of `python.md` (G4).
-- [ ] Tooling rule for `scripts/**`, `Makefile` and `.github/workflows/`, including branch promotion (G5).
+- [x] `mappers` for `backend/app/mappers/**` and its tests (G1).
+- [x] `backend-api` for the API, models, authorization and client code, with the endpoint steps and the SIMS client (G2).
+- [x] `frontend-stores`, `frontend-monaco` and `frontend-test`, with the Vitest steps (G3).
+- [x] `test-writing` for `tests/**`, `backend/tests/**` and `scripts/tests/**`; the test line moved out of `python` (G4).
+- [x] `tooling` for `scripts/**`, `Makefile`, workflows and pre-commit, including branch promotion (G5).
+
+How both tools get them: Copilot Chat reads the files in `.github/instructions/` and applies `applyTo`. Claude Code reads the generated files in `.claude/rules/`. `AGENTS.md` names the rules to read before creating new files.
+
+The new globs were checked against the repository: each matches at least one file. Loading in a live Copilot Chat or Claude Code session has not been tested.
+
+### Found while writing the rules
+
+These are code or workflow problems. No code was changed.
+
+- `TaskService.initialize_task_list()` converts the project with `ProjectMapper.to_core()`, converts the resolved config back with `to_api_config()` and saves it. An in-memory test of the two conversions replaced `@value: entities.a.keys` with `['code']`. The save itself was not run. Resolved environment variable values could be written to the project file the same way. The frontend has no caller of this method, but the API route exists.
+- `AGENTS.md`, `backend/AGENTS.md`, `backend/README.md`, `.github/copilot-instructions.md` and the `python` rule said that directives are resolved only in the mapper layer, which the code does not follow. **Fixed:** they now say not to add other places, and the `mappers` rule lists the existing ones.
+- Some routes return `detail=str(e)` in 500 responses, for example in `endpoints/materialization.py`.
+- `registerProjectCompletions()` registers a new completion provider each time a YAML editor mounts and never disposes it. This was read in the code; duplicate suggestions were not tested in a browser.
+- No GitHub workflow runs tests or `make lint`.
 
 ### Open: decisions
 
-- [ ] For each skipped instruction file (`writing-style`, `diagrams`, `github-workflow`, `phase-plan`), choose: leave skipped, make always-on, or give it an `applyTo` (G6). Together they are about 15 KB, so always-on has a cost.
-- [ ] Decide how to give Claude the prompts and agents from `.github/` (G7). Options: convert them to skills, convert them to `.claude/agents/`, or list them in `AGENTS.md`.
+- [x] Skipped instruction files (G6):
+  - `phase-plan`: `docs/proposals/**/*_PHASE_PLAN.md`.
+  - `writing-style`: `**/*.md`. Not `**/*`, because the generator would then load it for every Claude task. The main plain-language and docstring rules are already in `AGENTS.md`.
+  - `diagrams`: `docs/**/*.md,**/*DIAGRAMS.md`. This misses Mermaid diagrams in other Markdown files outside `docs/`, such as `ingesters/sead_change_request/README.md`.
+  - `github-workflow`: left without `applyTo`. It applies to commits and issues, not to files. `AGENTS.md` says when to read it. If that is not enough, make it a skill.
+- [x] Prompts and agents (G7). Neither Copilot nor Claude Code uses a prompt file on its own: someone has to name it, or another file has to point to it. The maintainer does not use them, so `.github/prompts/` was removed instead of converted to skills.
+  - `add-loader`, `add-validator` and `core-test`: file locations and test setup moved to the `features/loaders` and `features/validation` rules. Their code templates were not kept; the loader template had the wrong `load()` arguments, import path and logger.
+  - `add-endpoint`, `backend-test` and `frontend-test`: covered by the `backend-api`, `test-writing` and `frontend-test` rules.
+  - `yaml-review`, `entity-validation` and `dependency-check`: not kept. The `review-shapeshifter-configuration` skill covers this work.
+  - `sead-database` and `sead-quick-ref`: not kept. `docs/sead/` is the schema reference. Their short explanation that analysis entities are virtual records was not moved.
+  - The eight review and routing prompts and `docs/other/AI_AGENT_SETUP.md`, which described how to use them: not kept, and no skill replaces them.
+  - The files in `.github/agents/` are Copilot custom agents. They were not changed and have no Claude version.
+  - Removed files can be restored from git history.
 
 ### Open: verification
 
 - [ ] In a live Claude Code session, confirm that opening a matching file loads its rule, and that creating a new file does or does not (see "Behavior to verify").
+- [ ] In a live Copilot Chat session, confirm that the new instruction files are attached for matching files.
 - [ ] Open the pull request for branch `claude-rules-sync` into `dev` and confirm the new `claude-rules-check` workflow runs and passes.

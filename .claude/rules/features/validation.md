@@ -30,6 +30,7 @@ Run structural and constraint validation before data validation — structural e
 - `DataValidationIssue` extends `CoreIssue`: `severity`, `message`, `entity`, `field`, `column`, `code` (required), `category`, `suggestion`, `priority`, `auto_fixable`.
 - Validators are pure functions — no side effects, no I/O.
 - The validator classes are defined in `src/validators/data_validators.py`.
+- The orchestrator calls data validators directly. A new validator runs only after you add the call in `backend/app/validators/data_validation_orchestrator.py`.
 
 ## Constraint Validators (`src/specifications/constraints.py`)
 
@@ -72,6 +73,8 @@ Run structural and constraint validation before data validation — structural e
 
 ## Testing Expectations
 
+- Domain validator tests are in `tests/validators/`; constraint validator tests are in `tests/specifications/test_constraints.py`.
+- To test a constraint validator, build it with an entity, FK and constraints, then call `validate(ValidationContext(...))`. A violation raises `ForeignKeyConstraintViolation` unless `raise_on_violation=False`.
 - Unit-test domain validators with inline DataFrames — no project file, no backend.
 - Test each strategy independently (mock the underlying service).
 - Test the orchestrator with a `TableStoreDataFetchStrategy` backed by in-memory DataFrames.

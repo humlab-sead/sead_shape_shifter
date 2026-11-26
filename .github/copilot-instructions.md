@@ -29,7 +29,7 @@ Core pipeline order matters: Extract → Filter → Link → Unnest → Translat
 
 - Keep API models in `backend/app/models/` and domain logic in `src/`.
 - Convert API and core models with mappers.
-- Resolve environment variables and directives only at the mapper boundary.
+- Keep environment variables and directives unresolved in API models and saved YAML. Do not add new places that resolve them; see `.github/instructions/mappers.instructions.md`.
 - Do not put business logic in API DTOs.
 - Do not import API-layer models into `src/`.
 - Prefer constructor injection or factory functions when services depend on each other.

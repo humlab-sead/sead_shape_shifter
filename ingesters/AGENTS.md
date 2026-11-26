@@ -33,7 +33,7 @@ Rules here apply when working in `ingesters/`. Also read the root `AGENTS.md` fo
 ## References
 
 - Protocol and CLI details: `backend/app/ingesters/README.md` and `ingesters/README.md`.
-- Prompt template: `.github/prompts/add-loader.prompt.md` (closest analogue for data-reading ingesters).
+- For data-reading ingesters, the closest related rules are in `.github/instructions/features/loaders.instructions.md`.
 
 ## Testing
 

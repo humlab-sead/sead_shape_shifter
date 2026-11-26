@@ -41,6 +41,7 @@ class MyLoader(DataLoader):
 
 ## Loader Registry
 
+- Put a new loader with its kind in `src/loaders/`: `sql_loaders.py`, `file_loaders.py` or `excel_loaders.py`. The base classes are in `base_loader.py`. `DataLoaders.scan()` in `src/loaders/__init__.py` imports the modules in the package, which runs the registration decorators.
 - Register with `@DataLoaders.register(key="<driver_key>")`.
 - `ShapeShifter.resolve_loader()` dispatches by `data_source.driver` — the `key` must match the driver name in YAML.
 - `DataLoaders.get(key)` returns the loader class; instantiate with `(data_source=data_source)`.
@@ -75,6 +76,7 @@ return ConnectTestResult(success=False, message=str(e), connection_time_ms=0, me
 
 ## Testing Expectations
 
+- Loader tests are in `tests/loaders/`.
 - Mock `DataSourceConfig` and `TableConfig` — do not hit real databases.
 - Test `get_schema()` returns a valid `DriverSchema` with required fields.
 - Test `load()` with a mock connection that returns a DataFrame.

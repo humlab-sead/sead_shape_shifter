@@ -1,6 +1,6 @@
 # `.github/` — Agent Guide
 
-This directory holds Copilot and Codex instruction files, prompt templates, and workflow definitions for the Shape Shifter repository.
+This directory holds Copilot and Codex instruction files, custom agents, and workflow definitions for the Shape Shifter repository.
 
 > Repo-wide architecture rules are in the root [`AGENTS.md`](../AGENTS.md). Read that file first. This file adds the instruction index below, which is the main thing Codex does not get automatically when working in this directory.
 
@@ -14,6 +14,13 @@ The files under `instructions/` are the detailed source of truth for Copilot. Co
 |-----------------------------------------|-----------------------------------------------------------------|
 | `instructions/python.instructions.md`   | Editing Python in `src/`, `backend/`, `ingesters/`, or `tests/` |
 | `instructions/frontend.instructions.md` | Editing Vue, Pinia, or TypeScript in `frontend/src/`            |
+| `instructions/mappers.instructions.md`  | Editing mappers or code that resolves directives                |
+| `instructions/backend-api.instructions.md` | Editing endpoints, API models, authorization, or service clients |
+| `instructions/frontend-stores.instructions.md` | Editing Pinia stores                                    |
+| `instructions/frontend-monaco.instructions.md` | Editing the Monaco editors or YAML schemas              |
+| `instructions/frontend-test.instructions.md` | Writing Vitest tests                                      |
+| `instructions/test-writing.instructions.md` | Writing Python tests                                       |
+| `instructions/tooling.instructions.md`  | Editing scripts, the Makefile, workflows, or promoting branches |
 
 ### Configuration and YAML
 
@@ -45,7 +52,7 @@ These files live under `instructions/features/` and cover specific subsystems.
 |----------------------------------------------|--------------------------------------------------------------|
 | `instructions/writing-style.instructions.md` | Writing any docs, comments, docstrings, or PR text           |
 | `instructions/development.instructions.md`   | Editing `docs/DEVELOPMENT.md` or developer-facing setup docs |
-| `instructions/testing.instructions.md`       | Editing `docs/TESTING.md` or writing test guidance           |
+| `instructions/testing.instructions.md`       | Editing `docs/TESTING.md`                                    |
 | `instructions/operations.instructions.md`    | Editing `docs/OPERATIONS.md` or deployment and runbook docs  |
 | `instructions/user-guide.instructions.md`    | Editing `docs/USER_GUIDE.md` or end-user task docs           |
 | `instructions/readme.instructions.md`        | Editing `README.md`                                          |

@@ -1,5 +1,6 @@
 ---
 description: "Use when creating or updating phased implementation plans, delivery sequencing documents, migration phase plans, or other multi-phase execution plans. Covers structure, section priority, phase ordering, cross-phase rules, and validation strategy."
+applyTo: "docs/proposals/**/*_PHASE_PLAN.md"
 ---
 
 # Phase Plan Instructions

@@ -6,7 +6,7 @@ Rules here apply when working in `backend/`. Also read the root `AGENTS.md` for 
 
 - API models live in `backend/app/models/`. Domain logic lives in `src/`. Never import `backend.*` from `src/`.
 - All API↔Core conversions go through `ProjectMapper.to_core()` — never bypass it.
-- Directives (`@include:`, `@load:`, `@value:`, `${ENV_VAR}`) are resolved **only** in `ProjectMapper.to_core()`. The API and YAML layers receive raw strings.
+- The API and YAML layers keep directives (`@include:`, `@load:`, `@value:`, `${ENV_VAR}`) as written. `ProjectMapper.to_core()` resolves them when it converts a project. Do not add other places that resolve them, and never save a resolved config. See `.github/instructions/mappers.instructions.md` for the existing exceptions.
 - `ValidationService` owns loading, resolving, and delegating — it never constructs `TargetModel` or domain objects directly.
 
 ## Dependency Injection
