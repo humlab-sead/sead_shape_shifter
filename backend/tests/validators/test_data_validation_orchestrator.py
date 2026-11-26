@@ -17,9 +17,9 @@ from backend.app.validators.data_validation_orchestrator import (
 from src.exceptions import MissingBusinessKeyError
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
-from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
+from src.specifications.constraints import ConstraintIssue
 from src.table_store import TableStore
-from src.validators.data_validators import UnresolvedExtraColumnsValidator, ValidationIssue
+from src.validators.data_validators import DataValidationIssue, UnresolvedExtraColumnsValidator
 
 
 @pytest.mark.asyncio
@@ -532,7 +532,7 @@ async def test_full_data_validation_surfaces_linker_issues_for_local_entity():
             }
         }
     )
-    linker_issue = LinkerValidationIssue(
+    linker_issue = ConstraintIssue(
         issue_type="row_count_mismatch",
         severity="warning",
         local_entity="orders",
@@ -622,7 +622,7 @@ async def test_full_data_validation_with_unresolved_extra_columns():
             super().__init__(table_store)
             self.unresolved_map = unresolved_map
 
-        async def get_additional_issues(self, project_name: str, entity_name: str) -> list[ValidationIssue]:
+        async def get_additional_issues(self, project_name: str, entity_name: str) -> list[DataValidationIssue]:
             """Return unresolved extra column issues."""
 
             unresolved_extra_columns = self.unresolved_map.get(entity_name, {})
@@ -636,7 +636,7 @@ async def test_full_data_validation_with_unresolved_extra_columns():
     orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
 
     # Run validation
-    issues: list[ValidationIssue] = await orchestrator.validate_all_entities(
+    issues: list[DataValidationIssue] = await orchestrator.validate_all_entities(
         core_project=project,
         project_name="test_unresolved",
         entity_names=["test_entity"],

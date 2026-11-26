@@ -72,7 +72,8 @@ Owns the transformation pipeline. Takes a resolved project configuration and pro
 - **Orchestrator**: `ShapeShifter` in `src/normalizer.py` using `ProcessState`
 - **Entity types**: `sql`, `csv`, `xlsx`, `fixed`, `merged`, `internal`
 - **Loaders** (`src/loaders/`): pluggable async data source connectors registered via `@DataLoaders.register`. Loaders that need runtime context (e.g., `DuckDbLoader`) override `DataLoader.create(**context)` to receive it; the orchestrator passes a uniform context dict without loader-specific branching. The reserved sentinel `data_source: "@internal"` routes a `type: sql` entity to `DuckDbLoader`, which queries already-processed entities via an in-memory DuckDB workspace.
-- **Validators** (`src/validators/`): constraint checks (cardinality, FK integrity, functional dependencies) registered via `@Validators.register`
+- **Constraint validators** (`src/specifications/constraints.py`): foreign-key checks during linking (cardinality, null keys, uniqueness, matching), registered via `@Validators.register`
+- **Data validators** (`src/validators/`): checks on loaded data that receive DataFrames and do not fetch data
 - **Dispatchers** (`src/dispatch.py`): output format handlers registered via `@Dispatchers.register`
 - **Specifications** (`src/specifications/`): project-level structural validation (DAG, references, identity)
 

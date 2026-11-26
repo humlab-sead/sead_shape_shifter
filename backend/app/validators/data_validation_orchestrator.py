@@ -25,7 +25,7 @@ from backend.app.services.project_service import ProjectService
 from backend.app.services.shapeshift_service import ProjectNormalizationResult, ShapeShiftService
 from src.model import ForeignKeyConfig, ShapeShiftProject
 from src.normalizer import ShapeShifter
-from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
+from src.specifications.constraints import ConstraintIssue
 from src.table_store import TableStore
 from src.target_model.data_validators import (
     AllowedValuesConformanceValidator,
@@ -38,12 +38,12 @@ from src.validators.data_validators import (
     BusinessKeyProducedValidator,
     ColumnExistsValidator,
     DataTypeCompatibilityValidator,
+    DataValidationIssue,
     ForeignKeyDataValidator,
     ForeignKeyIntegrityValidator,
     NaturalKeyUniquenessValidator,
     NonEmptyResultValidator,
     UnresolvedExtraColumnsValidator,
-    ValidationIssue,
 )
 
 
@@ -55,7 +55,9 @@ class DataFetchStrategy(ABC):
         """Fetch data for an entity."""
         raise NotImplementedError
 
-    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[ValidationIssue]:  # pylint: disable=unused-argument
+    async def get_additional_issues(
+        self, project_name: str, entity_name: str  # pylint: disable=unused-argument
+    ) -> list[DataValidationIssue]:
         """Return strategy-specific validation issues for an entity."""
         return []
 
@@ -70,7 +72,7 @@ class PreviewDataFetchStrategy(DataFetchStrategy):
     def __init__(self, preview_service: ShapeShiftService, limit: int = 1000) -> None:
         self.preview_service: ShapeShiftService = preview_service
         self.limit: int = limit
-        self._preview_issues: dict[tuple[str, str], list[ValidationIssue]] = {}
+        self._preview_issues: dict[tuple[str, str], list[DataValidationIssue]] = {}
 
     async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
         """Fetch preview sample data."""
@@ -89,20 +91,20 @@ class PreviewDataFetchStrategy(DataFetchStrategy):
 
         return pd.DataFrame(preview_result.rows)
 
-    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[ValidationIssue]:
+    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[DataValidationIssue]:
         """Return structured issues found while producing the entity preview."""
         return list(self._preview_issues.get((project_name, entity_name), []))
 
 
-def _get_normalizer_additional_issues(normalizer: ShapeShifter, entity_name: str) -> list[ValidationIssue]:
+def _get_normalizer_additional_issues(normalizer: ShapeShifter, entity_name: str) -> list[DataValidationIssue]:
     """Return structured validation issues recorded during normalization for one entity."""
-    issues: list[ValidationIssue] = []
+    issues: list[DataValidationIssue] = []
     unresolved_extra_columns = normalizer.unresolved_extra_columns.get(entity_name, {})
     issues.extend(UnresolvedExtraColumnsValidator.validate(unresolved_extra_columns, entity_name))
 
     for validator in normalizer.linker.validators:
         for issue in getattr(validator, "issues", []):
-            if isinstance(issue, LinkerValidationIssue) and issue.local_entity == entity_name:
+            if isinstance(issue, ConstraintIssue) and issue.local_entity == entity_name:
                 issues.append(ValidationMapper.from_linker_issue(issue))
 
     return issues
@@ -165,7 +167,7 @@ class FullDataFetchStrategy(DataFetchStrategy):
 
         return normalizer.table_store[entity_name]
 
-    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[ValidationIssue]:
+    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[DataValidationIssue]:
         """Return validation issues discovered only after full normalization."""
         normalizer = self._normalizer_cache.get(project_name)
         if normalizer is None:
@@ -202,7 +204,7 @@ class SinglePassDataFetchStrategy(DataFetchStrategy):
             raise RuntimeError(f"Entity '{entity_name}' was not produced by project normalization")
         return result.table_store[entity_name]
 
-    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[ValidationIssue]:
+    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[DataValidationIssue]:
         """Return issues recorded while normalizing the entity."""
         result: ProjectNormalizationResult | None = self._results.get(project_name)
         if result is None:
@@ -224,7 +226,7 @@ class TableStoreDataFetchStrategy(DataFetchStrategy):
             raise KeyError(f"Entity '{entity_name}' is not available in the table store")
         return self.table_store[entity_name]
 
-    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[ValidationIssue]:
+    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[DataValidationIssue]:
         """Return structured normalization issues when the normalizer is available."""
         if self.normalizer is None:
             return []
@@ -257,7 +259,7 @@ class DataValidationOrchestrator:
         self.status: DataValidationStatus = DataValidationStatus.COMPLETED
         self.status_reason: str | None = None
         self.entity_statuses: dict[str, EntityDataValidationResult] = {}
-        self._reported_additional_issues: list[ValidationIssue] = []
+        self._reported_additional_issues: list[DataValidationIssue] = []
 
     async def validate_all_entities(
         self,
@@ -265,7 +267,7 @@ class DataValidationOrchestrator:
         project_name: str,
         entity_names: list[str] | None = None,
         validators: Collection[DataValidatorKey] | None = None,
-    ) -> list[ValidationIssue]:
+    ) -> list[DataValidationIssue]:
         """
         Validate all or specified entities.
 
@@ -279,7 +281,7 @@ class DataValidationOrchestrator:
         Returns:
             List of domain validation issues (consumer converts to API models if needed)
         """
-        issues: list[ValidationIssue] = []
+        issues: list[DataValidationIssue] = []
         self.enabled_validators = None if validators is None else frozenset(validators)
         self.status = DataValidationStatus.COMPLETED
         self.status_reason = None
@@ -319,7 +321,7 @@ class DataValidationOrchestrator:
                 continue
 
             try:
-                entity_issues: list[ValidationIssue] = []
+                entity_issues: list[DataValidationIssue] = []
                 try:
                     await self._validate_entity(
                         core_project=core_project,
@@ -354,7 +356,7 @@ class DataValidationOrchestrator:
 
     @staticmethod
     def _attach_saved_fk_identity(
-        integrity_issues: list[ValidationIssue],
+        integrity_issues: list[DataValidationIssue],
         saved_foreign_keys: list[ForeignKeyConfig],
         fk_index: int,
     ) -> None:
@@ -446,8 +448,8 @@ class DataValidationOrchestrator:
         project_name: str,
         entity_name: str,
         entity_cfg: dict[str, Any],
-        issues: list[ValidationIssue],
-        reported_additional_issues: list[ValidationIssue],
+        issues: list[DataValidationIssue],
+        reported_additional_issues: list[DataValidationIssue],
     ) -> None:
         """
         Validate a single entity.
@@ -490,7 +492,7 @@ class DataValidationOrchestrator:
             remote_entity: str | None = fk_config.get("entity")
             if remote_entity:
                 remote_df: pd.DataFrame = await self.fetch_strategy.fetch(project_name, remote_entity)
-                integrity_issues: list[ValidationIssue] = ForeignKeyIntegrityValidator.validate(df, remote_df, fk_config, entity_name)
+                integrity_issues: list[DataValidationIssue] = ForeignKeyIntegrityValidator.validate(df, remote_df, fk_config, entity_name)
                 self._attach_saved_fk_identity(integrity_issues, saved_foreign_keys, fk_index)
                 issues.extend(integrity_issues)
                 issues.extend(DataTypeCompatibilityValidator.validate(df, remote_df, fk_config, entity_name))

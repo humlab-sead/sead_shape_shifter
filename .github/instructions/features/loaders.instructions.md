@@ -35,6 +35,7 @@ class MyLoader(DataLoader):
 
 ## Loader Registry
 
+- Put a new loader with its kind in `src/loaders/`: `sql_loaders.py`, `file_loaders.py` or `excel_loaders.py`. The base classes are in `base_loader.py`. `DataLoaders.scan()` in `src/loaders/__init__.py` imports the modules in the package, which runs the registration decorators.
 - Register with `@DataLoaders.register(key="<driver_key>")`.
 - `ShapeShifter.resolve_loader()` dispatches by `data_source.driver` — the `key` must match the driver name in YAML.
 - `DataLoaders.get(key)` returns the loader class; instantiate with `(data_source=data_source)`.
@@ -42,13 +43,13 @@ class MyLoader(DataLoader):
 ## UCanAccess (MS Access)
 
 - `init_jvm_for_ucanaccess(ucanaccess_dir)` must be called **once** at application startup — JPype cannot restart the JVM.
-- Call it before any `UCanAccessLoader` is instantiated.
+- The backend calls it at startup (`backend/app/main.py`). `UCanAccessSqlLoader` also starts the JVM on demand, with a warning, when it is not running (for example in worker processes).
 - JAR files are loaded from `lib/ucanaccess/` — see `scripts/dev/install-uncanccess.sh` for setup.
 - All UCanAccess operations use `jaydebeapi` over the JDBC bridge — SQL syntax is MS Access SQL, not PostgreSQL.
 
 ## Local File Resolution
 
-- `location: local` in `options` triggers relative path resolution in `ShapeShifter._resolve_project_local_file_options()`.
+- `location: local` in `options` triggers relative path resolution in `apply_local_file_options()` in `src/normalizer.py`.
 - The loader itself does not resolve relative paths — the normalizer rewrites the path before calling `load()`.
 
 ## `ConnectTestResult`
@@ -69,6 +70,7 @@ return ConnectTestResult(success=False, message=str(e), connection_time_ms=0, me
 
 ## Testing Expectations
 
+- Loader tests are in `tests/loaders/`.
 - Mock `DataSourceConfig` and `TableConfig` — do not hit real databases.
 - Test `get_schema()` returns a valid `DriverSchema` with required fields.
 - Test `load()` with a mock connection that returns a DataFrame.

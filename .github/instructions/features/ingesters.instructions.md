@@ -4,7 +4,7 @@ applyTo: "ingesters/**/*.py,backend/tests/ingesters/**/*.py"
 # Ingester Development
 
 - Implement the protocol from `backend/app/ingesters/protocol.py`.
-- Register ingesters with `@Ingesters.register(key=...)`.
+- Register ingesters with `@get_ingester_registry().register(key=...)` from `backend/app/ingesters/registry.py`. The key must match the directory name under `ingesters/`.
 - Place ingesters under the top-level `ingesters/<name>/` directory, not under `backend/app/ingesters/`.
 - Discovery is automatic via `IngesterRegistry.discover()`; do not add manual imports unless the existing system requires it.
 - Use explicit `IngesterConfig` values in tests to avoid `ConfigValue` or `ConfigStore` dependencies.

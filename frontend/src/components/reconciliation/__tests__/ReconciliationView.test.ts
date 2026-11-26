@@ -222,6 +222,24 @@ describe('ReconciliationView', () => {
     expect(wrapper.get('[data-testid="yaml-editor"]').attributes('data-mode')).toBe('reconciliation')
   })
 
+  it('places concise status counts alongside the tabs', async () => {
+    const wrapper = await mountView()
+    const tabsRow = wrapper.get('[data-testid="reconciliation-tabs-row"]')
+
+    expect(tabsRow.find('[data-testid="tabs"]').exists()).toBe(true)
+    expect(tabsRow.text()).toContain('Online (2 types)')
+    expect(tabsRow.text()).toContain('1 specification')
+    expect(wrapper.text()).not.toContain('Entity Reconciliation')
+  })
+
+  it('shows a zero specification count', async () => {
+    reconciliationStore.specifications = []
+
+    const wrapper = await mountView()
+
+    expect(wrapper.get('[data-testid="reconciliation-tabs-row"]').text()).toContain('0 specifications')
+  })
+
   it('opens the reconciliation help dialog from the review tab', async () => {
     const wrapper = await mountView()
 

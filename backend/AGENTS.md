@@ -6,7 +6,7 @@ Rules here apply when working in `backend/`. Also read the root `AGENTS.md` for 
 
 - API models live in `backend/app/models/`. Domain logic lives in `src/`. Never import `backend.*` from `src/`.
 - All API↔Core conversions go through `ProjectMapper.to_core()` — never bypass it.
-- Directives (`@include:`, `@load:`, `@value:`, `${ENV_VAR}`) are resolved **only** in `ProjectMapper.to_core()`. The API and YAML layers receive raw strings.
+- The API and YAML layers keep directives (`@include:`, `@load:`, `@value:`, `${ENV_VAR}`) as written. `ProjectMapper.to_core()` resolves them when it converts a project. Do not add other places that resolve them, and never save a resolved config. See `.github/instructions/mappers.instructions.md` for the existing exceptions.
 - `ValidationService` owns loading, resolving, and delegating — it never constructs `TargetModel` or domain objects directly.
 
 ## Dependency Injection
@@ -19,15 +19,15 @@ Rules here apply when working in `backend/`. Also read the root `AGENTS.md` for 
 
 - `DataValidationOrchestrator` lives in the backend — it is the only component that may call infrastructure (HTTP, file I/O).
 - Pure domain validators (`src/validators/`) receive DataFrames; the orchestrator fetches and passes them.
-- Returns `list[ValidationIssue]`; caller converts to API errors.
+- Returns `list[DataValidationIssue]`; caller converts to API errors.
 - Run structural and constraint validation before data validation — structural errors may prevent data loading.
 
 ## Materialization
 
 - Lifecycle: `CanMaterializeSpecification` → `ShapeShifter.normalize()` → `_sanitize_materialized_dataframe()` → persist → update YAML.
 - Always call `_sanitize_materialized_dataframe()` before persisting — removes `_merge_indicator_*` columns and duplicate labels.
-- Entity `type` does not change after materialization — check `is_materialized`, not `type`.
-- Unmaterialization: delete sidecar file (best-effort — log warning if missing, do not raise), clear `materialized` block from YAML.
+- Materialization changes the entity to `type: fixed` — use `is_materialized` to tell a snapshot apart from a hand-written fixed entity.
+- Unmaterialization restores the entity config from `materialized.source_state`. It does not delete the sidecar data file.
 - Sidecar path: `materialized/{entity_name}.{extension}` relative to project folder — always use `_get_materialized_file_path()`.
 
 ## Reconciliation

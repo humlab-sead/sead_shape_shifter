@@ -126,9 +126,9 @@ await ingesterStore.ingestProject(projectRequest)
 2. Implement ingester class:
 ```python
 from backend.app.ingesters.protocol import Ingester, IngesterConfig
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.registry import get_ingester_registry
 
-@Ingesters.register(key="my_ingester")
+@get_ingester_registry().register(key="my_ingester")
 class MyIngester(Ingester):
     @classmethod
     def get_metadata(cls) -> IngesterMetadata:

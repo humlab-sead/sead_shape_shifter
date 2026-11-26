@@ -10,8 +10,7 @@ import pytest
 from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.shapeshift_service import PreviewResultBuilder, ShapeShiftCache, ShapeShiftService
 from src.model import ShapeShiftProject, TableConfig
-from src.specifications.constraints import ForeignKeyNullConstraintViolation
-from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
+from src.specifications.constraints import ConstraintIssue, ForeignKeyNullConstraintViolation
 from src.table_store import TableStore
 
 # pylint: disable=redefined-outer-name, attribute-defined-outside-init
@@ -256,7 +255,7 @@ class TestShapeShiftService:
 
     def test_collect_validation_issues_preserves_fk_identity_metadata(self, shapeshift_service: ShapeShiftService):
         """Linker issue metadata reaches the preview payload without changes."""
-        linker_issue = LinkerValidationIssue(
+        linker_issue = ConstraintIssue(
             issue_type="row_count_mismatch",
             severity="warning",
             local_entity="users",
@@ -596,7 +595,7 @@ class TestShapeShiftService:
             mock_normalizer.normalize = AsyncMock()
             mock_normalizer.table_store = {"users": sample_dataframe}
             mock_normalizer.unresolved_extra_columns = {}
-            linker_issue = LinkerValidationIssue(
+            linker_issue = ConstraintIssue(
                 issue_type="row_count_mismatch",
                 severity="warning",
                 local_entity="users",

@@ -277,8 +277,8 @@ See [AUTHORIZATION.md](AUTHORIZATION.md) for policy and response behavior.
 ## Extending the System
 
 - **New data loader**: subclass `DataLoader` in `src/loaders/`, register with `@DataLoaders.register(key="...")`, define `schema: ClassVar[DriverSchema]`.
-- **New validator**: subclass `ConstraintValidator` in `src/validators/`, register with `@Validators.register(key="...", stage="pre-merge|post-merge")`.
-- **New ingester**: create `ingesters/<name>/ingester.py`, implement the `Ingester` protocol, register with `@Ingesters.register(key="...")`. See `.github/instructions/ingesters.instructions.md`.
+- **New validator**: for a foreign-key constraint check, subclass `ConstraintValidator` in `src/specifications/constraints.py` and register it with `@Validators.register(key="...", stage="...")`. Data checks are classes in `src/validators/data_validators.py`.
+- **New ingester**: create `ingesters/<name>/ingester.py`, implement the `Ingester` protocol, register with `@get_ingester_registry().register(key="...")`. See `.github/instructions/features/ingesters.instructions.md`.
 - **New API endpoint**: add router in `backend/app/api/v1/endpoints/`, register in `backend/app/api/v1/api.py`, define Pydantic models in `backend/app/models/`, implement service in `backend/app/services/`.
 
 ### Configure a Reconciliation Specification

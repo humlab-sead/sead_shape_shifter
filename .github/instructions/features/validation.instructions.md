@@ -1,5 +1,5 @@
 ---
-applyTo: "src/validators/**,backend/app/validators/**,backend/app/services/validation*,tests/test_constraints*,backend/tests/test_validation*"
+applyTo: "src/validators/**,src/specifications/constraints.py,backend/app/validators/**,backend/app/services/validation*,tests/validators/**,tests/specifications/test_constraints.py,backend/tests/validators/**"
 ---
 
 # Validation – AI Coding Instructions
@@ -9,7 +9,7 @@ applyTo: "src/validators/**,backend/app/validators/**,backend/app/services/valid
 | Tier | Location | Responsibility |
 |------|----------|---------------|
 | Structural | `src/specifications/` | Config structure, FK integrity, dependency graph |
-| Constraint | `src/validators/`, `src/constraints.py` | Business rules, cardinality, keys, data types |
+| Constraint | `src/specifications/constraints.py` | Foreign-key constraints during linking: cardinality, null keys, uniqueness, matching, row counts |
 | Data | `src/validators/data_validators.py` + backend orchestrator | Row-level data checks against actual DataFrames |
 
 Run structural and constraint validation before data validation — structural errors may prevent data from loading.
@@ -17,16 +17,23 @@ Run structural and constraint validation before data validation — structural e
 ## Pure Domain Validators (`src/validators/`)
 
 - Validators receive `pd.DataFrame` and config — they **never fetch data**.
-- Return `list[ValidationIssue]` — not API DTOs, not exceptions.
-- `ValidationIssue` carries: `entity_name`, `column_name` (optional), `message`, `severity` (`error` / `warning`).
+- Return `list[DataValidationIssue]` (`src/validators/data_validators.py`) — not API DTOs, not exceptions.
+- `DataValidationIssue` extends `CoreIssue`: `severity`, `message`, `entity`, `field`, `column`, `code` (required), `category`, `suggestion`, `priority`, `auto_fixable`.
 - Validators are pure functions — no side effects, no I/O.
-- Current validators: `BusinessKeyProducedValidator`, `ColumnExistsValidator`, `DataTypeCompatibilityValidator`, `ForeignKeyDataValidator`, `ForeignKeyIntegrityValidator`, `NaturalKeyUniquenessValidator`, `NonEmptyResultValidator`, `UnresolvedExtraColumnsValidator`.
+- The validator classes are defined in `src/validators/data_validators.py`.
+- The orchestrator calls data validators directly. A new validator runs only after you add the call in `backend/app/validators/data_validation_orchestrator.py`.
 
-## Constraint Validators (`src/constraints.py`)
+## Constraint Validators (`src/specifications/constraints.py`)
 
-- Registered with `@CONFORMANCE_VALIDATORS.register(key="...")` or `@Validators.register(key=..., stage=...)`.
-- Receive `data` and `config` — no DB, no HTTP.
-- Return domain issues; the caller converts to API responses.
+- Check foreign-key constraints during linking.
+- Subclass `ConstraintValidator`, implement `is_applicable()` and `validate(context: ValidationContext)`, and register with `@Validators.register(key=..., stage=...)`.
+- Stages in use are listed in the file; `get_validators_for_stage()` selects validators by stage.
+- Report a violation with `handle_violation()`, which raises `ForeignKeyConstraintViolation` or logs it. Findings recorded for callers are `ConstraintIssue` objects.
+- No DB, no HTTP.
+
+## Target Model Conformance Validators
+
+- Live in `src/target_model/conformance.py`, register with `@CONFORMANCE_VALIDATORS.register(key="...")` and return `ConformanceIssue`. See `features/target-model.instructions.md`.
 
 ## Data Validation Orchestrator (`backend/app/validators/data_validation_orchestrator.py`)
 
@@ -36,7 +43,7 @@ Run structural and constraint validation before data validation — structural e
   - `FullDataFetchStrategy` — complete normalized run via `ShapeShifter`
   - `TableStoreDataFetchStrategy` — reads from an in-memory `table_store`
 - Calls pure domain validators with fetched DataFrames.
-- Returns `list[ValidationIssue]` — consumer converts to API errors.
+- Returns `list[DataValidationIssue]` — consumer converts to API errors.
 - Inject the strategy via constructor — never hard-code which strategy to use.
 
 ## Layer Boundary Rules
@@ -49,7 +56,7 @@ Run structural and constraint validation before data validation — structural e
 ## Common Mistakes
 
 - Importing `backend.*` from inside `src/validators/` — hard layer violation.
-- Returning API error models from a domain validator instead of `ValidationIssue`.
+- Returning API error models from a domain validator instead of `DataValidationIssue`.
 - Fetching data inside a validator — pass the DataFrame in.
 - Creating `DataValidationOrchestrator` without injecting a strategy — always inject explicitly.
 - Skipping structural validation and running data validation on an invalid config.
@@ -57,6 +64,8 @@ Run structural and constraint validation before data validation — structural e
 
 ## Testing Expectations
 
+- Domain validator tests are in `tests/validators/`; constraint validator tests are in `tests/specifications/test_constraints.py`.
+- To test a constraint validator, build it with an entity, FK and constraints, then call `validate(ValidationContext(...))`. A violation raises `ForeignKeyConstraintViolation` unless `raise_on_violation=False`.
 - Unit-test domain validators with inline DataFrames — no project file, no backend.
 - Test each strategy independently (mock the underlying service).
 - Test the orchestrator with a `TableStoreDataFetchStrategy` backed by in-memory DataFrames.

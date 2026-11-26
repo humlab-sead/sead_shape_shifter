@@ -34,9 +34,9 @@
 
 - **Absolute imports only**: `from src...` and `from backend.app...` — never relative across packages.
 - **Layer boundary**: API models stay in `backend/app/models/`; domain logic stays in `src/`. Never import `backend.*` from `src/`.
-- **Mapper**: all API↔Core conversions go through `ProjectMapper`. Never bypass it.
-- **Directives** (`@include:`, `@value:`, `@load:`, `${ENV_VAR}`) are resolved **only** in `ProjectMapper.to_core()` — API and YAML layers preserve them raw.
-- **Registries**: use `@Validators.register(...)`, `@DataLoaders.register(...)`, `@Ingesters.register(...)` — never bypass the registry.
+- **Mapper**: API↔Core conversions go through the mappers in `backend/app/mappers/`; projects go through `ProjectMapper`. Never bypass them.
+- **Directives** (`@include:`, `@value:`, `@load:`, `${ENV_VAR}`): API models and saved YAML keep them as written. `ProjectMapper.to_core()` resolves them when it converts a project. Do not add other places that resolve them, and never save a resolved config. Existing exceptions are listed in `.github/instructions/mappers.instructions.md`.
+- **Registries**: use `@Validators.register(...)`, `@DataLoaders.register(...)`, `@get_ingester_registry().register(...)` — never bypass the registry.
 - **Circular imports**: use constructor injection or `TYPE_CHECKING` — never restructure imports as a workaround.
 - **Async**: `ShapeShifter.normalize()` and all data loaders are async — never call with `asyncio.run()` inside a loader or service.
 
@@ -61,24 +61,24 @@ Core FK links use local `system_id` values. A change-request package can use an 
 
 ## Common Implementation Tasks
 
-- **Backend endpoint**: router in `backend/app/api/v1/endpoints/`, models in `backend/app/models/`, service in `backend/app/services/`, register in `backend/app/api/v1/api.py`. See `.github/prompts/add-endpoint.prompt.md`.
-- **Constraint validator**: `@Validators.register(key=..., stage=...)` in `src/constraints.py`. See `.github/prompts/add-validator.prompt.md`.
-- **Data loader**: `@DataLoaders.register(key=...)` in `src/loaders/`, `ClassVar` schema on the class. See `.github/prompts/add-loader.prompt.md`.
-- **Specification**: subclass `ProjectSpecification`, implement `is_satisfied_by()`, add to `CompositeProjectSpecification.__init__()`.
-- **Ingester**: directory under `ingesters/<name>/`, implement `Ingester` protocol, `@Ingesters.register(key="<name>")`. See `ingesters/AGENTS.md`.
+- **Backend endpoint**: router in `backend/app/api/v1/endpoints/`, models in `backend/app/models/`, service in `backend/app/services/`, register in `backend/app/api/v1/api.py`. Every route needs an authorization requirement and a row in the route inventory. Read `.github/instructions/backend-api.instructions.md`.
+- **Constraint validator**: `@Validators.register(key=..., stage=...)` in `src/specifications/constraints.py`. Read `.github/instructions/features/validation.instructions.md`.
+- **Data loader**: `@DataLoaders.register(key=...)` in `src/loaders/`, `ClassVar` schema on the class. Read `.github/instructions/features/loaders.instructions.md`.
+- **Specification**: subclass `ProjectSpecification`, implement `is_satisfied_by()`, add to `CompositeProjectSpecification.get_default_specifications()`.
+- **Ingester**: directory under `ingesters/<name>/`, implement `Ingester` protocol, `@get_ingester_registry().register(key="<name>")`. See `ingesters/AGENTS.md`.
+- **New files**: Claude Code loads a path rule when it reads a matching file, which may not happen when a task only creates files. Before creating a mapper, API file, loader, validator, frontend store, editor, test, script or workflow, read the matching file in `.github/instructions/`: `mappers`, `backend-api`, `features/loaders`, `features/validation`, `frontend-stores`, `frontend-monaco`, `frontend-test`, `test-writing` or `tooling`.
 - **Phase plan**: when asked to create or update a phased implementation plan, delivery sequencing document, or migration phase plan, use `.github/instructions/phase-plan.instructions.md`.
 - **Task plan**: when asked to create or update a task plan for one development phase, use `.github/instructions/task-plan.instructions.md`.
 
 ## Key References
 
-- Core models: `src/model.py`, `src/constraints.py`, `src/specifications.py`.
+- Core models: `src/model.py`, `src/specifications/constraints.py`, `src/specifications/`.
 - Backend entry: `backend/app/main.py`; validation: `backend/app/services/validation_service.py`.
 - SIMS client: `backend/app/clients/sims_client.py` (env vars: `SHAPE_SHIFTER_SIMS_SERVICE_URL`, `SHAPE_SHIFTER_SIMS_CONTRACT_CALLER`, `SHAPE_SHIFTER_SIMS_CONTRACT_REGISTRATION_TOKEN`).
 - Docs: `docs/DESIGN.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`.
 - SEAD schema: `docs/sead/columns.csv` (current tables and columns with types, nullability, PKs and FK targets) and `docs/sead/SCHEMA.md` (the same per table, generated). Refresh with `make sead-schema`. The numbered `docs/sead/0*_*.sql` files are a stale historical dump; do not use them to decide tables or columns. See `docs/sead/README.md`.
-- Scoped instructions (VS Code Copilot): `.github/instructions/` — auto-injected by `applyTo` patterns.
+- Scoped instructions: `.github/instructions/` is the source (VS Code Copilot uses the `applyTo` pattern to match rules to files; in some session types the agent gets only a list and has to read the rule itself). `.claude/rules/` is generated from it for Claude Code (`applyTo` becomes `paths`). Edit only the sources, then run `make claude-rules`; `make lint`, pre-commit and CI fail when the two differ. `github-workflow` has no `applyTo` because it applies to a task, not to files, so it is not converted: read it directly before creating an issue or preparing a commit. `writing-style` also applies to comments, docstrings, PR text and issues, which its `**/*.md` pattern does not cover: read it directly for those.
 - Planning instructions: use `.github/instructions/phase-plan.instructions.md` when the user asks for phased implementation sequencing, and use `.github/instructions/task-plan.instructions.md` when the user asks for work breakdown, checklists, or definition-of-done planning for one phase.
-- Prompt templates: `.github/prompts/` — invoke via `/` in Copilot Chat.
 - UCanAccess setup: `scripts/dev/install-uncanccess.sh` (requires Java JRE).
 
 ## graphify

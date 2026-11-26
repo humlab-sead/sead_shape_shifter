@@ -21,7 +21,7 @@ from backend.app.services.link_experiment_context_store import (
     TrialSettingsReport,
 )
 from backend.app.services.link_trial_service import ARowTrialDiagnostic, LinkTrialResult
-from src.specifications.constraints import ValidationIssue
+from src.specifications.constraints import ConstraintIssue
 
 EXPIRES_AT = datetime(2026, 1, 1, 12, 15, tzinfo=timezone.utc)
 
@@ -68,9 +68,9 @@ def exception_groups(
     )
 
 
-def linker_issue(message: str) -> ValidationIssue:
+def linker_issue(message: str) -> ConstraintIssue:
     """Return one warning for mapper tests."""
-    return ValidationIssue(
+    return ConstraintIssue(
         issue_type="row_count_mismatch",
         severity="warning",
         local_entity="orders",
@@ -84,7 +84,7 @@ def reproduced_baseline(
     *,
     row_count_before: int | None = 3,
     row_count_after: int | None = 2,
-    issues: tuple[ValidationIssue, ...] = (),
+    issues: tuple[ConstraintIssue, ...] = (),
 ) -> LinkBaselineResult:
     """Build a baseline result without private frame or project context."""
     return LinkBaselineResult(
@@ -111,7 +111,7 @@ def trial_result(
     a_rows: tuple[ARowTrialDiagnostic, ...] | None = (),
     reason: str = "complete",
     message: str = "Trial completed.",
-    issues: tuple[ValidationIssue, ...] = (),
+    issues: tuple[ConstraintIssue, ...] = (),
     groups: TrialExceptionGroups | None = None,
     settings: TrialSettingsReport | None = None,
 ) -> LinkTrialResult:
@@ -139,7 +139,7 @@ def trial_result(
 def context_diagnostics(
     *,
     groups: TrialExceptionGroups | None,
-    issues: tuple[ValidationIssue, ...] = (),
+    issues: tuple[ConstraintIssue, ...] = (),
     status: str = "complete",
     settings: TrialSettingsReport | None = None,
 ) -> LinkExperimentDiagnostics:

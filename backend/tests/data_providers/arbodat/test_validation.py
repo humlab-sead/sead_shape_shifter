@@ -23,7 +23,7 @@ from src.normalizer import ShapeShifter
 from src.specifications.project import CompositeProjectSpecification
 from src.target_model.conformance import ConformanceIssue, TargetModelConformanceValidator
 from src.target_model.models import TargetModel
-from src.validators.data_validators import ValidationIssue
+from src.validators.data_validators import DataValidationIssue
 
 TEST_DATA_DIR: Path = Path("tests/test_data").resolve()
 TARGET_MODEL_PATH: Path = TEST_DATA_DIR / "target_models" / "sead_standard_model.yml"
@@ -115,7 +115,7 @@ async def test_data_validation_orchestrator(ucanaccess_required: None, project: 
     strategy = TableStoreDataFetchStrategy(table_store=normalizer.table_store)
     orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
 
-    issues: list[ValidationIssue] = await orchestrator.validate_all_entities(
+    issues: list[DataValidationIssue] = await orchestrator.validate_all_entities(
         core_project=project, project_name="arbodat", entity_names=None
     )
     actual_issues: set[str] = {f"{issue.severity}:{issue.entity}:{issue.code}" for issue in issues}

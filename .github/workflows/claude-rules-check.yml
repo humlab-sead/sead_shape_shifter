@@ -1,0 +1,23 @@
+name: Claude Rules Check
+
+# .claude/rules/ is generated from .github/instructions/ by scripts/dev/sync_claude_rules.py.
+# This check fails when a pull request changes one side without regenerating the other.
+
+on:
+  pull_request:
+    paths:
+      - ".github/instructions/**"
+      - ".claude/rules/**"
+      - "scripts/dev/sync_claude_rules.py"
+
+permissions:
+  contents: read
+
+jobs:
+  claude-rules:
+    name: Claude rules match instruction files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check generated rule files
+        run: python3 scripts/dev/sync_claude_rules.py --check

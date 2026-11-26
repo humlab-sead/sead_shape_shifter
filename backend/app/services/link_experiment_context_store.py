@@ -25,7 +25,7 @@ from loguru import logger
 
 from backend.app.exceptions import ProjectedBudgetExceeded
 from src.model import ForeignKeyConfig, ShapeShiftProject
-from src.specifications.constraints import ForeignKeyRuntimeOptions, ValidationIssue
+from src.specifications.constraints import ConstraintIssue, ForeignKeyRuntimeOptions
 from src.transforms.link import _resolve_fk_runtime_options
 from src.transforms.utility import _NULL_SENTINEL_PREFIX, _coerce_compatible_merge_key_dtypes
 
@@ -134,7 +134,7 @@ class LinkExperimentDiagnostics:
     output_rows: int | None = None
     unmatched_a_rows: int | None = None
     multiply_matched_a_rows: int | None = None
-    issues: tuple[ValidationIssue, ...] = ()
+    issues: tuple[ConstraintIssue, ...] = ()
     exception_groups: TrialExceptionGroups | None = None
     settings: TrialSettingsReport | None = None
 

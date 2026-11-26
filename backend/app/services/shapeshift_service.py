@@ -19,7 +19,7 @@ from backend.app.utils.caches import ShapeShiftCache, ShapeShiftProjectCache
 from src.exceptions import FunctionalDependencyError, MissingBusinessKeyError
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
-from src.specifications.constraints import ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation, ValidationIssue
+from src.specifications.constraints import ConstraintIssue, ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation
 from src.table_store import TableStore
 from src.validation_messages import format_validation_message_with_context
 
@@ -484,7 +484,7 @@ class ShapeShiftService:
         linker_issues = itertools.chain.from_iterable(getattr(validator, "issues", []) for validator in shapeshifter.linker.validators)
 
         for issue in linker_issues:
-            if isinstance(issue, ValidationIssue):
+            if isinstance(issue, ConstraintIssue):
                 all_issues.append(
                     {
                         "type": issue.issue_type,

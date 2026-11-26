@@ -4,9 +4,9 @@ from typing import Any
 
 from backend.app import models as api
 from src.issues import CoreIssue
-from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
+from src.specifications.constraints import ConstraintIssue
 from src.target_model.conformance import ConformanceIssue
-from src.validators.data_validators import ValidationIssue
+from src.validators.data_validators import DataValidationIssue
 
 
 class ValidationMapper:
@@ -86,8 +86,8 @@ class ValidationMapper:
         )
 
     @staticmethod
-    def to_api_error(issue: ValidationIssue) -> api.ValidationError:
-        """Convert a domain ValidationIssue to an API ValidationError."""
+    def to_api_error(issue: DataValidationIssue) -> api.ValidationError:
+        """Convert a domain DataValidationIssue to an API ValidationError."""
         return ValidationMapper.from_core_issue(
             issue,
             default_category=api.ValidationCategory.DATA,
@@ -96,7 +96,7 @@ class ValidationMapper:
         )
 
     @staticmethod
-    def from_linker_issue(issue: LinkerValidationIssue) -> ValidationIssue:
+    def from_linker_issue(issue: ConstraintIssue) -> DataValidationIssue:
         """Convert a foreign-key linker issue to a data validation issue."""
         return ValidationMapper._from_normalization_issue(
             issue_type=issue.issue_type,
@@ -108,7 +108,7 @@ class ValidationMapper:
         )
 
     @staticmethod
-    def from_preview_issue_payload(issue: dict[str, Any]) -> ValidationIssue:
+    def from_preview_issue_payload(issue: dict[str, Any]) -> DataValidationIssue:
         """Convert a structured preview issue to a data validation issue."""
         issue_type = issue.get("type")
         severity = issue.get("severity")
@@ -147,13 +147,13 @@ class ValidationMapper:
         remote_entity: str | None,
         message: str,
         metadata: dict[str, Any],
-    ) -> ValidationIssue:
+    ) -> DataValidationIssue:
         issue_metadata = dict(metadata)
         issue_metadata.setdefault("issue_type", issue_type)
         if remote_entity is not None:
             issue_metadata.setdefault("remote_entity", remote_entity)
 
-        return ValidationIssue(
+        return DataValidationIssue(
             severity=severity,
             entity=local_entity,
             message=message,

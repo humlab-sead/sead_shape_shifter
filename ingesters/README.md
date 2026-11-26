@@ -40,10 +40,10 @@ from backend.app.ingesters.protocol import (
     ValidationResult,
     IngestionResult,
 )
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.registry import get_ingester_registry
 
 
-@Ingesters.register(key="your_ingester")
+@get_ingester_registry().register(key="your_ingester")
 class YourIngester:
     """Your ingester description."""
 
@@ -171,7 +171,7 @@ python -m backend.app.scripts.ingest ingest your_ingester /path/to/file.xlsx \
 
 ### Ingester Not Discovered
 - Check directory name matches registration key
-- Verify `ingester.py` exists and contains `@Ingesters.register()` decorator
+- Verify `ingester.py` exists and contains `@get_ingester_registry().register()` decorator
 - Check logs for import errors during startup
 - Ensure `ingesters/` is in Python path (should be automatic with editable install)
 

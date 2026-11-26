@@ -8,7 +8,7 @@ No infrastructure dependencies.
 import pandas as pd
 
 from src.target_model.models import EntitySpec, ForeignKeySpec
-from src.validators.data_validators import ValidationIssue
+from src.validators.data_validators import DataValidationIssue
 
 # Maps target model logical types to substrings that must appear in the pandas dtype string.
 _DTYPE_FAMILIES: dict[str, tuple[str, ...]] = {
@@ -27,7 +27,7 @@ class NullabilityConformanceValidator:
     """Required, non-nullable columns declared in the target model must have no nulls in produced data."""
 
     @staticmethod
-    def validate(df: pd.DataFrame, entity_spec: EntitySpec, entity_name: str) -> list[ValidationIssue]:
+    def validate(df: pd.DataFrame, entity_spec: EntitySpec, entity_name: str) -> list[DataValidationIssue]:
         """Check that required, non-nullable columns contain no null values.
 
         A column is checked when its ColumnSpec has ``required=True`` and ``nullable`` is
@@ -40,12 +40,12 @@ class NullabilityConformanceValidator:
             entity_name: Entity name for error reporting.
 
         Returns:
-            List of ValidationIssue for columns that contain nulls.
+            List of DataValidationIssue for columns that contain nulls.
         """
         if df.empty:
             return []
 
-        issues: list[ValidationIssue] = []
+        issues: list[DataValidationIssue] = []
         for col_name, col_spec in entity_spec.columns.items():
             if not col_spec.required or col_spec.nullable is True:
                 continue
@@ -55,7 +55,7 @@ class NullabilityConformanceValidator:
             null_count = int(df[col_name].isna().sum())
             if null_count > 0:
                 issues.append(
-                    ValidationIssue(
+                    DataValidationIssue(
                         severity="error",
                         entity=entity_name,
                         field=col_name,
@@ -78,7 +78,7 @@ class TypeCompatibilityConformanceValidator:
     """Column values must be compatible with the declared logical type in the target model."""
 
     @staticmethod
-    def validate(df: pd.DataFrame, entity_spec: EntitySpec, entity_name: str) -> list[ValidationIssue]:
+    def validate(df: pd.DataFrame, entity_spec: EntitySpec, entity_name: str) -> list[DataValidationIssue]:
         """Check that column dtypes are compatible with declared logical types.
 
         Supported declared types: ``integer``, ``float``, ``number``, ``string``, ``text``,
@@ -91,12 +91,12 @@ class TypeCompatibilityConformanceValidator:
             entity_name: Entity name for error reporting.
 
         Returns:
-            List of ValidationIssue for columns whose dtype is incompatible with the declared type.
+            List of DataValidationIssue for columns whose dtype is incompatible with the declared type.
         """
         if df.empty:
             return []
 
-        issues: list[ValidationIssue] = []
+        issues: list[DataValidationIssue] = []
         for col_name, col_spec in entity_spec.columns.items():
             if not col_spec.type or col_name not in df.columns:
                 continue
@@ -109,7 +109,7 @@ class TypeCompatibilityConformanceValidator:
             actual_dtype = str(df[col_name].dtype)
             if not any(family in actual_dtype for family in expected_families):
                 issues.append(
-                    ValidationIssue(
+                    DataValidationIssue(
                         severity="warning",
                         entity=entity_name,
                         field=col_name,
@@ -132,7 +132,7 @@ class AllowedValuesConformanceValidator:
     """Columns with allowed_values must only contain values declared by the target model."""
 
     @staticmethod
-    def validate(df: pd.DataFrame, entity_spec: EntitySpec, entity_name: str) -> list[ValidationIssue]:
+    def validate(df: pd.DataFrame, entity_spec: EntitySpec, entity_name: str) -> list[DataValidationIssue]:
         """Check that produced values stay within the declared allowed_values set.
 
         Columns absent from the DataFrame are skipped because structural conformance covers them.
@@ -141,7 +141,7 @@ class AllowedValuesConformanceValidator:
         if df.empty:
             return []
 
-        issues: list[ValidationIssue] = []
+        issues: list[DataValidationIssue] = []
         for col_name, col_spec in entity_spec.columns.items():
             if not col_spec.allowed_values or col_name not in df.columns:
                 continue
@@ -156,7 +156,7 @@ class AllowedValuesConformanceValidator:
 
             sample = ", ".join(str(value) for value in invalid_values[:5])
             issues.append(
-                ValidationIssue(
+                DataValidationIssue(
                     severity="error",
                     entity=entity_name,
                     field=col_name,
@@ -194,7 +194,7 @@ class FKReferentialIntegrityConformanceValidator:
         target_df: pd.DataFrame,
         target_entity_spec: EntitySpec,
         entity_name: str,
-    ) -> list[ValidationIssue]:
+    ) -> list[DataValidationIssue]:
         """Check that FK values in df exist in target_df's public_id column.
 
         Args:
@@ -205,7 +205,7 @@ class FKReferentialIntegrityConformanceValidator:
             entity_name: Source entity name for error reporting.
 
         Returns:
-            List of ValidationIssue for orphaned FK values.
+            List of DataValidationIssue for orphaned FK values.
         """
         if df.empty or target_df.empty:
             return []
@@ -226,7 +226,7 @@ class FKReferentialIntegrityConformanceValidator:
 
         sample = sorted(str(v) for v in list(orphaned)[:5])
         return [
-            ValidationIssue(
+            DataValidationIssue(
                 severity="warning",
                 entity=entity_name,
                 field=fk_col,

@@ -1,12 +1,12 @@
 from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.validation import ValidationCategory, ValidationPriority
-from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
+from src.specifications.constraints import ConstraintIssue
 from src.target_model.conformance import ConformanceIssue
-from src.validators.data_validators import ValidationIssue
+from src.validators.data_validators import DataValidationIssue
 
 
 def test_from_core_issue_maps_validation_issue() -> None:
-    issue = ValidationIssue(
+    issue = DataValidationIssue(
         severity="warning",
         entity="sample",
         field="columns",
@@ -61,7 +61,7 @@ def test_from_core_issue_uses_column_as_field_fallback() -> None:
 
 def test_from_linker_issue_preserves_fk_identity_metadata() -> None:
     """Linker issue metadata keeps the foreign-key identity and the added context keys."""
-    issue = LinkerValidationIssue(
+    issue = ConstraintIssue(
         issue_type="row_count_mismatch",
         severity="warning",
         local_entity="users",
@@ -88,7 +88,7 @@ def test_from_linker_issue_preserves_fk_identity_metadata() -> None:
 
 def test_to_api_error_preserves_integrity_identity_metadata() -> None:
     """Integrity identity and count reach the API error unchanged."""
-    issue = ValidationIssue(
+    issue = DataValidationIssue(
         severity="warning",
         entity="orders",
         field="foreign_keys[].entity",

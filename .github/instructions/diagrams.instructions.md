@@ -1,5 +1,6 @@
 ---
 description: "Use when creating or editing Mermaid diagrams anywhere in the repository — style, layout, classDef conventions, and diagram type selection."
+applyTo: "docs/**/*.md,**/*DIAGRAMS.md"
 ---
 ## Mermaid diagram style guidance
 

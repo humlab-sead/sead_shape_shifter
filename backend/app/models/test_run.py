@@ -36,7 +36,7 @@ class TestRunOptions(BaseModel):
     stop_on_error: bool = Field(False, description="Stop processing on first error")
 
 
-class ValidationIssue(BaseModel):
+class TestRunIssue(BaseModel):
     """A validation issue found during test run."""
 
     entity_name: str = Field(..., description="Entity where issue was found")
@@ -57,7 +57,7 @@ class EntityTestResult(BaseModel):
     execution_time_ms: int = Field(..., description="Execution time in milliseconds")
     error_message: Optional[str] = Field(None, description="Error message if failed")
     warnings: list[str] = Field(default_factory=list, description="Warning messages")
-    validation_issues: list[ValidationIssue] = Field(default_factory=list, description="Validation issues found")
+    validation_issues: list[TestRunIssue] = Field(default_factory=list, description="Validation issues found")
     preview_rows: Optional[list[dict[str, Any]]] = Field(None, description="Preview of output rows (first 10)")
 
 
@@ -88,7 +88,7 @@ class TestRunResult(BaseModel):
     entities_succeeded: int = Field(0, description="Number of entities that succeeded")
     entities_failed: int = Field(0, description="Number of entities that failed")
     entities_skipped: int = Field(0, description="Number of entities that were skipped")
-    validation_issues: list[ValidationIssue] = Field(default_factory=list, description="All validation issues found")
+    validation_issues: list[TestRunIssue] = Field(default_factory=list, description="All validation issues found")
     error_message: Optional[str] = Field(None, description="Overall error message if failed")
     options: TestRunOptions = Field(..., description="Test run options used")
     current_entity: Optional[str] = Field(None, description="Entity currently being processed")

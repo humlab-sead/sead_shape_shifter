@@ -1,5 +1,5 @@
 ---
-description: "Use when writing or updating design proposals. Covers style, naming, and Copilot workflow for proposals; structure lives in proposal-document-structure.instructions.md."
+description: "Use when writing or updating design proposals. Covers style, naming, and AI-assistant workflow for proposals; structure lives in proposal-document-structure.instructions.md."
 applyTo: "docs/proposals/**/*.md"
 ---
 # Proposal Writing Guide
@@ -58,7 +58,7 @@ Keep the shape lean: use only the sections that earn their place and stop once t
 - Prefer specific names over generic ones.
 - Avoid naming a proposal after an implementation detail if the proposal is really about a broader product or workflow change.
 
-## Working With Copilot
+## Working With AI Assistants
 
 - If you want strict adherence, explicitly reference this guide and the proposal template when asking for a new proposal.
 - If proposal-writing rules are also captured in repo instructions, you do not need to repeat them every time.

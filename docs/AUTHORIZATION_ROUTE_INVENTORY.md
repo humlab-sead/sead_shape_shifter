@@ -188,6 +188,9 @@ Every row above except the health check requires an authenticated principal thro
 | `PUT`    | `/api/v1/projects/{project_name}/reconciliation`                                                             | `project:edit` |
 | `PUT`    | `/api/v1/projects/{project_name}/reconciliation/raw`                                                         | `project:edit` |
 | `GET`    | `/api/v1/projects/{project_name}/reconciliation/{entity_name}/{target_field}/preview`                        | `project:read` |
+| `GET`    | `/api/v1/projects/{project_name}/reconciliation/{entity_name}/{target_field}/selection/capabilities`          | `project:read` |
+| `POST`   | `/api/v1/projects/{project_name}/reconciliation/{entity_name}/{target_field}/selection/search`                | `project:read` |
+| `GET`    | `/api/v1/projects/{project_name}/reconciliation/{entity_name}/{target_field}/selection/browse`                | `project:read` |
 | `POST`   | `/api/v1/projects/{project_name}/reconciliation/{entity_name}/{target_field}/auto-reconcile`                 | `project:edit` |
 | `GET`    | `/api/v1/operations/{operation_id}/progress`                                                                 | `project:read` |
 | `GET`    | `/api/v1/operations/{operation_id}/stream`                                                                   | `project:read` |

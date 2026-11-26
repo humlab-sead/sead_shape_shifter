@@ -9,7 +9,7 @@ from backend.app.validators.data_validation_orchestrator import (
 )
 from src.model import ShapeShiftProject
 from src.table_store import TableStore
-from src.validators.data_validators import ValidationIssue
+from src.validators.data_validators import DataValidationIssue
 
 SELECTABLE_CODES: frozenset[str] = frozenset({"COLUMN_NOT_FOUND", "NON_UNIQUE_KEYS"})
 """Selectable-check issue codes this duplicate-key fixture produces."""
@@ -37,7 +37,7 @@ def _table_store() -> TableStore:
 async def _run(validators: list[str] | None) -> set[str]:
     """Run validation for one entity and return its issue codes."""
     orchestrator = DataValidationOrchestrator(fetch_strategy=TableStoreDataFetchStrategy(_table_store()))
-    issues: list[ValidationIssue] = await orchestrator.validate_all_entities(
+    issues: list[DataValidationIssue] = await orchestrator.validate_all_entities(
         core_project=_core_project(),
         project_name="test_project",
         entity_names=["orders"],

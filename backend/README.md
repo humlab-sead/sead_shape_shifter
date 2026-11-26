@@ -88,22 +88,12 @@ backend/app/
 - **ApplicationStateManager**: Safe access wrapper with fallbacks
 - **Optimistic Locking**: Version-based concurrent edit detection
 
-#### 3. Environment Variable Resolution
-**Critical**: Environment variables are resolved ONLY in the mapper layer:
-- API models contain raw `${ENV_VAR}` placeholders
-- Services work with raw entities
-- **Mappers resolve vars** at API/Core boundary
-- Core always receives fully resolved values
+#### 3. Environment Variables and Directives
+API models and saved YAML keep `${ENV_VAR}` placeholders and directives as written. Resolved values are used only for processing.
 
-```python
-# backend/app/mappers/data_source_mapper.py
-class DataSourceMapper:
-    @staticmethod
-    def to_core_config(api_config: ApiDataSourceConfig) -> CoreDataSourceConfig:
-        # Resolution happens here at the boundary
-        api_config = api_config.resolve_config_env_vars()
-        return CoreDataSourceConfig(...)
-```
+- `ProjectMapper.to_core()` resolves them when it converts a project.
+- `DataSourceMapper.to_core_config()` checks a data source against the data source policy, which resolves its environment variables.
+- Do not add other places that resolve them, and never save a resolved config. See [the mapper rules](../.github/instructions/mappers.instructions.md).
 
 #### 4. Preview Caching
 Entity preview uses intelligent 3-tier cache validation:

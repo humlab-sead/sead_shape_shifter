@@ -62,7 +62,7 @@ Numbers that matter: ~30 files, ~2,120 lines total, but only relevant layers are
 
 ---
 
-## Skills, Agents, and Prompts
+## Skills and Agents
 
 **Skills** — load-on-demand expert knowledge kept out of context until needed (each with trigger + `references/`):
 - `shapeshifter-configuration` — deep project-YAML validate/repair/author
@@ -70,8 +70,6 @@ Numbers that matter: ~30 files, ~2,120 lines total, but only relevant layers are
 
 **Custom agents** — scoped specialists with restricted tools and explicit validation expectations:
 - **Developer** (orchestrator) · **Backend** · **Frontend** · **Configuration Engineer** (+ a read-only **Explore** agent)
-
-**~20 reusable prompts** — implementation generators (`add-endpoint`, `add-loader`, `add-validator`, test writers), review/routing agents (`token-router`, `boundary-guard`, `ci-gatekeeper`, …), and ultra-concise domain reference cards.
 
 Effect: conventions are encoded once; agents never improvise the architecture.
 
@@ -111,7 +109,7 @@ Different agents read different files, so the same repo looks different to each:
 .rulesync/rules/*.md ──► AGENTS.md (+ nested) ──► Codex · Cline · Gemini · Copilot
                      └─► CLAUDE.md        ──► Claude Code
 ```
-- Agent-specific surfaces (`.github/instructions`, agents, prompts, skills, hooks) stay **hand-authored**.
+- Agent-specific surfaces (`.github/instructions`, agents, skills, hooks) stay **hand-authored**.
 - A `make rules-sync-check` drift gate (pre-commit/CI) stops silent divergence.
 
 Status: **proposed**, not yet adopted.
@@ -166,18 +164,17 @@ The whole AI layer is plain Markdown/YAML with frontmatter — versioned like co
 | Add a rule | `.github/instructions/<area>.instructions.md` | `applyTo` glob; small |
 | Add deep knowledge | `.github/skills/<name>/SKILL.md` + `references/` | trigger description |
 | Add a specialist | `.github/agents/<name>.agent.md` | scope · rules · validation · tools |
-| Add a prompt | `.github/prompts/<name>.prompt.md` | `agent:` vs `ask:` |
 | Change shared rules | `AGENTS.md` (+ subtrees) | sync or adopt `rulesync` |
 
-**Patterns to steal:** path-scoped context injection · tiny always-on core · on-demand knowledge · hooks that enforce cost automatically · contracts before implementation · reviewer prompts as a pre-merge gate · single source + drift check for shared rules.
+**Patterns to steal:** path-scoped context injection · tiny always-on core · on-demand knowledge · hooks that enforce cost automatically · contracts before implementation · reviews as a pre-merge gate · single source + drift check for shared rules.
 
 ---
 
 ## Takeaways
 
 1. **Right rules, right time** — layered, path-scoped instructions load only what's relevant.
-2. **Small always-on, deep on-demand** — cheap every turn; skills/reference prompts for depth.
-3. **Agents and prompts encode the architecture** — consistent output without improvising.
+2. **Small always-on, deep on-demand** — cheap every turn; skills/reference documents for depth.
+3. **Rules, skills and agents encode the architecture** — consistent output without improvising.
 4. **Hooks, not habits** — `rtk` compresses command output, `graphify` compresses exploration, enforced automatically.
 5. **Multi-agent parity is a real drift risk** — `AGENTS.md` tree now; `rulesync` (generate + drift-check) proposed.
 6. **Plan before code** — proposal → phase plan → task plan (confirmed) → implement; verify before claiming done.

@@ -47,7 +47,7 @@ if TYPE_CHECKING:
         TrialSettingsReport,
     )
     from backend.app.services.link_trial_service import LinkTrialResult
-    from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
+    from src.specifications.constraints import ConstraintIssue
 
 KEY_VALUE_BYTE_LIMIT: int = 256
 """Maximum UTF-8 bytes for one exception key value."""
@@ -160,7 +160,7 @@ class LinkTroubleshooterMapper:
     ) -> LinkTroubleshootBaseline:
         """Map a retained baseline, keeping totals only for complete diagnostics."""
         is_complete: bool = diagnostics is not None and diagnostics.status == "complete"
-        findings_issues: Sequence[LinkerValidationIssue] = (
+        findings_issues: Sequence[ConstraintIssue] = (
             diagnostics.issues if diagnostics is not None and diagnostics.issues else baseline.issues
         )
         detail: LinkTroubleshootDetail | None = None
@@ -233,7 +233,7 @@ class LinkTroubleshooterMapper:
     @staticmethod
     def _build_detail(
         groups: TrialExceptionGroups | None,
-        issues: Sequence[LinkerValidationIssue],
+        issues: Sequence[ConstraintIssue],
         row_cap: int,
     ) -> LinkTroubleshootDetail:
         """Bound findings first, then the unmatched and multiply matched groups."""
@@ -268,7 +268,7 @@ class LinkTroubleshooterMapper:
         )
 
     @staticmethod
-    def _build_findings(issues: Sequence[LinkerValidationIssue], budget: _DetailBudget) -> LinkTroubleshootFindings:
+    def _build_findings(issues: Sequence[ConstraintIssue], budget: _DetailBudget) -> LinkTroubleshootFindings:
         """Return at most the configured findings with bounded messages."""
         mapped_issues: list[ValidationError] = []
         truncated: bool = False
@@ -402,7 +402,7 @@ class LinkTroubleshooterMapper:
         )
 
     @staticmethod
-    def _map_issues(issues: Sequence[LinkerValidationIssue]) -> list[ValidationError]:
+    def _map_issues(issues: Sequence[ConstraintIssue]) -> list[ValidationError]:
         """Map core linker issues through the shared validation mapper."""
         return [ValidationMapper.to_api_error(ValidationMapper.from_linker_issue(issue)) for issue in issues]
 

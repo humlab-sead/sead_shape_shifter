@@ -4,12 +4,12 @@ from src.validators.data_validators import (
     BusinessKeyProducedValidator,
     ColumnExistsValidator,
     DataTypeCompatibilityValidator,
+    DataValidationIssue,
     DuplicateKeysValidator,
     ForeignKeyDataValidator,
     ForeignKeyIntegrityValidator,
     NaturalKeyUniquenessValidator,
     NonEmptyResultValidator,
-    ValidationIssue,
 )
 
 __all__ = [
@@ -21,5 +21,5 @@ __all__ = [
     "ForeignKeyIntegrityValidator",
     "NaturalKeyUniquenessValidator",
     "NonEmptyResultValidator",
-    "ValidationIssue",
+    "DataValidationIssue",
 ]

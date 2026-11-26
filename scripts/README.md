@@ -377,7 +377,7 @@ models.
 # Regenerate and write into frontend/src/schemas/
 make generate-schemas
 
-# Fail when a committed schema is out of date (CI, and part of `make lint`)
+# Fail when a committed schema is out of date
 make check-schemas
 ```
 

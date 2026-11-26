@@ -27,7 +27,7 @@ from src.configuration import resolve_directives
 from src.model import ShapeShiftProject
 from src.specifications import CompositeProjectSpecification, SpecificationIssue
 from src.validation_messages import format_validation_message_with_context
-from src.validators.data_validators import ValidationIssue
+from src.validators.data_validators import DataValidationIssue
 
 if TYPE_CHECKING:
     from backend.app.validators.data_validation_orchestrator import DataFetchStrategy, DataValidationOrchestrator
@@ -263,7 +263,7 @@ class ValidationService:
             orchestrator = DataValidationOrchestrator(fetch_strategy=fetch_strategy)
 
         # Orchestrator returns domain issues - convert to API errors
-        issues_list: list[ValidationIssue] = await orchestrator.validate_all_entities(
+        issues_list: list[DataValidationIssue] = await orchestrator.validate_all_entities(
             core_project=core_project,
             project_name=project_name,
             entity_names=entity_names,

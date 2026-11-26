@@ -1,5 +1,5 @@
 ---
-applyTo: "src/model.py,src/specifications/**,backend/app/services/entity*,frontend/src/components/entities/**,tests/model/**"
+applyTo: "src/model.py,backend/app/services/entity*,frontend/src/components/entities/**,tests/model/**"
 ---
 
 # Entity System – AI Coding Instructions
@@ -10,13 +10,14 @@ Every entity uses three distinct identity concepts. Never conflate them.
 
 | Tier | Field | Purpose | Used for FKs? |
 |------|-------|---------|--------------|
-| 1 | `system_id` | Local sequential integer (1, 2, 3…) | **Yes** — all FK values are `system_id` |
+| 1 | `system_id` | Local sequential integer (1, 2, 3…) | **Yes** — all Core FK values are `system_id` |
 | 2 | `keys` | Business keys for deduplication/matching | No |
 | 3 | `public_id` | Target schema column name; holds SEAD IDs after mapping | No (naming only) |
 
 - FK child column name = parent's `public_id` name
 - FK child column values = parent's `system_id` values
 - `public_id` must end with `_id`
+- Exception: a change-request package may carry an existing target ID in a FK column. This applies only when the project declares `foreign_key_value_sources.<target>: public_id`, and only where the change-request ingester writes the package FK. It does not create a Core link or dependency, and it needs a target database lookup.
 - `keys` may reference an identity column (`system_id` or `public_id`) because those columns are produced; this is permitted but not recommended. Prefer business columns for matching and deduplication.
 - `map_to_remote()` decorates `public_id` with remote SEAD IDs — separate from FK linking
 
@@ -40,7 +41,7 @@ Classifiers should use `type: fixed` or `type: sql` — using `type: entity` for
 ## Circular / Deferred Dependencies
 
 - Use `defer_dependency: true` on a FK config to break circular dependency chains.
-- `ProcessState.get_next_entity_to_process()` skips entities with unmet dependencies — deferred FKs are retried via `DeferredLinkingTracker` after the main topological pass.
+- `ProcessState.get_next_entity_to_process()` skips entities with unmet dependencies — deferred FKs are tracked in `DeferredLinkingTracker` and retried after each entity and again after the main loop.
 - `CircularDependencySpecification` detects cycles; `defer_dependency` is the sanctioned workaround, not a spec bypass.
 
 ## `TableConfig` API
@@ -52,10 +53,10 @@ Classifiers should use `type: fixed` or `type: sql` — using `type: entity` for
 
 ## Common Mistakes
 
-- Using external IDs (SEAD IDs) as FK values — FK values must be `system_id`.
+- Using external IDs (SEAD IDs) as Core FK values — Core FK values must be `system_id`. The only exception is the change-request package FK declared with `foreign_key_value_sources.<target>: public_id`.
 - Setting `public_id` to a value not ending in `_id`.
 - Using `type: entity` for a classifier entity.
-- Adding a merged branch without a discriminator column — always call `_process_merged_branch()`.
+- Adding a merged branch without a discriminator column — branch rows must go through `process_merged_branch()` (`src/transforms/branch.py`).
 - Assuming `system_id` is stable across runs — it is local and sequential only.
 - Forgetting to set `defer_dependency: true` on circular FK references; topological sort will deadlock.
 

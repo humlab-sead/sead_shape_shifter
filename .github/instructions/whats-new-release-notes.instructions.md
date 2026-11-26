@@ -2,7 +2,6 @@
 description: "Use when creating or editing versioned What's New notes or the rolling pending snapshot."
 applyTo:
   - "docs/whats-new/v*.md"
-  - "docs/whats-new/????-??-v*.md"
   - "docs/whats-new/TEMPLATE.md"
   - "docs/whats-new/PENDING.md"
 ---
