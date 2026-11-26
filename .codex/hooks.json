@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "graphify hook-check"
+            "command": "g=$(command -v graphify || echo \"$HOME/.local/bin/graphify\"); [ ! -x \"$g\" ] || \"$g\" hook-check"
           }
         ]
       }

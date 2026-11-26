@@ -27,8 +27,9 @@ install-hooks:
 # rebuild the local knowledge graph in graphify-out/ in the background (code only, no LLM).
 # Skipped with a notice when graphify is not installed (see install-graphify).
 # `graphify hook install` also writes a .gitattributes merge driver for graph.json. That only
-# matters when graph.json is committed, and graphify-out/ is git-ignored here, so an untracked
-# .gitattributes holding nothing but that line is removed again.
+# matters when graph.json is committed, and graphify-out/ is git-ignored here. So when
+# .gitattributes is untracked and holds nothing but that line, the file and the merge driver's
+# two Git config entries are removed again.
 .PHONY: install-graphify-hooks
 install-graphify-hooks:
 	@if ! command -v graphify >/dev/null 2>&1; then \
@@ -39,6 +40,8 @@ install-graphify-hooks:
 	if [ -f .gitattributes ] && ! git ls-files --error-unmatch .gitattributes >/dev/null 2>&1 \
 		&& ! grep -qv 'merge=graphify' .gitattributes; then \
 		rm -f .gitattributes; \
+		git config --unset merge.graphify.name || true; \
+		git config --unset merge.graphify.driver || true; \
 	fi
 
 # Re-sync the shared .venv/ from uv.lock without pruning the api/dev extras.
@@ -152,7 +155,12 @@ tidy:
 	@uv run black src tests backend ingesters scripts
 
 .PHONY: lint
-lint: tidy ruff pylint check-target-model-schema-reference sead-schema-check check-claude-rules check-doc-links check-instruction-refs
+lint: tidy ruff pylint check-target-model-schema-reference sead-schema-check check-claude-rules check-doc-links check-instruction-refs check-layer-imports
+
+# Core code in src/ must not import backend.
+.PHONY: check-layer-imports
+check-layer-imports:
+	@python3 scripts/ci/check_layer_imports.py
 
 .PHONY: claude-rules check-claude-rules
 # Generates .claude/rules/ from .github/instructions/ (applyTo becomes paths). Edit the sources, never the generated files.

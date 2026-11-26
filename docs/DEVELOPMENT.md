@@ -177,7 +177,7 @@ make frontend-lint        # ESLint for frontend
 
 - **API models** (`backend/app/models/`): hold raw `${ENV_VARS}` and `@directives` — never resolve them here.
 - **Mappers** (`backend/app/mappers/`): the only place that calls `resolve_config_env_vars()` and converts between API and Core types.
-- **Core** (`src/`): always receives fully resolved values; has no dependency on FastAPI or Pydantic API models.
+- **Core** (`src/`): always receives fully resolved values; has no dependency on FastAPI or Pydantic API models. `make check-layer-imports` checks that `src/` does not import `backend`.
 
 See [DESIGN.md](DESIGN.md) for the full layer boundary and identity system design.
 
