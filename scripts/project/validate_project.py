@@ -37,7 +37,7 @@ from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.specifications import CompositeProjectSpecification
 from src.utility import Registry, setup_logging
-from src.validators.data_validators import ValidationIssue
+from src.validators.data_validators import DataValidationIssue
 
 
 @dataclass
@@ -113,7 +113,7 @@ class DataValidationExecutor(WorkflowExecutor):
         asyncio.run(normalizer.normalize())
 
         orchestrator = DataValidationOrchestrator(fetch_strategy=TableStoreDataFetchStrategy(normalizer.table_store, normalizer=normalizer))
-        issues: list[ValidationIssue] = asyncio.run(
+        issues: list[DataValidationIssue] = asyncio.run(
             orchestrator.validate_all_entities(
                 core_project=project,
                 project_name=project.metadata.name or Path(project.filename).stem,
@@ -132,8 +132,8 @@ class ConformanceValidationExecutor(WorkflowExecutor):
     def _execute(self, project: ShapeShiftProject, ignores: set[str]) -> WorkflowResult:
         """Run target-model conformance validation if the project defines a target model."""
 
-        def map_validation_issue(error: ValidationError) -> ValidationIssue:
-            return ValidationIssue(
+        def map_validation_issue(error: ValidationError) -> DataValidationIssue:
+            return DataValidationIssue(
                 severity=error.severity,
                 message=error.message,
                 entity=error.entity,

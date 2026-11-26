@@ -8,12 +8,12 @@ from src.validators.data_validators import (
     BusinessKeyProducedValidator,
     ColumnExistsValidator,
     DataTypeCompatibilityValidator,
+    DataValidationIssue,
     DuplicateKeysValidator,
     ForeignKeyDataValidator,
     ForeignKeyIntegrityValidator,
     NaturalKeyUniquenessValidator,
     NonEmptyResultValidator,
-    ValidationIssue,
     compare_foreign_key_values,
     to_key_scalar,
 )
@@ -624,12 +624,12 @@ class TestDataTypeCompatibilityValidator:
         assert not issues
 
 
-class TestValidationIssue:
-    """Tests for ValidationIssue dataclass."""
+class TestDataValidationIssue:
+    """Tests for DataValidationIssue dataclass."""
 
     def test_creates_issue_with_defaults(self):
-        """Test creating ValidationIssue with default values."""
-        issue = ValidationIssue(
+        """Test creating DataValidationIssue with default values."""
+        issue = DataValidationIssue(
             severity="error",
             entity="test",
             field="col",
@@ -648,8 +648,8 @@ class TestValidationIssue:
         assert issue.auto_fixable is False
 
     def test_creates_issue_with_all_fields(self):
-        """Test creating ValidationIssue with all fields specified."""
-        issue = ValidationIssue(
+        """Test creating DataValidationIssue with all fields specified."""
+        issue = DataValidationIssue(
             severity="warning",
             entity="entity1",
             field="field1",
@@ -668,8 +668,8 @@ class TestValidationIssue:
         assert issue.auto_fixable is True
 
     def test_exposes_core_issue_compatibility_aliases(self):
-        """Test that ValidationIssue also exposes the shared CoreIssue aliases."""
-        issue = ValidationIssue(severity="error", entity="entity1", field="field1", message="Custom message", code="CUSTOM_CODE")
+        """Test that DataValidationIssue also exposes the shared CoreIssue aliases."""
+        issue = DataValidationIssue(severity="error", entity="entity1", field="field1", message="Custom message", code="CUSTOM_CODE")
 
         assert issue.entity_name == "entity1"
         assert issue.entity_field == "field1"
@@ -677,6 +677,6 @@ class TestValidationIssue:
         assert not issue.kwargs
 
     def test_requires_non_empty_code(self):
-        """Test that ValidationIssue enforces the code invariant in __post_init__."""
+        """Test that DataValidationIssue enforces the code invariant in __post_init__."""
         with pytest.raises(ValueError, match="requires a non-empty code"):
-            ValidationIssue(severity="error", entity="entity1", field="field1", message="Custom message", code=None)
+            DataValidationIssue(severity="error", entity="entity1", field="field1", message="Custom message", code=None)

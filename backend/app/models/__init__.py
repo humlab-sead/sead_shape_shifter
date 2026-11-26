@@ -97,10 +97,10 @@ from backend.app.models.test_run import (
     EntityTestResult,
     OutputFormat,
     TestProgress,
+    TestRunIssue,
     TestRunOptions,
     TestRunResult,
     TestRunStatus,
-    ValidationIssue,
 )
 from backend.app.models.validation import (
     ValidationCategory,

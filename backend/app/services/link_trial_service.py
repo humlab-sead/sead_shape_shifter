@@ -30,7 +30,7 @@ from backend.app.services.link_experiment_context_store import (
     retained_input_bytes,
 )
 from src.model import ForeignKeyConfig, ShapeShiftProject
-from src.specifications.constraints import ForeignKeyConstraintViolation, ForeignKeyRuntimeOptions, ValidationIssue
+from src.specifications.constraints import ConstraintIssue, ForeignKeyConstraintViolation, ForeignKeyRuntimeOptions
 from src.table_store import TableStore
 from src.transforms.link import ForeignKeyLinker, LinkPass
 from src.transforms.utility import merge_with_nonmatching_null_keys
@@ -65,7 +65,7 @@ class LinkTrialResult:
     unmatched_a_rows: int | None = None
     multiply_matched_a_rows: int | None = None
     a_rows: tuple[ARowTrialDiagnostic, ...] | None = None
-    issues: tuple[ValidationIssue, ...] = ()
+    issues: tuple[ConstraintIssue, ...] = ()
     exception_groups: TrialExceptionGroups | None = None
     settings: TrialSettingsReport | None = None
 
@@ -221,7 +221,7 @@ class LinkTrialService:
             )
 
         output_rows: int = len(linked_rows)
-        issues: tuple[ValidationIssue, ...] = tuple(linker.validators[-1].issues)
+        issues: tuple[ConstraintIssue, ...] = tuple(linker.validators[-1].issues)
         del linked_rows
 
         ensure_projected_budget(diagnostic_projection, limit_bytes, stage="link trial diagnostic join")

@@ -151,7 +151,7 @@ def compare_foreign_key_values(local_df: pd.DataFrame, remote_df: pd.DataFrame, 
 
 
 @dataclass(slots=True, kw_only=True)
-class ValidationIssue(CoreIssue):
+class DataValidationIssue(CoreIssue):
     """Data-oriented issue returned by pure validation functions.
 
     Attributes:
@@ -168,7 +168,7 @@ class ValidationIssue(CoreIssue):
     def __post_init__(self) -> None:
         """Ensure data validation issues always carry a machine-readable code."""
         if self.code is None:
-            raise ValueError("ValidationIssue requires a non-empty code")
+            raise ValueError("DataValidationIssue requires a non-empty code")
 
     def to_csv(self) -> str:
         """Return a CSV representation of the issue."""
@@ -182,7 +182,7 @@ class ColumnExistsValidator:
     @staticmethod
     def validate(
         df: pd.DataFrame, configured_columns: list[str], entity_name: str, entity_config: dict[str, Any] | None = None
-    ) -> list[ValidationIssue]:
+    ) -> list[DataValidationIssue]:
         """
         Check that all configured columns exist in DataFrame.
 
@@ -237,7 +237,7 @@ class ColumnExistsValidator:
         missing_columns = configured_set - actual_columns
 
         return [
-            ValidationIssue(
+            DataValidationIssue(
                 severity="error",
                 entity=entity_name,
                 field="columns",
@@ -264,7 +264,7 @@ class BusinessKeyProducedValidator:
     """
 
     @staticmethod
-    def validate(df: pd.DataFrame, key_columns: list[str], entity_name: str) -> list[ValidationIssue]:
+    def validate(df: pd.DataFrame, key_columns: list[str], entity_name: str) -> list[DataValidationIssue]:
         """Return one issue for each business key missing from the DataFrame.
 
         Args:
@@ -284,7 +284,7 @@ class BusinessKeyProducedValidator:
         return BusinessKeyProducedValidator.issues_for_missing_keys(entity_name, missing_keys)
 
     @staticmethod
-    def issues_for_missing_keys(entity_name: str, missing_keys: list[str]) -> list[ValidationIssue]:
+    def issues_for_missing_keys(entity_name: str, missing_keys: list[str]) -> list[DataValidationIssue]:
         """Return one key-not-produced issue per missing key.
 
         Args:
@@ -295,7 +295,7 @@ class BusinessKeyProducedValidator:
             One issue per key in ``missing_keys``.
         """
         return [
-            ValidationIssue(
+            DataValidationIssue(
                 severity="error",
                 entity=entity_name,
                 field="keys",
@@ -319,7 +319,7 @@ class NaturalKeyUniquenessValidator:
     """Validate that natural keys are unique in DataFrame."""
 
     @staticmethod
-    def validate(df: pd.DataFrame, key_columns: list[str], entity_name: str) -> list[ValidationIssue]:
+    def validate(df: pd.DataFrame, key_columns: list[str], entity_name: str) -> list[DataValidationIssue]:
         """
         Check that natural keys are unique.
 
@@ -354,7 +354,7 @@ class NaturalKeyUniquenessValidator:
         sample_str = ", ".join([str(tuple(row)) for _, row in sample_duplicates.iterrows()])
 
         return [
-            ValidationIssue(
+            DataValidationIssue(
                 severity="error",
                 entity=entity_name,
                 field="keys",
@@ -372,7 +372,7 @@ class NonEmptyResultValidator:
     """Validate that DataFrame contains data."""
 
     @staticmethod
-    def validate(df: pd.DataFrame, entity_name: str) -> list[ValidationIssue]:
+    def validate(df: pd.DataFrame, entity_name: str) -> list[DataValidationIssue]:
         """
         Check that DataFrame is not empty.
 
@@ -387,7 +387,7 @@ class NonEmptyResultValidator:
             return []
 
         return [
-            ValidationIssue(
+            DataValidationIssue(
                 severity="warning",
                 entity=entity_name,
                 field=None,
@@ -405,12 +405,12 @@ class UnresolvedExtraColumnsValidator:
     """Validate unresolved extra_columns left after full normalization."""
 
     @staticmethod
-    def validate(unresolved_extra_columns: dict[str, dict[str, Any]], entity_name: str) -> list[ValidationIssue]:
+    def validate(unresolved_extra_columns: dict[str, dict[str, Any]], entity_name: str) -> list[DataValidationIssue]:
         """Convert unresolved extra_columns metadata into structured validation issues."""
         if not unresolved_extra_columns:
             return []
 
-        issues: list[ValidationIssue] = []
+        issues: list[DataValidationIssue] = []
 
         for column_name, details in sorted(unresolved_extra_columns.items()):
             expression = details.get("expression")
@@ -435,7 +435,7 @@ class UnresolvedExtraColumnsValidator:
             )
 
             issues.append(
-                ValidationIssue(
+                DataValidationIssue(
                     severity="error",
                     entity=entity_name,
                     field=field_name,
@@ -455,7 +455,7 @@ class DuplicateKeysValidator:
     """Validate that configured keys don't have duplicates."""
 
     @staticmethod
-    def validate(df: pd.DataFrame, key_columns: list[str], entity_name: str) -> list[ValidationIssue]:
+    def validate(df: pd.DataFrame, key_columns: list[str], entity_name: str) -> list[DataValidationIssue]:
         """
         Alias for NaturalKeyUniquenessValidator for backward compatibility.
 
@@ -474,7 +474,7 @@ class ForeignKeyDataValidator:
     """Validate foreign key column existence."""
 
     @staticmethod
-    def validate(df: pd.DataFrame, fk_config: dict[str, Any], entity_name: str) -> list[ValidationIssue]:
+    def validate(df: pd.DataFrame, fk_config: dict[str, Any], entity_name: str) -> list[DataValidationIssue]:
         """
         Check that foreign key columns exist in DataFrame.
 
@@ -497,7 +497,7 @@ class ForeignKeyDataValidator:
 
         if missing_local:
             issues.append(
-                ValidationIssue(
+                DataValidationIssue(
                     severity="error",
                     entity=entity_name,
                     field="foreign_keys[].local_keys",
@@ -518,7 +518,7 @@ class ForeignKeyIntegrityValidator:
     """Validate referential integrity of foreign keys."""
 
     @staticmethod
-    def validate(local_df: pd.DataFrame, remote_df: pd.DataFrame, fk_config: dict[str, Any], entity_name: str) -> list[ValidationIssue]:
+    def validate(local_df: pd.DataFrame, remote_df: pd.DataFrame, fk_config: dict[str, Any], entity_name: str) -> list[DataValidationIssue]:
         """
         Check that all local FK values exist in remote entity.
 
@@ -567,7 +567,7 @@ class ForeignKeyIntegrityValidator:
                 field = "foreign_keys[].remote_keys"
 
             return [
-                ValidationIssue(
+                DataValidationIssue(
                     severity="warning",
                     entity=entity_name,
                     field=field,
@@ -592,7 +592,7 @@ class ForeignKeyIntegrityValidator:
         # suggestion would only repeat that text. The expanded warning offers the
         # link inspection action for the local rows that carry these values.
         return [
-            ValidationIssue(
+            DataValidationIssue(
                 severity="warning",
                 entity=entity_name,
                 field="foreign_keys[].entity",
@@ -610,7 +610,7 @@ class DataTypeCompatibilityValidator:
     """Validate data type compatibility between foreign keys."""
 
     @staticmethod
-    def validate(local_df: pd.DataFrame, remote_df: pd.DataFrame, fk_config: dict[str, Any], entity_name: str) -> list[ValidationIssue]:
+    def validate(local_df: pd.DataFrame, remote_df: pd.DataFrame, fk_config: dict[str, Any], entity_name: str) -> list[DataValidationIssue]:
         """
         Check that local and remote FK columns have compatible data types.
 
@@ -623,7 +623,7 @@ class DataTypeCompatibilityValidator:
         Returns:
             List of validation issues for type mismatches
         """
-        issues: list[ValidationIssue] = []
+        issues: list[DataValidationIssue] = []
 
         local_keys: list[str] = fk_config.get("local_keys", [])
         remote_keys: list[str] = fk_config.get("remote_keys", [])
@@ -644,7 +644,7 @@ class DataTypeCompatibilityValidator:
             # and skip the type comparison — the data error is more actionable.
             if not local_df.empty and local_df[local_col].isna().all():
                 issues.append(
-                    ValidationIssue(  # type: ignore
+                    DataValidationIssue(  # type: ignore
                         severity="warning",
                         entity=entity_name,
                         field="foreign_keys[].local_keys",
@@ -668,7 +668,7 @@ class DataTypeCompatibilityValidator:
 
             if local_numeric != remote_numeric:
                 issues.append(
-                    ValidationIssue(
+                    DataValidationIssue(
                         severity="warning",
                         entity=entity_name,
                         field="foreign_keys[].local_keys",

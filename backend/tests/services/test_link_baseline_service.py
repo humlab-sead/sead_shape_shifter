@@ -16,7 +16,7 @@ from backend.app.services.link_baseline_service import LinkBaselineResult, LinkB
 from src.loaders.duckdb_loader.duckdb_workspace import DuckDbWorkspace
 from src.model import ForeignKeyConfig, ShapeShiftProject
 from src.normalizer import LoaderInstanceSet, ShapeShifter
-from src.specifications.constraints import ValidationIssue
+from src.specifications.constraints import ConstraintIssue
 from src.table_store import TableStore
 from src.transforms.link import ForeignKeyLinker
 from src.transforms.link_resolution import LinkIssueResolution, resolve_row_count_issue
@@ -32,7 +32,7 @@ class ProductionLink:
     link_pass: str
     local_rows: pd.DataFrame
     remote_rows: pd.DataFrame
-    issues: list[ValidationIssue] = field(default_factory=list)
+    issues: list[ConstraintIssue] = field(default_factory=list)
 
 
 class StubProjectService:
@@ -128,12 +128,12 @@ def assert_same_rows(left: pd.DataFrame, right: pd.DataFrame) -> None:
     )
 
 
-def issue_tuples(issues: tuple[ValidationIssue, ...] | list[ValidationIssue]) -> list[tuple[str, str, str, dict[str, Any]]]:
+def issue_tuples(issues: tuple[ConstraintIssue, ...] | list[ConstraintIssue]) -> list[tuple[str, str, str, dict[str, Any]]]:
     """Return comparable tuples for validation issues."""
     return [(issue.issue_type, issue.severity, issue.message, issue.metadata) for issue in issues]
 
 
-def row_findings(issues: tuple[ValidationIssue, ...] | list[ValidationIssue]) -> list[tuple[str, str, str, dict[str, Any]]]:
+def row_findings(issues: tuple[ConstraintIssue, ...] | list[ConstraintIssue]) -> list[tuple[str, str, str, dict[str, Any]]]:
     """Return comparable findings that do not report the width of the linked frames.
 
     The replay adds identity columns after the linking stage, so a
@@ -143,7 +143,7 @@ def row_findings(issues: tuple[ValidationIssue, ...] | list[ValidationIssue]) ->
     return [finding for finding in issue_tuples(issues) if finding[0] != "column_count_mismatch"]
 
 
-def column_increases(issues: tuple[ValidationIssue, ...] | list[ValidationIssue]) -> list[tuple[int, list[str]]]:
+def column_increases(issues: tuple[ConstraintIssue, ...] | list[ConstraintIssue]) -> list[tuple[int, list[str]]]:
     """Return the expected column increase of each column-count finding."""
     return [
         (issue.metadata["expected_increase"], issue.metadata["added_columns"])

@@ -28,7 +28,7 @@ from scripts._shared.paths import REPO_ROOT
 if TYPE_CHECKING:
     from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
     from src.model import ShapeShiftProject
-    from src.validators.data_validators import ValidationIssue
+    from src.validators.data_validators import DataValidationIssue
 
 
 CONFIG_FILE: Path = REPO_ROOT / "tests/test_data/projects/arbodat/shapeshifter.yml"
@@ -59,7 +59,7 @@ def setup() -> ShapeShiftProject:
     return ShapeShiftProject.from_file(str(CONFIG_FILE))
 
 
-async def run_validation(project: ShapeShiftProject) -> tuple[DataValidationOrchestrator, list[ValidationIssue]]:
+async def run_validation(project: ShapeShiftProject) -> tuple[DataValidationOrchestrator, list[DataValidationIssue]]:
     """Normalize the Arbodat project and validate its data."""
     from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator, TableStoreDataFetchStrategy
     from src.normalizer import ShapeShifter
@@ -72,7 +72,7 @@ async def run_validation(project: ShapeShiftProject) -> tuple[DataValidationOrch
     return orchestrator, issues
 
 
-def print_validation_summary(orchestrator: DataValidationOrchestrator, issues: list[ValidationIssue]) -> None:
+def print_validation_summary(orchestrator: DataValidationOrchestrator, issues: list[DataValidationIssue]) -> None:
     """Print validation status and issue counts without listing issue contents."""
     status = orchestrator.status.value
     issue_counts = Counter(issue.severity for issue in issues)

@@ -27,7 +27,7 @@ class ForeignKeyNullConstraintViolation(ForeignKeyConstraintViolation):
 
 
 @dataclass
-class ValidationIssue:
+class ConstraintIssue:
     """Represents a validation issue found during constraint checking."""
 
     issue_type: str  # e.g., 'row_count_mismatch', 'column_count_mismatch'
@@ -360,7 +360,7 @@ class ForeignKeyConstraintValidator:
         self.merge_indicator_col: str | None = None
         self.size_before_merge: tuple[int, int] = (0, 0)
         self.size_after_merge: tuple[int, int] = (0, 0)
-        self.issues: list[ValidationIssue] = []
+        self.issues: list[ConstraintIssue] = []
         self.raise_on_violation: bool = raise_on_violation
         self.link_pass: str = "initial"
 
@@ -439,7 +439,7 @@ class ForeignKeyConstraintValidator:
                 )
                 logger.warning(message)
                 self.issues.append(
-                    ValidationIssue(
+                    ConstraintIssue(
                         issue_type="row_count_mismatch",
                         severity="warning",
                         local_entity=self.fk.local_entity,
@@ -486,7 +486,7 @@ class ForeignKeyConstraintValidator:
             )
             logger.warning(message)
             self.issues.append(
-                ValidationIssue(
+                ConstraintIssue(
                     issue_type="column_count_mismatch",
                     severity="warning",
                     local_entity=self.fk.local_entity,

@@ -31,7 +31,7 @@ from backend.app.services.project_service import ProjectService
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 from src.specifications import ForeignKeyDataSpecification
-from src.specifications.constraints import ForeignKeyConstraintViolation, ValidationIssue
+from src.specifications.constraints import ConstraintIssue, ForeignKeyConstraintViolation
 from src.table_store import TableStore
 from src.transforms.filter import normalize_filter_stage
 from src.transforms.link import ForeignKeyLinker, LinkPass
@@ -81,7 +81,7 @@ class LinkBaselineResult:
     link_pass: str | None = None
     row_count_before: int | None = None
     row_count_after: int | None = None
-    issues: tuple[ValidationIssue, ...] = ()
+    issues: tuple[ConstraintIssue, ...] = ()
     local_rows: pd.DataFrame | None = field(default=None, repr=False, compare=False)
     remote_rows: pd.DataFrame | None = field(default=None, repr=False, compare=False)
     _saved_project: ShapeShiftProject | None = field(default=None, repr=False, compare=False)
@@ -413,11 +413,11 @@ class LinkBaselineService:
         if not linker.validators:
             raise _BaselineStop("link_failed", "The linker did not validate the selected link")
 
-        issues: tuple[ValidationIssue, ...] = tuple(linker.validators[-1].issues)
+        issues: tuple[ConstraintIssue, ...] = tuple(linker.validators[-1].issues)
         observed_before: int = linker.validators[-1].size_before_merge[0]
         observed_after: int = linker.validators[-1].size_after_merge[0]
 
-        selected: list[ValidationIssue] = [
+        selected: list[ConstraintIssue] = [
             issue
             for issue in issues
             if issue.issue_type == "row_count_mismatch"
@@ -442,7 +442,7 @@ class LinkBaselineService:
                 _foreign_key=fk,
             )
 
-        warning: ValidationIssue = selected[0]
+        warning: ConstraintIssue = selected[0]
         observed_warning: tuple[Any, Any, Any] = (
             warning.metadata.get("row_count_before"),
             warning.metadata.get("row_count_after"),
@@ -520,7 +520,7 @@ class LinkBaselineService:
         link_pass: str | None = None,
         row_count_before: int | None = None,
         row_count_after: int | None = None,
-        issues: tuple[ValidationIssue, ...] = (),
+        issues: tuple[ConstraintIssue, ...] = (),
         local_rows: pd.DataFrame | None = None,
         remote_rows: pd.DataFrame | None = None,
         _saved_project: ShapeShiftProject | None = None,

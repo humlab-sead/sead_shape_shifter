@@ -14,7 +14,7 @@ from click.testing import CliRunner
 from backend.app.models.validation import ValidationError
 from src.issues import CoreIssue
 from src.model import ShapeShiftProject
-from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
+from src.specifications.constraints import ConstraintIssue
 from src.table_store import TableStore
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "project" / "validate_project.py"
@@ -146,7 +146,7 @@ class TestDataValidationExecutor:
                 },
             }
         )
-        linker_issue = LinkerValidationIssue(
+        linker_issue = ConstraintIssue(
             issue_type="row_count_mismatch",
             severity="warning",
             local_entity="orders",

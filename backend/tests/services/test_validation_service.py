@@ -18,7 +18,7 @@ from backend.app.models.validation import (
 from backend.app.services import validation_service as validation_service_module
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from src.model import ShapeShiftProject
-from src.validators.data_validators import ValidationIssue
+from src.validators.data_validators import DataValidationIssue
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -541,11 +541,15 @@ class TestDataValidation:
                 captured["validators"] = validators
                 # Return domain ValidationIssues (not API models)
                 return [
-                    ValidationIssue(severity="error", entity="a", field=None, message="err", code="E1", category="data", priority="high"),
-                    ValidationIssue(
+                    DataValidationIssue(
+                        severity="error", entity="a", field=None, message="err", code="E1", category="data", priority="high"
+                    ),
+                    DataValidationIssue(
                         severity="warning", entity="b", field=None, message="warn", code="W1", category="data", priority="medium"
                     ),
-                    ValidationIssue(severity="info", entity="c", field=None, message="info", code="I1", category="data", priority="low"),
+                    DataValidationIssue(
+                        severity="info", entity="c", field=None, message="info", code="I1", category="data", priority="low"
+                    ),
                 ]
 
         # Create factory that returns our mock orchestrator
