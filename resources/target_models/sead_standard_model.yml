@@ -1,7 +1,7 @@
 model:
   name: SEAD Clearinghouse Extended
   format_version: "1"
-  version: 2.9.0
+  version: 2.10.0
   description: SEAD archaeological research data model with enhanced spatial, dating, and metadata coverage
 
 entities:
@@ -3482,6 +3482,30 @@ entities:
       - entity: dating_uncertainty
         required: false
 
+  dendro_lookup:
+    role: classifier
+    required: false
+    description: Controlled vocabulary of dendrochronological variables.
+    domains: [dating]
+    target_table: tbl_dendro_lookup
+    public_id: dendro_lookup_id
+    unique_sets:
+      - [name]
+    columns:
+      method_id:
+        type: integer
+        nullable: true
+      name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    foreign_keys:
+      - entity: method
+        required: false
+
   dendro_date:
     role: fact
     required: false
@@ -3523,6 +3547,9 @@ entities:
     foreign_keys:
       - entity: analysis_entity
         required: true
+      - entity: dendro_lookup
+        required_when:
+          has_new_rows: dendro_date
       - entity: age_type
         required_when:
           has_new_rows: dendro_date
