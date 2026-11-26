@@ -12,7 +12,11 @@ from loguru import logger
 
 from src.configuration import find_unresolved_directives, is_yaml_file, load_resolved_yaml, resolve_directives
 from src.sidecars import LayoutOptions, TaskList
-from src.types.fixed_entity_types import FixedEntityTypeConvention, normalize_fixed_entity_type_conventions
+from src.types.fixed_entity_types import (
+    FixedEntityTypeConvention,
+    include_stored_fixed_identity_columns,
+    normalize_fixed_entity_type_conventions,
+)
 from src.utility import dotget, unique
 
 
@@ -327,6 +331,7 @@ class TableConfig:
         entity_name: str,
         project_options: dict[str, Any] | None = None,
         inherited_extra_columns: frozenset[str] = frozenset(),
+        is_append_item: bool = False,
     ) -> None:
 
         self.entities_cfg: dict[str, dict[str, Any]] = entities_cfg
@@ -334,6 +339,7 @@ class TableConfig:
         self.entity_cfg: dict[str, Any] = entities_cfg[entity_name]
         self._project_options: dict[str, Any] = project_options or {}
         self.inherited_extra_columns: frozenset[str] = inherited_extra_columns
+        self.is_append_item: bool = is_append_item
 
         assert self.entity_cfg, f"No configuration found for entity '{entity_name}'"
 
@@ -422,7 +428,16 @@ class TableConfig:
 
     @property
     def columns(self) -> list[str]:
-        return unique(self.entity_cfg.get("columns"))
+        """Return the configured columns.
+
+        For a fixed entity, identity columns that its stored rows hold are included even when not configured.
+        Entities with `append`, and append items, return only the configured columns, because their appended rows
+        may not hold identity values.
+        """
+        columns: list[str] = unique(self.entity_cfg.get("columns"))
+        if self.type != "fixed" or self.is_append_item or self.has_append or not isinstance(self.entity_cfg.get("columns"), list):
+            return columns
+        return include_stored_fixed_identity_columns(columns, self.public_id, self.values)
 
     @property
     def column_types(self) -> dict[str, str]:
@@ -1087,6 +1102,7 @@ class TableConfig:
                     entities_cfg=self.entities_cfg,
                     entity_name=append_entity_name,
                     inherited_extra_columns=inherited_extra_columns,
+                    is_append_item=True,
                 )
                 del self.entities_cfg[append_entity_name]
 

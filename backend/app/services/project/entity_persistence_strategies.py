@@ -78,8 +78,12 @@ class FixedEntityPersistenceStrategy:
         if not isinstance(values, list) or not values:
             return
 
+        public_id = entity_data.get("public_id") if isinstance(entity_data.get("public_id"), str) else None
+        # A saved fixed entity does not list its identity columns, but `column_types` may name them.
+        typed_columns = columns if entity_data.get("append") or not columns else build_fixed_full_columns(columns, public_id)
+
         try:
-            column_types = normalize_fixed_entity_column_types(entity_name, columns, entity_data.get("column_types"))
+            column_types = normalize_fixed_entity_column_types(entity_name, typed_columns, entity_data.get("column_types"))
         except FixedEntityColumnTypeDeclarationError as exc:
             raise SchemaValidationError(message=str(exc), entity=entity_name, field="column_types") from exc
 
@@ -88,7 +92,6 @@ class FixedEntityPersistenceStrategy:
         except FixedEntityTypeConventionDeclarationError as exc:
             raise SchemaValidationError(message=str(exc), entity=entity_name, field="options.fixed_entity_types") from exc
 
-        public_id = entity_data.get("public_id") if isinstance(entity_data.get("public_id"), str) else None
         full_columns = build_fixed_full_columns(columns, public_id)
 
         for row_idx, row in enumerate(values):
