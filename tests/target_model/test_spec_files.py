@@ -108,7 +108,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
     assert target_model.model.format_version == "1"
-    assert len(target_model.entities) == 137
+    assert len(target_model.entities) == 138
     assert site_type_relationship.via == "site_site_type"
     assert site_type_relationship.required is False
     assert "site_type_id" not in site.columns

@@ -107,7 +107,7 @@ The command declares foreign keys for a created entity under the rules in Foreig
 
 **Check.** Matching only a public ID is not enough, and no option overrides the rule. The check covers direct target model foreign keys and any other column named after another entity's public ID, including to and from sheets outside the model. For every unmatched value, without truncation, the error report gives the sheet, column, referenced sheet, Excel row numbers, and whether the value matches a public ID there.
 
-**Declarations.** Only direct target model foreign keys whose column is in the entity, including added columns, are declared. A link is also used when the referenced entity was created by the command and the referring entity was created too. Self-references, `via` relationships and other ID columns keep their values without a declaration. An ID column that neither rule covers, such as `dendro_lookup_id`, is not checked.
+**Declarations.** Only direct target model foreign keys whose column is in the entity, including added columns, are declared. A link is also used when the referenced entity was created by the command and the referring entity was created too. Self-references, `via` relationships and other ID columns keep their values without a declaration. An ID column that neither rule covers, such as `tbl_sample_dimensions.symbol_id`, is not checked.
 
 No `public_id` value source is declared for `submission`, `data_provider` or `submission_state`. The change request ingester creates these tables and sets `submission_id` on new datasets to a local ID. From the code, a `public_id` declaration would make it treat that ID as a SEAD ID.
 
