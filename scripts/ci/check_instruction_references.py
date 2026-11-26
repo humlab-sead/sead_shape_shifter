@@ -159,20 +159,28 @@ def backticked_paths(line: str) -> Iterator[str]:
                 yield token
 
 
+def from_folder(base: str, path: str) -> str:
+    """Returns `path`, read from the folder `base`, as a path from the repository root.
+
+    Keeps a trailing `/`, because Git needs it to match a folder-only ignore rule when the folder does not exist.
+    """
+    joined: str = posixpath.normpath(posixpath.join(base, path))
+    return f"{joined}/" if path.endswith("/") else joined
+
+
 def check_file(repository: Repository, name: str) -> Iterator[BrokenReference]:
     """Yields the broken links and paths in one instruction file."""
     base: str = posixpath.dirname(name)
     for number, line in lines_outside_fences((repository.root / name).read_text(encoding="utf-8")):
         for target in link_targets(line):
-            resolved: str = posixpath.normpath(posixpath.join(base, target))
-            if not repository.contains(target, base) and not repository.is_ignored(resolved):
+            if not repository.contains(target, base) and not repository.is_ignored(from_folder(base, target)):
                 yield BrokenReference(name, number, target)
         for path in backticked_paths(line):
             if "/" not in path:
                 found: bool = path in repository.file_names
             else:
                 found = repository.contains(path, "") or repository.contains(path, base) or repository.ends_with(path)
-            if not found and not repository.is_ignored(path):
+            if not found and not any(repository.is_ignored(candidate) for candidate in (path, from_folder(base, path))):
                 yield BrokenReference(name, number, path)
 
 

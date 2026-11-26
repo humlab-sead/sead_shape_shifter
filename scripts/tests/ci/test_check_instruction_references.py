@@ -100,6 +100,35 @@ def test_ignores_paths_that_git_ignores(tmp_path: Path) -> None:
     assert not broken(root)
 
 
+@pytest.mark.parametrize(
+    "ignore_files",
+    [{".gitignore": "backend/generated/\n"}, {"backend/.gitignore": "/generated/\n"}],
+    ids=["root-rule", "nested-rule"],
+)
+@pytest.mark.parametrize("reference", ["generated/output.py", "generated/"])
+def test_ignores_paths_that_git_ignores_relative_to_the_instruction_file(
+    tmp_path: Path, ignore_files: dict[str, str], reference: str
+) -> None:
+    root = make_repo(tmp_path, {**ignore_files, "backend/AGENTS.md": f"See `{reference}`."})
+
+    assert not broken(root)
+
+
+@pytest.mark.parametrize("target", ["generated/output.md", "generated/"])
+def test_ignores_markdown_links_to_paths_that_git_ignores(tmp_path: Path, target: str) -> None:
+    """The ignore rule matches folders only, and the folder does not exist."""
+    root = make_repo(tmp_path, {".gitignore": "generated/\n", "backend/AGENTS.md": f"[output]({target})"})
+
+    assert not broken(root)
+
+
+def test_reports_missing_path_when_the_ignore_rule_covers_another_folder(tmp_path: Path) -> None:
+    """A rule for `backend/generated/` does not excuse the same text in a file elsewhere."""
+    root = make_repo(tmp_path, {".gitignore": "backend/generated/\n", "src/AGENTS.md": "See `generated/output.py`."})
+
+    assert broken(root) == [("src/AGENTS.md", 1, "generated/output.py")]
+
+
 def test_reports_a_tracked_file_that_was_deleted_from_disk(tmp_path: Path) -> None:
     root = make_repo(tmp_path, {"AGENTS.md": "See `docs/a.md`.", "docs/a.md": "x"})
     subprocess.run(["git", "-C", str(root), "add", "."], check=True)
