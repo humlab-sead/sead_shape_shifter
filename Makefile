@@ -152,7 +152,7 @@ tidy:
 	@uv run black src tests backend ingesters scripts
 
 .PHONY: lint
-lint: tidy ruff pylint check-target-model-schema-reference sead-schema-check check-claude-rules check-doc-links
+lint: tidy ruff pylint check-target-model-schema-reference sead-schema-check check-claude-rules check-doc-links check-instruction-refs
 
 .PHONY: claude-rules check-claude-rules
 # Generates .claude/rules/ from .github/instructions/ (applyTo becomes paths). Edit the sources, never the generated files.
@@ -165,6 +165,11 @@ check-claude-rules:
 .PHONY: check-doc-links
 check-doc-links:
 	@scripts/ci/check_doc_links.sh
+
+# Links and backticked paths in the AI instruction files must point at files that exist.
+.PHONY: check-instruction-refs
+check-instruction-refs:
+	@python3 scripts/ci/check_instruction_references.py
 
 .PHONY: check-doc-links-lychee
 check-doc-links-lychee:
@@ -448,11 +453,13 @@ semantic-graphify:
 	graphify export wiki; \
 	echo "✓ Semantic graph and wiki rebuilt in graphify-out/"
 
+# Do not add `graphify vscode install` or `graphify codex install` here. They overwrite the
+# graphify section in AGENTS.md, or add one to .github/copilot-instructions.md, with graphify's
+# standard text. The Codex hook file, .codex/hooks.json, is already committed.
+.PHONY: install-graphify
 install-graphify:
 	@uv tool install "graphifyy[all]" --force
 	@$(MAKE) --no-print-directory install-graphify-hooks
-	@graphify vscode install
-	@graphify codex install
 	@echo "✓ Graphify installed and git hooks set up"
 
 ################################################################################

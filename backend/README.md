@@ -408,7 +408,7 @@ ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 
 ## Contributing
 
-1. Follow existing code patterns (see `.github/copilot-instructions.md`)
+1. Follow existing code patterns (see `AGENTS.md`)
 2. Use conventional commits (`feat:`, `fix:`, `docs:`, etc.)
 3. Add tests for new features
 4. Run `make lint` before committing
@@ -419,7 +419,7 @@ ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 - [Main Project README](../README.md) - Overall project documentation
 - [Configuration Guide](../docs/CONFIGURATION_GUIDE.md) - YAML configuration reference
 - [Development Guide](../docs/DEVELOPMENT.md) - Development setup and workflows
-- [Copilot Instructions](../.github/copilot-instructions.md) - AI coding agent guidelines
+- [Agent Guide](../AGENTS.md) - AI coding agent guidelines
 
 ## License
 

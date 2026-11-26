@@ -2,18 +2,7 @@
 
 **Usage**: Token-optimized CLI proxy for shell commands.
 
-## Rule
-
-Always prefix shell commands with `rtk`.
-
-Examples:
-
-```bash
-rtk git status
-rtk cargo test
-rtk npm run build
-rtk pytest -q
-```
+The rule for when to use `rtk`, with examples, is in the "rtk" section of `AGENTS.md`. This file lists extra commands.
 
 ## Meta Commands
 

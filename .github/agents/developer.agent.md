@@ -19,4 +19,3 @@ Follow the repository's applicable instructions and relevant `AGENTS.md` files.
 Handle straightforward development work directly. Delegate focused frontend work to the Frontend Developer agent and focused backend work to the Backend Developer agent when specialization is useful. For cross-layer tasks, coordinate the work across both areas and integrate the result.
 
 Keep changes focused, respect existing architecture, and verify changes with the smallest relevant test or command before claiming completion.
-```

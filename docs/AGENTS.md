@@ -1,8 +1,8 @@
 # `docs/` — Agent Guide
 
-This directory is the source of truth for project documentation. The files here define how the system works, how to develop and operate it, and how users complete tasks. Do not treat `docs/archive/` or `docs/features/` as authoritative.
+This directory is the source of truth for project documentation. The files here describe how the system works, how to develop and operate it, and how users complete tasks. "Documentation and Code" in the root `AGENTS.md` says what to do when a document and the code disagree.
 
-> Repo-wide architecture rules are in the root [`AGENTS.md`](../AGENTS.md). Read that file alongside this one when working in `docs/`.
+> Shared rules are in the root [`AGENTS.md`](../AGENTS.md).
 
 ## Scope map
 
@@ -24,72 +24,23 @@ Each main document has a defined scope. Do not add content to the wrong file.
 
 ## Writing rules
 
-These rules apply to all documents in `docs/`.
+Read [`writing-style.instructions.md`](../.github/instructions/writing-style.instructions.md) before editing any document. Before editing one of these documents, also read its rules in `.github/instructions/`. They cover audience, content limits, size and the sources to check.
 
-- Write for the intended audience of each document. `DESIGN.md` targets developers. `USER_GUIDE.md` targets researchers and data managers. `OPERATIONS.md` targets operators.
-- State the purpose before details. Use numbered steps for procedures.
-- Name the actual thing, action, rule, input, output, or result. Avoid vague or overloaded wording.
-- Preserve document structure and register when editing. Do not normalize existing style across the whole document unless that is the task.
-- State defaults, required fields, constraints, tradeoffs, and error cases explicitly.
-- Keep code blocks, paths, YAML, and identifiers exact. Do not paraphrase technical values.
-- Every section should answer a real question from the document's target audience. If a section does not support action or understanding, shorten or remove it.
-- Distinguish current design from planned (next release cycle) or aspirational (long-term, no defined timeline). Mark sections not yet implemented with `TBD`.
-- Mark intentionally undefined processes `TBD` rather than inventing process.
-
-## Document-specific rules
-
-### `DESIGN.md`
-
-- Cover system structure, component interactions, data ownership, cross-cutting concerns, constraints, and tradeoffs.
-- Do not include endpoint details; link to generated API docs.
-- Target 1000–2200 words; stay under 3000.
-- Read `.github/instructions/design.instructions.md` before editing.
-
-### `DEVELOPMENT.md`
-
-- Cover local setup, bootstrap steps, common commands, coding conventions, and validation workflow before commit.
-- Do not include runtime deployment, production configuration, or operational procedures.
-- Target 800–1800 words; stay under 2500.
-- Verify claims against `Makefile`, `pyproject.toml`, `.python-version`, and `.github/workflows/` before writing them.
-- Read `.github/instructions/development.instructions.md` before editing.
-
-### `TESTING.md`
-
-- Cover test strategy, test levels and their responsibilities, execution commands, test environment expectations, and fixture and mock policy.
-- Do not include local bootstrap steps, deployment procedures, or line-by-line explanations of individual test files.
-- Read `.github/instructions/testing.instructions.md` before editing.
-
-### `OPERATIONS.md`
-
-- Cover environments, runtime configuration, deployment flow, CI/CD, verification, rollback, health checks, and incident basics.
-- Do not include local development setup or contributor workflow.
-- Read `.github/instructions/operations.instructions.md` before editing.
-
-### `USER_GUIDE.md`
-
-- Write for researchers, data managers, and SEAD contributors who are not developers.
-- Organize progressively: quick-start workflow first, common workflows next, advanced topics last.
-- Do not include architecture explanations, YAML schema reference, API reference, or implementation detail.
-- Read `.github/instructions/user-guide.instructions.md` before editing.
-
-### `GLOSSARY.md`
-
-- Use the fixed three-section structure: Data Import and Target Domain / Shape Shifter Transformation Concepts / Implementation and Architecture Concepts.
-- Do not frame Shape Shifter as SEAD-specific. Use "target model", "target schema", or "downstream system". SEAD appears only as an example.
-- Read `.github/instructions/glossary.instructions.md` before editing.
-
-### `README.md` (repo root)
-
-- Keep it short: project description, badges, high-level features, quick start, prerequisites, links to the main docs.
-- Do not add detailed setup, test commands, deployment procedures, or environment variable catalogs.
-- Read `.github/instructions/readme.instructions.md` before editing.
+| Document | Rules |
+|---|---|
+| `DESIGN.md` | `design.instructions.md` |
+| `DEVELOPMENT.md` | `development.instructions.md` |
+| `TESTING.md` | `testing.instructions.md` |
+| `OPERATIONS.md` | `operations.instructions.md` |
+| `USER_GUIDE.md` | `user-guide.instructions.md` |
+| `GLOSSARY.md` | `glossary.instructions.md` |
+| `README.md` (repo root) | `readme.instructions.md` |
 
 ## Subdirectory notes
 
 | Directory | Purpose |
 |---|---|
-| `docs/archive/`   | Historical reference only. Do not treat as the source of truth for current practice. |
-| `docs/features/`  | Feature backlog. Not authoritative implementation guidance unless the user is asking about planned features. |
+| `docs/archive/`   | Historical reference only. |
 | `docs/proposals/` | Design proposals and phase plans. Read `.github/instructions/proposal-document-structure.instructions.md` and `.github/instructions/proposal-writing-guide.instructions.md` before editing. |
 | `docs/ai/`        | AI-facing comparison notes, prompt notes, and instruction summaries. Treat as reference notes, not policy. |
 | `docs/rules/`     | Semantic validation rule definitions. |

@@ -1,0 +1,19 @@
+name: Instruction References Check
+
+# Links and backticked paths in the AI instruction files must point at files that exist.
+# There is no paths filter: renaming or deleting any file can break a reference.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  instruction-references:
+    name: Instruction file links and paths
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check links and paths
+        run: python3 scripts/ci/check_instruction_references.py

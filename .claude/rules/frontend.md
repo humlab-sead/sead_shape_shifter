@@ -8,11 +8,14 @@ paths:
 
 # Frontend Conventions
 
-- Use Vue 3 Composition API with `<script setup lang="ts">`.
+- Use Vue 3 Composition API with `<script setup lang="ts">`. Do not use the Options API.
 - Prefer composables over mixins for shared logic.
 - Use typed `defineProps<T>()` and `defineEmits<T>()`.
 - Use `storeToRefs()` when destructuring Pinia store state.
-- Keep API access in `frontend/src/api/` and call backend endpoints under `/api/v1`.
+- Keep API access in `frontend/src/api/` and call backend endpoints under `/api/v1`. The base URL comes from `VITE_API_BASE_URL` (default `http://localhost:8012`).
+- Keep application state in Pinia stores (`frontend/src/stores/`).
+- Give composables, stores, and API functions complete type annotations.
+- Graph views use Cytoscape and the YAML editor uses Monaco. Do not replace either library.
 - Keep UI logic, state management, and API wiring readable and direct.
 - Do not hide backend contract mismatches; surface them clearly in the frontend layer.
 - Handle `null` and `undefined` explicitly; keep strict null checks intact.

@@ -2,7 +2,7 @@
 
 Tests in this directory cover the FastAPI backend (`backend/app/`): endpoints, services, mappers, validators, and integrations.
 
-> Also read the root [`AGENTS.md`](../../AGENTS.md) and [`backend/AGENTS.md`](../AGENTS.md) for cross-cutting architecture and backend-specific rules.
+> Shared rules are in the root [`AGENTS.md`](../../AGENTS.md). Rules for writing Python tests, including which client to use for protected routes, are in [`test-writing.instructions.md`](../../.github/instructions/test-writing.instructions.md); read it before changing a test.
 
 ## Run commands
 
@@ -15,13 +15,9 @@ make test                                               # full suite (Core + bac
 
 ## Test patterns
 
-- Use `TestClient` (from `starlette.testclient`) for route and endpoint tests.
-- Use `@pytest.mark.asyncio` for async service, orchestrator, and client tests.
-- Mock `ProjectService` and `ShapeShifter` in unit tests — do not run the full pipeline in endpoint tests.
-- Test each data fetch strategy independently by mocking the underlying service call.
-- Mock HTTP clients (`httpx.AsyncClient`, SIMS client, OpenRefine client) at the client class level — do not make real network calls in tests.
+- Mock `ProjectService` and `ShapeShifter` in unit tests.
+- Mock HTTP clients (`httpx.AsyncClient`, SIMS client, OpenRefine client) at the client class level.
 - Never import `src.*` test helpers from backend tests if those helpers depend on backend infrastructure.
-- Use absolute imports: `from backend.app...`.
 
 ## Shared fixtures
 

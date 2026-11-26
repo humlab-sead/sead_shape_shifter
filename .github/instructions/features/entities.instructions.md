@@ -6,18 +6,8 @@ applyTo: "src/model.py,backend/app/services/entity*,frontend/src/components/enti
 
 ## Three-Tier Identity System
 
-Every entity uses three distinct identity concepts. Never conflate them.
+The three identity fields (`system_id`, `keys`, `public_id`), the FK column rule and the change-request package exception are defined under "Three-Tier Identity System" in the root `AGENTS.md`. The exception also needs a target database lookup. In addition:
 
-| Tier | Field | Purpose | Used for FKs? |
-|------|-------|---------|--------------|
-| 1 | `system_id` | Local sequential integer (1, 2, 3…) | **Yes** — all Core FK values are `system_id` |
-| 2 | `keys` | Business keys for deduplication/matching | No |
-| 3 | `public_id` | Target schema column name; holds SEAD IDs after mapping | No (naming only) |
-
-- FK child column name = parent's `public_id` name
-- FK child column values = parent's `system_id` values
-- `public_id` must end with `_id`
-- Exception: a change-request package may carry an existing target ID in a FK column. This applies only when the project declares `foreign_key_value_sources.<target>: public_id`, and only where the change-request ingester writes the package FK. It does not create a Core link or dependency, and it needs a target database lookup.
 - `keys` may reference an identity column (`system_id` or `public_id`) because those columns are produced; this is permitted but not recommended. Prefer business columns for matching and deduplication.
 - `map_to_remote()` decorates `public_id` with remote SEAD IDs — separate from FK linking
 
@@ -35,25 +25,24 @@ Classifiers should use `type: fixed` or `type: sql` — using `type: entity` for
 - Each branch gets a discriminator column (e.g. `analysis_entity_branch`) with the branch name as value.
 - Sparse FK columns are added per branch (nullable `Int64`) — all other branches get `pd.NA` for that FK.
 - Source `system_id` is dropped from branches before merge.
+- `get_subset()` calls `process_merged_branch()` (`src/transforms/branch.py`). Branch DataFrames are concatenated with `pd.concat(..., ignore_index=True)`: columns are combined and missing values are `pd.NA`.
 - Branch lineage column naming: `{parent_entity}_branch`.
 - When a fixed entity has `public_id` as a column name, `ForeignKeyMergeSetup` must deduplicate columns — never add `public_id` twice.
 
 ## Circular / Deferred Dependencies
 
-- Use `defer_dependency: true` on a FK config to break circular dependency chains.
-- `ProcessState.get_next_entity_to_process()` skips entities with unmet dependencies — deferred FKs are tracked in `DeferredLinkingTracker` and retried after each entity and again after the main loop.
-- `CircularDependencySpecification` detects cycles; `defer_dependency` is the sanctioned workaround, not a spec bypass.
+Use `defer_dependency: true` only to break a genuine circular FK chain. `execution.instructions.md` describes processing order and deferred linking. `CircularDependencySpecification` detects cycles; `defer_dependency` is the accepted fix, not a way to bypass the specification.
 
 ## `TableConfig` API
 
-- `table_cfg.get_target_facing_columns()` — columns visible in output (respects materialized/fixed)
-- `table_cfg.get_target_facing_foreign_key_targets()` — FK targets visible in output
+- `table_cfg.get_target_facing_columns()` — columns the entity provides to a target model
+- `table_cfg.get_target_facing_foreign_key_targets()` — FK targets the entity provides to a target model
 - `table_cfg.depends_on` — set of entity names this entity depends on (drives topological sort)
-- Never read `table_cfg.columns` directly for conformance or validation — always use the `get_target_facing_*` methods
+- `table_cfg.columns` is only the configured list. It does not include columns added by FKs, `extra_columns` or unnest, so do not use it to check what an entity provides to a target model. Read it when you need the configured list itself, such as in loaders, extraction, and append column mapping.
 
 ## Common Mistakes
 
-- Using external IDs (SEAD IDs) as Core FK values — Core FK values must be `system_id`. The only exception is the change-request package FK declared with `foreign_key_value_sources.<target>: public_id`.
+- Using external IDs (SEAD IDs) as Core FK values (see the identity rules in the root `AGENTS.md`).
 - Setting `public_id` to a value not ending in `_id`.
 - Using `type: entity` for a classifier entity.
 - Adding a merged branch without a discriminator column — branch rows must go through `process_merged_branch()` (`src/transforms/branch.py`).

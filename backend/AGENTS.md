@@ -1,63 +1,16 @@
 # Shape Shifter – Backend (`backend/`) Agent Rules
 
-Rules here apply when working in `backend/`. Also read the root `AGENTS.md` for cross-cutting rules.
+Rules here apply when working in `backend/`.
 
-## Layer Boundary
+Shared rules are in the root `AGENTS.md`. Rules for particular files are in `.github/instructions/`. Some tools attach them automatically; if yours does not, read the matching file before editing.
 
-- API models live in `backend/app/models/`. Domain logic lives in `src/`. Never import `backend.*` from `src/`.
-- All API↔Core conversions go through `ProjectMapper.to_core()` — never bypass it.
-- The API and YAML layers keep directives (`@include:`, `@load:`, `@value:`, `${ENV_VAR}`) as written. `ProjectMapper.to_core()` resolves them when it converts a project. Do not add other places that resolve them, and never save a resolved config. See `.github/instructions/mappers.instructions.md` for the existing exceptions.
-- `ValidationService` owns loading, resolving, and delegating — it never constructs `TargetModel` or domain objects directly.
-
-## Dependency Injection
-
-- Break circular imports with constructor injection or `TYPE_CHECKING` guards — never by restructuring import order.
-- Pass the `DataFetchStrategy` to `DataValidationOrchestrator` via its constructor — never hard-code which strategy to use.
-- Three fetch strategies: `PreviewDataFetchStrategy`, `FullDataFetchStrategy`, `TableStoreDataFetchStrategy` — choose based on context (preview → sample rows, full → complete run, table store → in-memory).
-
-## Validation Orchestrator (`backend/app/validators/`)
-
-- `DataValidationOrchestrator` lives in the backend — it is the only component that may call infrastructure (HTTP, file I/O).
-- Pure domain validators (`src/validators/`) receive DataFrames; the orchestrator fetches and passes them.
-- Returns `list[DataValidationIssue]`; caller converts to API errors.
-- Run structural and constraint validation before data validation — structural errors may prevent data loading.
-
-## Materialization
-
-- Lifecycle: `CanMaterializeSpecification` → `ShapeShifter.normalize()` → `_sanitize_materialized_dataframe()` → persist → update YAML.
-- Always call `_sanitize_materialized_dataframe()` before persisting — removes `_merge_indicator_*` columns and duplicate labels.
-- Materialization changes the entity to `type: fixed` — use `is_materialized` to tell a snapshot apart from a hand-written fixed entity.
-- Unmaterialization restores the entity config from `materialized.source_state`. It does not delete the sidecar data file.
-- Sidecar path: `materialized/{entity_name}.{extension}` relative to project folder — always use `_get_materialized_file_path()`.
-
-## Reconciliation
-
-- `src/reconciliation/` is pure domain — no HTTP, no DB. Backend orchestration goes in `backend/app/services/reconciliation*`.
-- Use `determine_strategy()` to pick `TARGET_ENTITY`, `ANOTHER_ENTITY`, or `SQL_QUERY` — never hard-code strategy selection.
-- `auto_accept_threshold` ≥ `review_threshold` — use `update_thresholds()` to change both atomically.
-- OpenRefine client is a shared async singleton — do not create a new `httpx.AsyncClient` per request.
-
-## Target Model Conformance
-
-- `TargetModelValidator` is the only component that converts `ConformanceIssue` → `ValidationError` and touches `ValidationCategory.CONFORMANCE`.
-- New conformance validators: decorate with `@CONFORMANCE_VALIDATORS.register(key="...")` and extend `ConformanceValidator`.
-- A project without `metadata.target_model` is not an error — return an empty valid `ValidationResult`.
-
-## Backend Feature Checklist
-
-When adding a new backend feature, update all four layers:
-1. Endpoint function in `backend/app/api/v1/endpoints/`
-2. Request/response models in `backend/app/models/`
-3. Business logic in `backend/app/services/`
-4. Router registration in `backend/app/api/v1/api.py`
-
-## Testing
-
-- Route/endpoint tests on protected `/projects/...` routes use the async `authorized_client` fixture from `backend/tests/conftest.py` (tests are `async def` and `await` every request). A plain `TestClient` is only for unprotected routes.
-- Register projects as authorization resources by creating them via `POST /api/v1/projects` — do not write `shapeshifter.yml` directly to disk. Extra on-disk files (reconciliation catalogs, mapping sidecars, `materialized/*.parquet`) are still written directly after the API-created project directory exists.
-- Recognize auth regressions: `401` means the test is unauthenticated; `404 "Resource not found"` means a disk-written project was never registered as a resource.
-- Mock `ProjectService` and `ShapeShifter` in unit tests.
-- `@pytest.mark.asyncio` for all async service and orchestrator tests.
-- Test each fetch strategy independently (mock the underlying service).
-- Test `CanMaterializeSpecification` preconditions: fixed entity (fail), already-materialized (fail), non-materialized dep (fail).
-- SIMS client: `backend/app/clients/sims_client.py` — env var `SHAPE_SHIFTER_SIMS_SERVICE_URL`; provider-scope contract registration uses `SHAPE_SHIFTER_SIMS_CONTRACT_CALLER` and `SHAPE_SHIFTER_SIMS_CONTRACT_REGISTRATION_TOKEN`.
+| Working on | Read in `.github/instructions/` |
+|---|---|
+| Endpoints, API models, authorization, errors, SIMS and reconciliation clients | `backend-api.instructions.md` |
+| Mappers and directive resolution | `mappers.instructions.md` |
+| `backend/app/validators/`, data validation, fetch strategies | `features/validation.instructions.md` |
+| Target model conformance | `features/target-model.instructions.md` |
+| Materialization | `features/materialization.instructions.md` |
+| Reconciliation | `features/reconciliation.instructions.md` |
+| Ingester implementations | `features/ingesters.instructions.md` |
+| Tests | `test-writing.instructions.md`, and `backend/tests/AGENTS.md` |

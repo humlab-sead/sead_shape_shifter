@@ -11,7 +11,7 @@ paths:
 
 ## Pipeline Position
 
-Inside `ShapeShifter.normalize()` the stages run as Extract → Filter → Link → Unnest. Never reorder them. `extra_columns` are first evaluated during extraction and before linking; deferred entries are retried after linking, after unnest and after the second link pass. `replacements` are applied during extraction. Translate (column renaming) and Store run after `normalize()`. `.claude/rules/features/execution.md` lists the exact order.
+`.claude/rules/features/execution.md` lists the stage order, including when `extra_columns` are retried. `replacements` are applied during extraction.
 
 ## Replace Rules (`src/transforms/replace.py`)
 

@@ -34,7 +34,7 @@ class MyLoader(DataLoader):
     )
 ```
 
-- `schema` must be a `ClassVar` — not an instance attribute.
+- `schema` must be a `ClassVar` — not an instance attribute. Do not keep separate schema files.
 - `DriverSchema.fields` is a `list[FieldMetadata]` — each field has `name`, `type`, `required`, `default`, `description`.
 - `FieldMetadata.type` must be one of: `"string"`, `"integer"`, `"boolean"`, `"password"`, `"file_path"`.
 - `"file_path"` fields should specify `extensions` (e.g. `["xlsx", "csv"]`).
@@ -55,8 +55,7 @@ class MyLoader(DataLoader):
 
 ## Local File Resolution
 
-- `location: local` in `options` triggers relative path resolution in `apply_local_file_options()` in `src/normalizer.py`.
-- The loader itself does not resolve relative paths — the normalizer rewrites the path before calling `load()`.
+- The loader does not resolve relative paths. The normalizer rewrites them before calling `load()`; see `.claude/rules/features/execution.md`.
 
 ## `ConnectTestResult`
 

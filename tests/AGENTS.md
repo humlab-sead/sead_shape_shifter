@@ -2,7 +2,7 @@
 
 Tests in this directory cover the Core (`src/`) transformation engine. They are pure Python unit and integration tests with no backend or API dependency.
 
-> Also read the root [`AGENTS.md`](../AGENTS.md) and [`src/AGENTS.md`](../src/AGENTS.md) for cross-cutting architecture and pipeline rules.
+> Shared rules are in the root [`AGENTS.md`](../AGENTS.md). Rules for writing Python tests are in [`test-writing.instructions.md`](../.github/instructions/test-writing.instructions.md); read it before changing a test. Core rules are listed in [`src/AGENTS.md`](../src/AGENTS.md).
 
 ## Run commands
 
@@ -12,17 +12,6 @@ uv run pytest tests/process -v          # one subdirectory
 uv run pytest tests/test_dispatch.py -v # one file
 make test                               # full suite (Core + backend)
 ```
-
-## Test patterns
-
-- Construct `ShapeShiftProject(cfg={...})` directly from a dict — no file loading, no backend imports.
-- Use `@pytest.mark.asyncio` for all async tests (any test that calls `ShapeShifter.normalize()` or a loader).
-- Test domain validators by passing inline `pd.DataFrame` values — no project file, no database.
-- Test data loaders: cover both `load()` (success path) and `test_connection()` (success and failure paths).
-- Patch shared modules (`click`, `loguru`) through `monkeypatch`. Assigning to them directly, such as `module.click.echo = MagicMock()`, changes the imported module for the whole pytest process and breaks unrelated test files.
-- Never call `asyncio.run()` inside a test — use `@pytest.mark.asyncio` instead.
-- Never import `backend.*` from test files in this directory.
-- Use absolute imports: `from src...`.
 
 ## Fixtures and test data
 

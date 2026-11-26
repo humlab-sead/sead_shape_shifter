@@ -12,7 +12,7 @@ paths:
 - Put unit and component tests in a `__tests__/` directory beside the code, named `<Name>.test.ts`.
 - `frontend/tests/e2e/` holds Playwright tests, which are currently skipped. Vitest excludes them.
 - The environment is jsdom. Shared browser stand-ins are in `frontend/vitest.setup.ts`.
-- Run one file with `pnpm test:run <path>` from `frontend/`. Run all with `make frontend-test`; coverage with `make frontend-coverage`. Use `pnpm`, not npm or yarn.
+- Run one file with `pnpm test:run <path>` from `frontend/`. Run all with `make frontend-test`; coverage with `make frontend-coverage`.
 
 ## Components
 

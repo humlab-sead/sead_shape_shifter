@@ -42,11 +42,9 @@ After materialization, the entity config in YAML has:
 - Path: `materialized/{entity_name}.{extension}` relative to the project folder, built by `_get_materialized_file_path()`.
 - The path is recorded only in the `values: "@load:..."` reference.
 
-## Cascading Dependencies
+## Preconditions
 
-Before materializing an entity, check all its FK dependencies and `depends_on` entries:
-- Dependency must be `type: fixed` OR already `is_materialized` — enforced by `CanMaterializeSpecification`.
-- Do not short-circuit this check even for simple entities.
+`CanMaterializeSpecification` checks the entity and its dependencies. Its conditions are listed in `.claude/rules/features/specifications.md`. Do not skip the check, even for simple entities.
 
 ## `_sanitize_materialized_dataframe()`
 
@@ -65,7 +63,6 @@ Always call before persisting. Removes:
 ## Testing Expectations
 
 - Mock `ProjectService` and `ShapeShifter` — do not run a full pipeline in unit tests.
-- Test `CanMaterializeSpecification` pre-conditions: fixed entity (fail), already-materialized (fail), non-materialized dep (fail).
 - Test `_sanitize_materialized_dataframe()` with merge indicator columns and duplicate labels.
 - Test unmaterialization: the config is restored from `source_state` and the `materialized` block is gone.
 - Use `pytest.mark.asyncio` for all async service tests.

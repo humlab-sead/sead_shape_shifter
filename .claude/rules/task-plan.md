@@ -22,7 +22,7 @@ Before writing the plan:
 5. Identify dependencies, risks, ambiguities, and behavior that must be preserved.
 6. Validate the completed plan using the checklist below.
 
-Treat Graphify as a navigation aid, not the source of truth. If it conflicts with source or tests, plan from the current source and note the discrepancy.
+If graph results conflict with source or tests, plan from the current source and note the difference.
 
 Do not use `TBD` for facts that reasonable repository inspection can establish.
 

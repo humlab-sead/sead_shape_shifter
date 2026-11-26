@@ -8,7 +8,14 @@
 - Core pipeline (immutable order): **Extract → Filter → Link → Unnest → Translate → Store** — orchestrated by `ShapeShifter` (`src/normalizer.py`) via `ProcessState`.
 - Backend: FastAPI; routers in `api/v1/endpoints/`, services in `services/`, Pydantic v2 models in `models/`.
 - Frontend: Vue 3 `<script setup>` + Pinia stores + composables + Axios + Monaco YAML editor.
-- Treat `docs/features/` as future-feature backlog — not authoritative.
+
+## Documentation and Code
+
+- Use `docs/` for documented design, usage, and procedures.
+- Current code, configuration, scripts, workflows, and generated artifacts decide how the system behaves. If a document disagrees with them, follow them and report the difference.
+- Verify documentation claims against the source that implements or runs the described behavior.
+- `docs/archive/` is historical background only. It does not describe current practice.
+- Proposals in `docs/proposals/` describe planned or past design work, not current behavior.
 
 ## Workflow Commands
 
@@ -17,6 +24,9 @@
 - `make test` — full suite; `uv run pytest tests -v` (Core); `uv run pytest backend/tests -v` (backend).
 - `make lint` / `make tidy` (Black + isort) before committing.
 - `make status` — read-only check of graphify (hooks, graph and wiki freshness, community names), repository hooks, branch promotion and the SEAD schema reference; lists the command for each action needed.
+- Run targeted tests for the changed area before finishing. Run broader tests when a change crosses layers.
+- When completing work tracked by a task or phase plan, update its progress tracker, checklist, status, and deliverables in the same change. Do not leave completed work marked as not started.
+- When drafting a pull request title or description, follow `.github/pr-description-instructions.md`. Use `.github/promotion_pr_template.md` for promotions (`dev` into `staging` or `staging` into `main`), and `.github/pull_request_template.md` for other pull requests.
 
 ## Documentation Vocabulary
 
@@ -33,16 +43,16 @@
 ## Cross-Cutting Rules
 
 - **Absolute imports only**: `from src...` and `from backend.app...` — never relative across packages.
-- **Layer boundary**: API models stay in `backend/app/models/`; domain logic stays in `src/`. Never import `backend.*` from `src/`.
+- **Layer boundary**: API models stay in `backend/app/models/`; domain logic stays in `src/`. Never import `backend.*` from `src/`. Put business logic in services and domain code, not in API models or route handlers.
 - **Mapper**: API↔Core conversions go through the mappers in `backend/app/mappers/`; projects go through `ProjectMapper`. Never bypass them.
 - **Directives** (`@include:`, `@value:`, `@load:`, `${ENV_VAR}`): API models and saved YAML keep them as written. `ProjectMapper.to_core()` resolves them when it converts a project. Do not add other places that resolve them, and never save a resolved config. Existing exceptions are listed in `.github/instructions/mappers.instructions.md`.
-- **Registries**: use `@Validators.register(...)`, `@DataLoaders.register(...)`, `@get_ingester_registry().register(...)` — never bypass the registry.
-- **Circular imports**: use constructor injection or `TYPE_CHECKING` — never restructure imports as a workaround.
-- **Async**: `ShapeShifter.normalize()` and all data loaders are async — never call with `asyncio.run()` inside a loader or service.
+- **Registries**: use `@Validators.register(...)`, `@DataLoaders.register(...)`, `@get_ingester_registry().register(...)`, and the matching registry for filters and other extension types — never bypass a registry.
+- **Circular imports**: use constructor injection, factory functions, or `TYPE_CHECKING` for type-only imports — never restructure imports as a workaround.
+- **Async**: `ShapeShifter.normalize()` and all data loaders are async — await them and never call them with `asyncio.run()` inside a loader or service. Check where backend services call between sync and async code.
 
 ## Three-Tier Identity System
 
-Core FK links use local `system_id` values. A change-request package can use an existing target ID only when the project declares `foreign_key_value_sources.<target>: public_id`; that declaration does not create a Core link or dependency.
+Core FK links use local `system_id` values. A change-request package can use an existing target ID only when the project declares `foreign_key_value_sources.<target>: public_id`. This applies only where the change-request ingester writes the package FK; the declaration does not create a Core link or dependency.
 
 | Tier | Field | Purpose | FK values? |
 |------|-------|---------|-----------|
@@ -57,7 +67,7 @@ Core FK links use local `system_id` values. A change-request package can use an 
 - Line length ≤ 140 characters; Black + isort.
 - `loguru.logger` for logging; type hints on all functions and Pydantic models.
 - Naming: `snake_case` entities, `_id` suffix for public IDs, `/api/v1/{resource}` (plural) for endpoints.
-- `@pytest.mark.asyncio` for async Core tests; `TestClient` for backend route tests.
+- `@pytest.mark.asyncio` for async tests. Backend routes protected by project authorization need the `authorized_client` fixture, not a plain `TestClient`; see `.github/instructions/test-writing.instructions.md`.
 
 ## Common Implementation Tasks
 
@@ -65,8 +75,8 @@ Core FK links use local `system_id` values. A change-request package can use an 
 - **Constraint validator**: `@Validators.register(key=..., stage=...)` in `src/specifications/constraints.py`. Read `.github/instructions/features/validation.instructions.md`.
 - **Data loader**: `@DataLoaders.register(key=...)` in `src/loaders/`, `ClassVar` schema on the class. Read `.github/instructions/features/loaders.instructions.md`.
 - **Specification**: subclass `ProjectSpecification`, implement `is_satisfied_by()`, add to `CompositeProjectSpecification.get_default_specifications()`.
-- **Ingester**: directory under `ingesters/<name>/`, implement `Ingester` protocol, `@get_ingester_registry().register(key="<name>")`. See `ingesters/AGENTS.md`.
-- **New files**: Claude Code loads a path rule when it reads a matching file, which may not happen when a task only creates files. Before creating a mapper, API file, loader, validator, frontend store, editor, test, script or workflow, read the matching file in `.github/instructions/`: `mappers`, `backend-api`, `features/loaders`, `features/validation`, `frontend-stores`, `frontend-monaco`, `frontend-test`, `test-writing` or `tooling`.
+- **Ingester**: directory under `ingesters/<name>/`, implement `Ingester` protocol, `@get_ingester_registry().register(key="<name>")`. Read `.github/instructions/features/ingesters.instructions.md`.
+- **New files**: Claude Code loads a path rule when it reads a matching file, which may not happen when a task only creates files. Before creating a mapper, API file, loader, validator, specification, ingester, frontend store, editor, test, script or workflow, read the matching file in `.github/instructions/`: `mappers`, `backend-api`, `features/loaders`, `features/validation`, `features/specifications`, `features/ingesters`, `frontend-stores`, `frontend-monaco`, `frontend-test`, `test-writing` or `tooling`.
 - **Phase plan**: when asked to create or update a phased implementation plan, delivery sequencing document, or migration phase plan, use `.github/instructions/phase-plan.instructions.md`.
 - **Task plan**: when asked to create or update a task plan for one development phase, use `.github/instructions/task-plan.instructions.md`.
 
@@ -74,11 +84,10 @@ Core FK links use local `system_id` values. A change-request package can use an 
 
 - Core models: `src/model.py`, `src/specifications/constraints.py`, `src/specifications/`.
 - Backend entry: `backend/app/main.py`; validation: `backend/app/services/validation_service.py`.
-- SIMS client: `backend/app/clients/sims_client.py` (env vars: `SHAPE_SHIFTER_SIMS_SERVICE_URL`, `SHAPE_SHIFTER_SIMS_CONTRACT_CALLER`, `SHAPE_SHIFTER_SIMS_CONTRACT_REGISTRATION_TOKEN`).
+- SIMS client: `backend/app/clients/sims_client.py`. Environment variables are listed in `.github/instructions/backend-api.instructions.md`.
 - Docs: `docs/DESIGN.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`.
 - SEAD schema: `docs/sead/columns.csv` (current tables and columns with types, nullability, PKs and FK targets) and `docs/sead/SCHEMA.md` (the same per table, generated). Refresh with `make sead-schema`. The numbered `docs/sead/0*_*.sql` files are a stale historical dump; do not use them to decide tables or columns. See `docs/sead/README.md`.
 - Scoped instructions: `.github/instructions/` is the source (VS Code Copilot uses the `applyTo` pattern to match rules to files; in some session types the agent gets only a list and has to read the rule itself). `.claude/rules/` is generated from it for Claude Code (`applyTo` becomes `paths`). Edit only the sources, then run `make claude-rules`; `make lint`, pre-commit and CI fail when the two differ. `github-workflow` has no `applyTo` because it applies to a task, not to files, so it is not converted: read it directly before creating an issue or preparing a commit. `writing-style` also applies to comments, docstrings, PR text and issues, which its `**/*.md` pattern does not cover: read it directly for those.
-- Planning instructions: use `.github/instructions/phase-plan.instructions.md` when the user asks for phased implementation sequencing, and use `.github/instructions/task-plan.instructions.md` when the user asks for work breakdown, checklists, or definition-of-done planning for one phase.
 - UCanAccess setup: `scripts/dev/install-uncanccess.sh` (requires Java JRE).
 
 ## graphify
@@ -104,4 +113,4 @@ Rules:
 
 ## rtk (Token Optimization)
 
-Prefix shell commands with `rtk` to compress output and reduce token usage (saves 60–90%). Examples: `rtk uv run pytest`, `rtk make test`, `rtk git log -10`. Use `rtk gain` for analytics and `rtk proxy <cmd>` for raw output. See `RTK.md` for details.
+Prefix shell commands with `rtk` to compress output and reduce token usage (saves 60–90%), except for shell built-ins, interactive commands and commands where you need the raw output. If `rtk` fails, retry without it. Examples: `rtk uv run pytest`, `rtk make test`, `rtk git log -10`. Use `rtk gain` for analytics and `rtk proxy <cmd>` for raw output. See `RTK.md` for details.
