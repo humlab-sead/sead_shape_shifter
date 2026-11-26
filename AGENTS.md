@@ -13,7 +13,7 @@
 
 - Use `docs/` for documented design, usage, and procedures.
 - Current code, configuration, scripts, workflows, and generated artifacts decide how the system behaves. If a document disagrees with them, follow them and report the difference.
-- Verify documentation claims against the source that implements or runs the described behavior.
+- Verify documentation claims against the source that implements or runs the described behavior. The exception is `docs/DESIGN.md`: follow "Sources to trust" in `.github/instructions/design.instructions.md`.
 - `docs/archive/` is historical background only. It does not describe current practice.
 - Proposals in `docs/proposals/` describe planned or past design work, not current behavior.
 
