@@ -38,6 +38,25 @@ Change the source, run the generator, and commit both.
 | `docs/TARGET_MODEL_SCHEMA_REFERENCE.md` | `make generate-target-model-schema-reference` | `make check-target-model-schema-reference` |
 | `docs/sead/SCHEMA.md` | `make sead-schema-docs` | `make sead-schema-check` |
 
+## graphify
+
+The root `AGENTS.md` says when to query the graph and how to check that it is usable. graphify is a uv tool (`~/.local/bin/graphify`), not part of the project `.venv`.
+
+Rebuilding:
+
+- The git hooks (installed by `make install-hooks`) rebuild the code part of the graph in the background after each commit, checkout, merge and rebase. The rebuild is AST-only and makes no LLM calls. Its log is `~/.cache/graphify-rebuild.log`.
+- `make semantic-graphify` adds the LLM-based results (documents and community names).
+- `make update-graphify` and `make semantic-graphify` also rebuild the wiki in graphify-out/wiki/. `make graphify-wiki` rebuilds only the wiki (local, about a second, no LLM).
+- `GRAPHIFY_VIZ_NODE_LIMIT=0` blocks graph.html, which this project does not use.
+- `make status` shows whether the graph, the LLM-based results, the community names or the wiki need a rebuild.
+
+Reading:
+
+- If a name matches several nodes, graphify lists them. Retry with `path/to/file.py::Symbol`, for example `graphify explain "backend/app/mappers/project_mapper.py::ProjectMapper"`.
+- If `graphify path` finds no directed path, retry with `--undirected`.
+- Use graphify-out/wiki/index.md, when it exists, for broad orientation. The git hooks do not rebuild the wiki, so it can lag behind recent commits. For specific questions, use `graphify query` or `graphify explain`, which read the current graph.
+- Read graphify-out/GRAPH_REPORT.md only for a broad architecture review, or when queries do not give enough context.
+
 ## GitHub Actions
 
 | Workflow | Runs on | Purpose |

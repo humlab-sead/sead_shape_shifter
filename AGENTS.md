@@ -92,24 +92,15 @@ Core FK links use local `system_id` values. A change-request package can use an 
 
 ## graphify
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships. The graph is built locally and is not committed: graphify-out/ is in `.gitignore`. graphify is a uv tool (`~/.local/bin/graphify`), not part of the project `.venv`.
+graphify-out/ holds a local knowledge graph of the codebase. It is git-ignored. It is a navigation aid: if it conflicts with source or tests, trust the source.
 
-How the graph is kept current:
-- graphify git hooks (installed by `make install-hooks`) rebuild the code part of the graph in the background after each commit, checkout, merge and rebase. The rebuild is AST-only and makes no LLM calls; its log is `~/.cache/graphify-rebuild.log`.
-- `make semantic-graphify` adds the LLM-based results (documents and community names). Run it only when the user asks.
-- `make update-graphify` and `make semantic-graphify` also rebuild graphify-out/wiki/; `make graphify-wiki` rebuilds only the wiki (local, about a second, no LLM).
-- `make status` shows whether the graph, the LLM-based results, the community names or the wiki need a rebuild.
-
-Rules:
-- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If a name matches several nodes, graphify lists them; retry with `path/to/file.py::Symbol`, for example `graphify explain "backend/app/mappers/project_mapper.py::ProjectMapper"`. If `graphify path` finds no directed path, retry with `--undirected`.
-- If graphify-out/wiki/index.md exists, use it for broad orientation instead of raw source browsing. The git hooks do not rebuild the wiki; only `make update-graphify`, `make semantic-graphify` and `make graphify-wiki` do, so it can lag behind recent commits. Use `graphify explain` or `graphify query` for anything specific, because they read the current graph.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts.
 - Before your first graph query in a session, check that the graph is usable:
   - If `graphify hook status` reports a hook as `not installed`, tell the user and suggest `make install-hooks`. Do not install hooks yourself.
   - If graphify-out/graph.json is missing, or older than the latest commit (compare its modification time with `git log -1 --format=%ct`), run `GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update .` first. A stale graph usually means the hooks are missing or a background rebuild failed; mention it to the user.
-- Do not run `graphify update` after every edit; the hooks handle that at commit time. Run `GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update .` only when you changed code in this session and need to query the graph again before the change is committed. The variable blocks graph.html, which this project does not use.
-- Treat the graph as a navigation aid, not the source of truth. If it conflicts with source or tests, trust the source.
+- Git hooks rebuild the graph after each commit. Run the update command above yourself only when you need to query code you changed but have not committed.
+- Run `make semantic-graphify` (LLM calls) only when the user asks.
+- For rebuild targets, the wiki, the graph report and ambiguous node names, see "graphify" in `.github/instructions/tooling.instructions.md`.
 
 ## rtk (Token Optimization)
 
