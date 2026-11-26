@@ -6,6 +6,7 @@ This index covers proposals and initiative records that need attention or provid
 
 | Proposal | Status | Decision or scope |
 |---|---|---|
+| [Bootstrap A Project From A Curated Excel Workbook](BOOTSTRAP_PROJECT_FROM_EXCEL.md) | Proposed feature — draft for review | Add a command that creates a project of fixed entities from a reconciled workbook, and prints all foreign key and other workbook errors for curators to fix before creating it. |
 | [Linked Art Export from Shape Shifter](LINKED_ART_EXPORT/LINKED_ART_EXPORT.md) | Proposed change request — draft for review | Evaluate SEAD-to-Linked Art output through relational transformations and a registered output dispatcher before deciding on production support. |
 | [Report Target Model Coverage Against SEAD](SEAD_TARGET_MODEL_COVERAGE_BOUNDARY.md) | Proposed change request | Let each target model declare its SEAD coverage source and measure coverage with a CLI against the pinned snapshot or live SEAD; no separate manifest. |
 | [Publish Container Images From CI To GHCR And Deploy By Pull](GHCR_IMAGE_RELEASE.md) | Proposed change request | Build images in GitHub Actions, publish to GHCR, and deploy by digest-pinned pull instead of host-side builds and release archives. |
