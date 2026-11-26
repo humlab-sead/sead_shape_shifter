@@ -1,47 +1,42 @@
 <template>
   <div class="reconciliation-view">
     <v-card>
-      <v-card-title>
-        <div class="d-flex align-center justify-space-between">
-          <span>Entity Reconciliation</span>
-          <div class="d-flex align-center gap-2">
-            <!-- Service Status with Entity Count -->
-            <v-chip
-              v-if="serviceStatus"
-              :color="serviceStatus.status === 'online' ? 'success' : 'error'"
-              size="small"
-              variant="flat"
-              :prepend-icon="serviceStatus.status === 'online' ? 'mdi-check-circle' : 'mdi-alert-circle'"
-            >
-              {{
-                serviceStatus.status === 'online' ? `Online (${availableEntityTypes} reconciliation types)` : 'Offline'
-              }}
-            </v-chip>
+      <div class="d-flex align-center gap-2 flex-wrap px-4 py-2" data-testid="reconciliation-tabs-row">
+        <v-tabs v-model="activeTab" bg-color="transparent" color="primary" grow class="reconciliation-tabs">
+          <v-tab value="configuration">
+            <v-icon start>mdi-file-document-edit</v-icon>
+            Configuration
+          </v-tab>
+          <v-tab value="yaml">
+            <v-icon start>mdi-code-braces</v-icon>
+            YAML
+          </v-tab>
+          <v-tab value="reconcile" :disabled="!selectedEntity">
+            <v-icon start>mdi-auto-fix</v-icon>
+            Reconcile & Review
+          </v-tab>
+        </v-tabs>
+        <div class="d-flex align-center gap-2 reconciliation-status">
+          <v-chip
+            v-if="serviceStatus"
+            :color="serviceStatus.status === 'online' ? 'success' : 'error'"
+            size="small"
+            variant="flat"
+            :prepend-icon="serviceStatus.status === 'online' ? 'mdi-check-circle' : 'mdi-alert-circle'"
+          >
+            {{
+              serviceStatus.status === 'online'
+                ? `Online (${availableEntityTypes} ${availableEntityTypes === 1 ? 'type' : 'types'})`
+                : 'Offline'
+            }}
+          </v-chip>
 
-            <!-- Configured Specifications Count -->
-            <v-chip v-if="specifications.length > 0" size="small" variant="tonal" color="primary">
-              {{ specifications.length }}
-              {{ specifications.length === 1 ? 'specification' : 'specifications' }} configured
-            </v-chip>
-          </div>
+          <v-chip size="small" variant="tonal" color="primary">
+            {{ specifications.length }}
+            {{ specifications.length === 1 ? 'specification' : 'specifications' }}
+          </v-chip>
         </div>
-      </v-card-title>
-
-      <!-- Tabs -->
-      <v-tabs v-model="activeTab" bg-color="transparent" color="primary" grow>
-        <v-tab value="configuration">
-          <v-icon start>mdi-file-document-edit</v-icon>
-          Configuration
-        </v-tab>
-        <v-tab value="yaml">
-          <v-icon start>mdi-code-braces</v-icon>
-          YAML
-        </v-tab>
-        <v-tab value="reconcile" :disabled="!selectedEntity">
-          <v-icon start>mdi-auto-fix</v-icon>
-          Reconcile & Review
-        </v-tab>
-      </v-tabs>
+      </div>
 
       <v-divider />
 
@@ -1182,5 +1177,14 @@ watch(
 <style scoped>
 .gap-2 {
   gap: 0.5rem;
+}
+
+.reconciliation-tabs {
+  flex: 1 1 32rem;
+  min-width: 0;
+}
+
+.reconciliation-status {
+  flex: 0 0 auto;
 }
 </style>
