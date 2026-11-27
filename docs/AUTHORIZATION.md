@@ -102,7 +102,9 @@ A principal that should maintain any project without holding a grant for it rece
 
 The current actions are `read`, `edit`, `execute`, `delete`, `manage_grants`, `create_project`, `read_logs`, `manage_shared_sources`, `read_all_shared_sources`, `run_ingesters`, `manage_all_grants`, `manage_application_roles`, and `configure_ingesters`.
 
-Application and error logs are global, and no project-scoped log exists, so both log routes require an authenticated principal and no deployment role. This policy change was approved on 2026-09-16 and replaces the earlier admin-only rule. The `read_logs` action remains defined, and no route requires it.
+Application and error logs are global, no project-scoped log exists, and log entries can hold details from any project, such as user names, server addresses, table names, and data values from error messages. Both log routes therefore require the `read_logs` action, which only `admin` permits. This restores the admin-only rule and replaces the 2026-09-16 change that let any signed-in user read the logs.
+
+The UI reads `GET /api/v1/me/permissions` and hides the log viewer button, the **Settings** > **Logs** tab, the `Ctrl+Shift+L` shortcut, and the "Open Log Viewer" command when `can_read_logs` is false or the request fails. Hiding them is not the access control; the log routes check the role on every request. The UI reads the permission when the page loads, so reload the page after changing a role. To give a user log access, grant the `admin` role with `sead-authorization`.
 
 Deployment roles do not create resource grants. They permit only their explicitly mapped actions. `admin` permits all defined actions, including resource actions. Unknown resource types, roles, and actions are denied.
 
@@ -261,7 +263,7 @@ The table below records resource lifecycle changes and background tasks that use
 
 ## Current Coverage
 
-Implemented controls cover project resources and project children, shared data-source access, project references to shared sources, and authenticated access to the global application and error logs. The policy is intentionally deny-by-default.
+Implemented controls cover project resources and project children, shared data-source access, project references to shared sources, and admin-only access to the global application and error logs. The policy is intentionally deny-by-default.
 
 Ingester authorization for the generic file routes enforces `application:run_ingesters`, with an additional `project:execute` check for the retired `sead_change_request` key. The saved-project Change Request routes enforce `project:execute` without a deployment role. Source and output path containment and destination database selection for generic ingester operations remain tracked in [Security Hardening Follow-up](proposals/SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md); data registration requires separate authorization decisions.
 

@@ -77,8 +77,9 @@ async def test_authenticated_principal_cannot_cross_user_resource_boundaries(tmp
 
 
 @pytest.mark.asyncio
-async def test_authenticated_principal_without_application_role_can_read_logs() -> None:
-    """Allow an authenticated principal to read the global log without an application role."""
+async def test_authenticated_principal_without_application_role_cannot_read_logs(tmp_path, monkeypatch) -> None:
+    """Deny the global log to a signed-in proxy user who is not an administrator."""
+    monkeypatch.setattr(application_settings, "AUTHORIZATION_DATABASE_PATH", tmp_path / "authorization.sqlite3")
     protected_app = ProxyAuthenticationMiddleware(
         app,
         enabled=True,
@@ -93,7 +94,7 @@ async def test_authenticated_principal_without_application_role_can_read_logs() 
     ) as client:
         response = await client.get("/api/v1/logs/app")
 
-    assert response.status_code == 200
+    assert response.status_code == 403
 
 
 def test_group_grants_do_not_cross_team_boundaries(tmp_path) -> None:

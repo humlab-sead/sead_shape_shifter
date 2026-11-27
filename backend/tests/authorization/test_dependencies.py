@@ -290,8 +290,8 @@ def test_project_data_source_connection_requires_project_and_shared_source_acces
     }
 
 
-def test_log_routes_require_authentication_without_application_role() -> None:
-    """Keep the global log routes open to any authenticated principal."""
+def test_log_routes_require_the_read_logs_action() -> None:
+    """Both global log routes declare the admin-only read_logs requirement."""
     log_routes = [
         route
         for route in logs_router.routes
@@ -305,7 +305,7 @@ def test_log_routes_require_authentication_without_application_role() -> None:
             for dependency in route.dependant.dependencies
             if (requirement := _authorization_requirement(dependency.call)) is not None
         ]
-        assert requirements == []
+        assert requirements == [{"resource_type": "application", "action": "read_logs"}]
 
 
 def test_active_project_route_declares_project_read_requirement() -> None:

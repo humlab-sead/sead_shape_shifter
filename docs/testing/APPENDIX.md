@@ -6,7 +6,7 @@
 
 - `Ctrl/Cmd + S` - Save project
 - `Ctrl/Cmd + K` - Open command palette
-- `Ctrl/Cmd + Shift + L` - Toggle log viewer overlay
+- `Ctrl/Cmd + Shift + L` - Toggle log viewer overlay (administrators only)
 - `Ctrl/Cmd + H` - Go to home
 - `Ctrl/Cmd + Shift + C` - Go to projects
 - `Ctrl/Cmd + /` - Toggle comments in YAML editor
