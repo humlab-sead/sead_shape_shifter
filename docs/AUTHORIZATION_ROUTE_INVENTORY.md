@@ -245,13 +245,16 @@ Every row above except the health check requires an authenticated principal thro
 | `POST` | `/api/v1/ingesters/sead_change_request/from-project/validate` | `project:execute` | |
 | `POST` | `/api/v1/ingesters/sead_change_request/from-project/ingest`   | `project:execute` | |
 | `GET`  | `/api/v1/filters/types`               | `authenticated`                                                                                 |       |
-| `GET`  | `/api/v1/logs/{log_type}`             | `authenticated`                                                                                 |       |
-| `GET`  | `/api/v1/logs/{log_type}/download`    | `authenticated`                                                                                 |       |
+| `GET`  | `/api/v1/logs/{log_type}`             | `application:read_logs`                                                                          |       |
+| `GET`  | `/api/v1/logs/{log_type}/download`    | `application:read_logs`                                                                          |       |
+| `GET`  | `/api/v1/me/permissions`              | `authenticated`                                                                                  |       |
 | `GET`  | `/api/v1/whats-new`                   | `authenticated`                                                                                 |       |
 | `GET`  | `/api/v1/whats-new/pending`           | `authenticated`                                                                                 |       |
 | `GET`  | `/api/v1/whats-new/{version}/content` | `authenticated`                                                                                 |       |
 
-Application and error logs are global: no project-scoped log file exists, so any authenticated principal may read or download them. The `application:read_logs` action remains defined but is not required by any route.
+Application and error logs are global: no project-scoped log file exists, and the logs can hold details from every project. Reading and downloading them requires `application:read_logs`, which only the `admin` role permits. Other signed-in users receive `403`.
+
+`GET /api/v1/me/permissions` returns which deployment-wide features the current user may use, currently `can_read_logs`. The UI uses it to hide features; it does not grant access.
 
 `GET /api/v1/whats-new` returns release-note metadata, `GET /api/v1/whats-new/pending` returns the pending release-note markdown, and `GET /api/v1/whats-new/{version}/content` returns a versioned note. All three read content published in `docs/whats-new/` and require an authenticated principal, with no project role.
 

@@ -1,5 +1,6 @@
 """Tests that errors shown with a correlation ID can be found in the server log."""
 
+import re
 import sys
 from unittest.mock import AsyncMock, MagicMock
 
@@ -49,6 +50,35 @@ def test_log_files_include_the_request_correlation_id(tmp_path, file_name):
 
     assert "| ERROR    | abc12345 |" in inside
     assert "| ERROR    | no-corr |" in outside
+
+
+def _fail_with_local_value() -> None:
+    """Raises while a local variable holds a value that must not reach the logs."""
+    settings = {"password": "hunter2-" + "local-value"}
+    raise ConnectionError(f"refused after reading {len(settings)} setting")
+
+
+@pytest.mark.parametrize("filter_framework_frames", [True, False])
+def test_logged_tracebacks_do_not_include_local_values(tmp_path, capsys, filter_framework_frames):
+    """Tracebacks keep the error and the failing function, but not the values of variables."""
+    try:
+        configure_logging(log_dir=tmp_path, filter_framework_frames=filter_framework_frames)
+        try:
+            _fail_with_local_value()
+        except ConnectionError:
+            logger.exception("connect failed")
+        logger.complete()
+    finally:
+        logger.remove()
+        logger.add(sys.stderr)
+
+    outputs = [(tmp_path / name).read_text(encoding="utf-8") for name in ("app.log", "error.log")]
+    outputs.append(re.sub(r"\x1b\[[0-9;]*m", "", capsys.readouterr().err))  # remove console colors
+
+    for output in outputs:
+        assert "_fail_with_local_value" in output
+        assert "ConnectionError: refused after reading 1 setting" in output
+        assert "hunter2-local-value" not in output
 
 
 def test_catch_all_handler_keeps_the_request_correlation_id(log_lines):

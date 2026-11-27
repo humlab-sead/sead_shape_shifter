@@ -113,7 +113,7 @@ def configure_logging(
             "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
             colorize=True,
             backtrace=not filter_framework_frames,  # Disable full backtrace if filtering
-            diagnose=True,
+            diagnose=False,  # Never write variable values into tracebacks; they can include passwords
         )
 
     # File logging with rotation and full exception dumps
@@ -127,7 +127,7 @@ def configure_logging(
             retention=retention,
             compression=compression,
             backtrace=True,  # Always full trace in files
-            diagnose=True,
+            diagnose=False,
             enqueue=True,  # Thread-safe logging
         )
 
@@ -140,7 +140,7 @@ def configure_logging(
             retention=retention,
             compression=compression,
             backtrace=True,
-            diagnose=True,
+            diagnose=False,
             enqueue=True,
         )
 

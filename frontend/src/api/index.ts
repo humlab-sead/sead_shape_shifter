@@ -16,6 +16,7 @@ export * from './reconciliation'
 export * from './excel-metadata'
 export * from './tasks'
 export * from './logs'
+export * from './permissions'
 export * from './health'
 export * from './whats-new'
 
@@ -33,6 +34,7 @@ import { reconciliationSpecApi } from './reconciliation'
 import { excelMetadataApi } from './excel-metadata'
 import { tasksApi } from './tasks'
 import { logsApi } from './logs'
+import { permissionsApi } from './permissions'
 import { healthApi } from './health'
 import { whatsNewApi } from './whats-new'
 
@@ -50,6 +52,7 @@ export const api = {
   excelMetadata: excelMetadataApi,
   tasks: tasksApi,
   logs: logsApi,
+  permissions: permissionsApi,
   health: healthApi,
   whatsNew: whatsNewApi,
 }

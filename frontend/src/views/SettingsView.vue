@@ -9,7 +9,7 @@
 
     <v-tabs v-model="activeTab" class="mb-4">
       <v-tab value="general">General</v-tab>
-      <v-tab value="logs">Logs</v-tab>
+      <v-tab v-if="permissionsStore.canReadLogs" value="logs">Logs</v-tab>
     </v-tabs>
 
     <v-window v-model="activeTab">
@@ -185,7 +185,7 @@
       </v-window-item>
 
       <!-- Logs Tab -->
-      <v-window-item value="logs">
+      <v-window-item v-if="permissionsStore.canReadLogs" value="logs">
         <v-row>
           <v-col cols="12">
             <v-card>
@@ -308,14 +308,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useTheme } from '@/composables/useTheme'
 import { useSettings } from '@/composables/useSettings'
 import { api } from '@/api'
+import { usePermissionsStore } from '@/stores/permissions'
 import type { LogType, LogLevel } from '@/api/logs'
 
 const theme = useTheme()
 const appSettings = useSettings()
+const permissionsStore = usePermissionsStore()
 
 const version = ref('loading...')
 const showResetDialog = ref(false)
@@ -403,9 +405,18 @@ onMounted(async () => {
     console.error('Failed to fetch version:', err)
     version.value = 'unknown'
   }
-
-  refreshLogs()
 })
+
+// The permission can arrive after the page has opened, for example when Settings is loaded directly.
+watch(
+  () => permissionsStore.canReadLogs,
+  (canReadLogs) => {
+    if (canReadLogs) {
+      refreshLogs()
+    }
+  },
+  { immediate: true }
+)
 
 onUnmounted(() => {
   if (autoRefreshInterval !== null) {

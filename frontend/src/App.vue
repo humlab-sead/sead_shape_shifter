@@ -188,7 +188,7 @@
               </template>
               <v-list-item-title>Go to Home</v-list-item-title>
             </v-list-item>
-            <v-list-item>
+            <v-list-item v-if="permissionsStore.canReadLogs">
               <template #prepend>
                 <v-chip size="small">Ctrl+Shift+L</v-chip>
               </template>
@@ -253,11 +253,12 @@
     </v-snackbar>
 
     <!-- Log Viewer Overlay -->
-    <log-viewer-overlay v-model="showLogViewer" />
+    <log-viewer-overlay v-if="permissionsStore.canReadLogs" v-model="showLogViewer" />
 
-    <!-- Floating Action Button for Log Viewer (hidden on Settings page) -->
+    <!-- Floating Action Button for Log Viewer (administrators only, hidden on Settings page) -->
     <v-btn
-      v-if="route.name !== 'settings'"
+      v-if="permissionsStore.canReadLogs && route.name !== 'settings'"
+      data-testid="open-logs-button"
       icon="mdi-console-line"
       color="primary"
       size="large"
@@ -282,6 +283,7 @@ import { useTheme } from '@/composables/useTheme'
 import { useSettings } from '@/composables/useSettings'
 import { useNotification } from '@/composables/useNotification'
 import { useProjectStore } from '@/stores'
+import { usePermissionsStore } from '@/stores/permissions'
 import { useWhatsNew } from '@/composables/useWhatsNew'
 import ContextHelp from '@/components/ContextHelp.vue'
 import LogViewerOverlay from '@/components/LogViewerOverlay.vue'
@@ -292,6 +294,7 @@ const theme = useTheme()
 const settings = useSettings()
 const { snackbar, success, error } = useNotification()
 const projectStore = useProjectStore()
+const permissionsStore = usePermissionsStore()
 
 const drawer = ref(true)
 const rail = ref(false)
@@ -386,9 +389,10 @@ const commands = ref<Command[]>([
 ])
 
 const filteredCommands = computed(() => {
-  if (!commandSearch.value) return commands.value
+  const available = commands.value.filter((cmd) => cmd.id !== 'open-logs' || permissionsStore.canReadLogs)
+  if (!commandSearch.value) return available
   const search = commandSearch.value.toLowerCase()
-  return commands.value.filter((cmd) => cmd.title.toLowerCase().includes(search))
+  return available.filter((cmd) => cmd.title.toLowerCase().includes(search))
 })
 
 function executeCommand(cmd: Command) {
@@ -480,7 +484,7 @@ function handleKeydown(event: KeyboardEvent) {
     router.push('/projects')
   }
 
-  if (event.ctrlKey && event.shiftKey && event.key === 'L') {
+  if (event.ctrlKey && event.shiftKey && event.key === 'L' && permissionsStore.canReadLogs) {
     event.preventDefault()
     showLogViewer.value = !showLogViewer.value
   }
@@ -493,6 +497,7 @@ function handleKeydown(event: KeyboardEvent) {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
+  void permissionsStore.loadPermissions()
   acknowledgedWhatsNewVersion.value = localStorage.getItem(whatsNewStorageKey)
 
   // Load saved sidebar width

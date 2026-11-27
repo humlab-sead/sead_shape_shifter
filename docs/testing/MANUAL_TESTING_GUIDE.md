@@ -128,6 +128,25 @@ This guide provides step-by-step functional testing procedures for the Shape Shi
 
 ### Log Viewer Overlay
 
+Only users with the `admin` role can read the logs. For local testing, `make development-authorization` makes `local-developer` an administrator.
+
+**Test: No Log Access for Non-Administrators**
+
+1. Sign in as a user without the `admin` role
+2. Visit any page, then **Settings**
+3. Press `Ctrl+Shift+L`
+4. Press `Ctrl+K` and search for "log"
+
+**Expected Results:**
+
+- [ ] No log viewer button on any page
+- [ ] **Settings** has no **Logs** tab
+- [ ] `Ctrl+Shift+L` opens nothing
+- [ ] "Open Log Viewer" is not in the command palette
+- [ ] `GET /api/v1/logs/app` returns `403`
+
+The remaining log viewer tests require an administrator.
+
 **Test: Open Log Viewer with FAB**
 
 1. Navigate to any page (except Settings)

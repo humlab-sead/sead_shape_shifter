@@ -18,6 +18,7 @@ from backend.app.api.v1.endpoints import (
     logs,
     mapping,
     materialization,
+    permissions,
     preview,
     projects,
     query,
@@ -57,4 +58,5 @@ api_router.include_router(materialization.router, tags=["materialization"])
 api_router.include_router(ingesters.router, prefix="/ingesters", tags=["ingesters"])
 api_router.include_router(filters.router, tags=["filters"])
 api_router.include_router(logs.router, tags=["logs"])
+api_router.include_router(permissions.router, tags=["permissions"])
 api_router.include_router(whats_new.router, tags=["whats-new"])

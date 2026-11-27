@@ -295,7 +295,7 @@ systemctl --user -M USER@ restart shape-shifter
 
 ## Observability And References
 
-Application logs are written under `logs/`, rotate at the configured size, and are retained according to `SHAPE_SHIFTER_LOG_RETENTION`. Fixed-entity load normalizations produce warning logs and a UI banner; inspect the listed entity, row, and column before saving normalized values. No alerting infrastructure is currently configured.
+Application logs are written under `logs/`, rotate at the configured size, and are retained according to `SHAPE_SHIFTER_LOG_RETENTION`. Only users with the `admin` role can view or download them in the application (see [AUTHORIZATION.md](AUTHORIZATION.md)). Tracebacks include the stack and error message, but not variable values. Fixed-entity load normalizations produce warning logs and a UI banner; inspect the listed entity, row, and column before saving normalized values. No alerting infrastructure is currently configured.
 
 - [deployment/container/README.md](../deployment/container/README.md): Podman setup, configuration, lifecycle, and diagnostics.
 - [deployment/container/DEPLOYMENT.md](../deployment/container/DEPLOYMENT.md): deployment hosts, multiple environments, NGINX, systemd, and updates.
