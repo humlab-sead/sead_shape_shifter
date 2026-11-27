@@ -198,7 +198,10 @@ RUN GROUP_NAME=$(getent group ${USER_GID} | cut -d: -f1) && \
     useradd -o --uid ${USER_UID} -g ${USER_GID} --home-dir=/app --shell=/bin/bash shapeshifter
 
 # Create only the writable runtime directories with the correct ownership.
-RUN mkdir -p /app/projects /app/shared /app/logs /app/output /app/backups /app/tmp /app/state && \
+# Set the mode of /app explicitly: the app user must be able to open it, whatever
+# the base image or build cache produced.
+RUN chmod 755 /app && \
+    mkdir -p /app/projects /app/shared /app/logs /app/output /app/backups /app/tmp /app/state && \
     chown ${USER_UID}:${USER_GID} /app/projects /app/shared /app/logs /app/output /app/backups /app/tmp /app/state && \
     chmod 775 /app/projects /app/shared /app/logs /app/output /app/backups /app/tmp /app/state
 
@@ -231,6 +234,9 @@ ENV PATH=/opt/venv/bin:$PATH \
 
 # Switch to non-root user
 USER shapeshifter
+
+# Fail the build, not the deployment, when the app user cannot reach the backend.
+RUN python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('backend.app.main') else 1)"
 
 EXPOSE 8012
 
