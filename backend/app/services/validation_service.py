@@ -17,6 +17,7 @@ from backend.app.models.validation import (
     EntityDataValidationStatus,
     ValidationCategory,
     ValidationError,
+    ValidationPriority,
     ValidationResult,
 )
 from backend.app.services.project_data_provider_service import ProjectDataProviderService
@@ -135,6 +136,52 @@ def _preparation_failure_result(
         status_reason=issue.message if validation_mode is not None else None,
         entity_statuses=entity_statuses,
     )
+
+
+def _unfinished_run_errors(
+    status: DataValidationStatus,
+    status_reason: str | None,
+    entity_statuses: dict[str, EntityDataValidationResult],
+    reported_errors: list[ValidationError],
+) -> list[ValidationError]:
+    """Return errors for a data-validation run that did not complete.
+
+    Without them a failed run can have an empty error list, which a reader of the error
+    count takes as a pass. Returns one error for each failed entity that has none yet.
+    Entities that failed for the same reason share one error without an entity name. A run
+    that did not complete and has no error at all gets one error with the run's reason.
+    """
+    if status == DataValidationStatus.COMPLETED:
+        return []
+
+    reported_entities: set[str | None] = {error.entity for error in reported_errors}
+    entities_by_reason: dict[str, list[str]] = {}
+    for name, outcome in entity_statuses.items():
+        if outcome.status == EntityDataValidationStatus.FAILED and name not in reported_entities:
+            entities_by_reason.setdefault(outcome.reason or status_reason or "No reason was reported.", []).append(name)
+
+    def error(entity: str | None, message: str) -> ValidationError:
+        return ValidationError(
+            severity="error",
+            entity=entity,
+            field=None,
+            message=message,
+            code="DATA_VALIDATION_NOT_RUN",
+            category=ValidationCategory.DATA,
+            priority=ValidationPriority.HIGH,
+        )
+
+    errors: list[ValidationError] = [
+        (
+            error(names[0], f"Data validation could not check entity '{names[0]}': {reason}")
+            if len(names) == 1
+            else error(None, f"Data validation could not check {len(names)} entities: {reason}")
+        )
+        for reason, names in entities_by_reason.items()
+    ]
+    if not errors and not reported_errors:
+        errors.append(error(None, f"Data validation did not complete: {status_reason or 'No reason was reported.'}"))
+    return errors
 
 
 class ValidationService:
@@ -273,6 +320,7 @@ class ValidationService:
         errors_list: list[ValidationError] = [ValidationMapper.to_api_error(issue) for issue in issues_list]
 
         errors: list[ValidationError] = [e for e in errors_list if e.severity == "error"]
+        errors += _unfinished_run_errors(orchestrator.status, orchestrator.status_reason, orchestrator.entity_statuses, errors)
         warnings: list[ValidationError] = load_warnings + structural_result.warnings + [e for e in errors_list if e.severity == "warning"]
         info: list[ValidationError] = structural_result.info + [e for e in errors_list if e.severity == "info"]
 

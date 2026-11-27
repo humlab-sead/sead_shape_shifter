@@ -601,6 +601,67 @@ class TestDataValidation:
         assert captured["validators"] is None
         assert isinstance(captured["orchestrator"], DummyDataValidationOrchestrator)
 
+    @staticmethod
+    async def _run_with_orchestrator_outcome(status, status_reason, entity_statuses):
+        """Runs data validation with an orchestrator that returns no issues and the given outcome."""
+
+        class Orchestrator:
+            def __init__(self) -> None:
+                self.status, self.status_reason, self.entity_statuses = status, status_reason, entity_statuses
+
+            async def validate_all_entities(self, core_project, project_name, entity_names=None, validators=None):
+                return []
+
+        project_service = Mock()
+        project_service.load_project.return_value = Project(
+            metadata=ProjectMetadata(name="p", type="shapeshifter-project", entity_count=1),
+            entities={"feature_type": {"type": "fixed", "public_id": "feature_type_id", "columns": ["a"], "values": [["x"]]}},
+        )
+        service = ValidationService(data_orchestrator_factory=Orchestrator)  # type: ignore[arg-type]
+        with (
+            patch("backend.app.services.validation_service.get_project_service", return_value=project_service),
+            patch("backend.app.services.validation_service.ProjectMapper.to_core"),
+            patch.object(ValidationService, "validate_project", return_value=ValidationResult(is_valid=True)),
+        ):
+            return await service.validate_project_data("p")
+
+    @pytest.mark.asyncio
+    async def test_failed_entity_is_reported_as_an_error(self):
+        result = await self._run_with_orchestrator_outcome(
+            DataValidationStatus.FAILED,
+            "19 invalid typed value(s)",
+            {
+                "feature_type": EntityDataValidationResult(status=EntityDataValidationStatus.FAILED, reason="19 invalid typed value(s)"),
+                "feature": EntityDataValidationResult(status=EntityDataValidationStatus.SKIPPED, reason="Skipped"),
+            },
+        )
+
+        assert not result.is_valid
+        assert result.error_count == 1
+        error = result.errors[0]
+        assert (error.severity, error.entity, error.code) == ("error", "feature_type", "DATA_VALIDATION_NOT_RUN")
+        assert error.category == ValidationCategory.DATA
+        assert "19 invalid typed value(s)" in error.message
+
+    @pytest.mark.asyncio
+    async def test_incomplete_run_without_a_failed_entity_is_reported_as_an_error(self):
+        result = await self._run_with_orchestrator_outcome(DataValidationStatus.FAILED, "Normalization stopped", {})
+
+        assert result.error_count == 1
+        assert result.errors[0].entity is None
+        assert "Normalization stopped" in result.errors[0].message
+
+    @pytest.mark.asyncio
+    async def test_completed_run_without_issues_has_no_errors(self):
+        result = await self._run_with_orchestrator_outcome(
+            DataValidationStatus.COMPLETED,
+            None,
+            {"feature_type": EntityDataValidationResult(status=EntityDataValidationStatus.COMPLETED)},
+        )
+
+        assert result.is_valid
+        assert result.error_count == 0
+
     def test_get_validation_service_singleton(self, reset_validation_singleton):
         """Test get_validation_service returns a singleton instance."""
         first = get_validation_service()
