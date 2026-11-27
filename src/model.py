@@ -1156,13 +1156,15 @@ class Metadata:
 class ShapeShiftProject:
     """Project configuration for database tables. Read-Only. Wraps overall project configuration."""
 
-    def __init__(self, *, cfg: dict[str, dict[str, Any]], filename: str | None = None) -> None:
+    def __init__(self, *, cfg: dict[str, dict[str, Any]], filename: str | None = None, file_roots: tuple[Path, ...] | None = None) -> None:
 
         if "entities" not in cfg or not isinstance(cfg["entities"], dict):
             raise ValueError("Invalid project configuration: 'entities' section is missing or not a dictionary.")
 
         self.cfg: dict[str, dict[str, Any]] = cfg
         self.filename: str = filename or "in-memory-config.yml"
+        # Folders that loaders may read from. None means no limit, as in the command-line tool.
+        self.file_roots: tuple[Path, ...] | None = file_roots
 
     @cached_property
     def tables(self) -> dict[str, TableConfig]:
@@ -1232,7 +1234,7 @@ class ShapeShiftProject:
 
     def clone(self) -> "ShapeShiftProject":
         """Create a deep copy of the ShapeShiftProject."""
-        return ShapeShiftProject(cfg=copy.deepcopy(self.cfg), filename=self.filename)
+        return ShapeShiftProject(cfg=copy.deepcopy(self.cfg), filename=self.filename, file_roots=self.file_roots)
 
     def resolve(self, strict: bool = False, **context) -> "ShapeShiftProject":
         """Resolve and return a new ShapeShiftProject instance."""
@@ -1250,6 +1252,7 @@ class ShapeShiftProject:
                 strict=strict,
             ),
             filename=context.get("filename") or self.filename,
+            file_roots=self.file_roots,
         )
 
     def is_resolved(self) -> bool:

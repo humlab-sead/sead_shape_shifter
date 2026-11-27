@@ -130,6 +130,7 @@ class SqlQueryReconciliationSourceResolver(ReconciliationSourceResolver):
             "query": source.query,
         }
         table_cfg: TableConfig = TableConfig(entities_cfg=sql_cfg_dict, entity_name="recon_temp")
+        loader.require_allowed_files(table_cfg, self.project.file_roots)
         custom_data: pd.DataFrame = await loader.load(entity_name=entity_name, table_cfg=table_cfg)
         logger.debug(f"Custom query returned {len(custom_data)} rows")
         return custom_data.to_dict(orient="records")

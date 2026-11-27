@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import pandas as pd
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
+from src.path_resolution import require_path_in_roots
 from src.utility import sanitize_columns
 
 from .base_loader import ConnectTestResult, DataLoader, DataLoaders, LoaderType
@@ -34,6 +35,14 @@ class FileLoader(DataLoader):
 
     async def load_file(self, opts: dict[str, str]) -> pd.DataFrame:  # type: ignore[unused-argument]
         raise TypeError("Subclasses must implement load_file method")
+
+    def require_allowed_files(self, table_cfg: "TableConfig", roots: tuple[Path, ...] | None) -> None:
+        """Check the file name this loader will use, wherever the settings supply it."""
+        if roots is None:
+            return
+        filename: Any = (self.get_loader_opts(table_cfg) or {}).get("filename")
+        if filename:
+            require_path_in_roots(filename, roots)
 
     @abc.abstractmethod
     async def test_connection(self) -> ConnectTestResult:

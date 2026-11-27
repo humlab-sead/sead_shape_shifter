@@ -248,38 +248,54 @@ class ProjectMapper:
 
         project = ShapeShiftProject(cfg=cfg_dict, filename=api_config.filename or "")
 
+        project_folder: Path | None = ProjectMapper.project_folder(project_name, api_config.filename)
+
         # Only resolve if there are unresolved directives
         if not project.is_resolved():
-            # Anchor relative file resolution to the project file's own location so a
-            # moved project folder keeps working even when metadata.name is stale. Fall
-            # back to the name-derived, containment-checked path when no file is known.
-            projects_root: Path = Path(settings.PROJECTS_DIR).resolve()
-            project_root: Path | None = None
-            if api_config.filename:
-                candidate_root: Path = Path(api_config.filename).resolve().parent
-                if candidate_root.is_relative_to(projects_root):
-                    project_root = candidate_root
-            if project_root is None:
-                project_root = resolve_contained_path(project_name.replace(":", "/"), settings.PROJECTS_DIR)
             # Pass env_prefix and env_file from settings for proper env var resolution
             project = project.resolve(
                 filename=api_config.filename,
                 env_prefix=settings.env_prefix,
                 env_filename=settings.env_file,
                 runtime_root=str(settings.APPLICATION_ROOT),
-                allowed_roots=(
-                    project_root,
-                    settings.GLOBAL_DATA_DIR,
-                    settings.GLOBAL_DATA_SOURCE_DIR,
-                    settings.GLOBAL_TARGET_MODEL_DIR,
-                ),
+                allowed_roots=ProjectMapper.directive_roots(project_folder),
                 allowed_vars=settings.resolver_allowed_env_vars,
             )
+
+        # Entity data may come only from the project's own folder or the shared data folder.
+        project.file_roots = ProjectMapper._with_project_folder(project_folder, settings.GLOBAL_DATA_DIR)
 
         if validate_mapping_sidecar:
             ProjectMapper._validate_mapping_sidecar(project, api_config.filename)
 
         return project
+
+    @staticmethod
+    def project_folder(project_name: str, filename: str | None) -> Path | None:
+        """Return the folder that belongs to one project, or None when none can be identified.
+
+        Uses the project file's own location, so a moved project folder keeps working when
+        ``metadata.name`` is stale. Falls back to the containment-checked folder for the name.
+        The projects folder itself is never returned, because it holds every project.
+        """
+        projects_root: Path = Path(settings.PROJECTS_DIR).resolve()
+        if filename:
+            candidate: Path = Path(filename).resolve().parent
+            if candidate != projects_root and candidate.is_relative_to(projects_root):
+                return candidate
+        folder: Path = resolve_contained_path(project_name.replace(":", "/"), projects_root)
+        return folder if folder != projects_root else None
+
+    @staticmethod
+    def _with_project_folder(project_folder: Path | None, *shared: Path) -> tuple[Path, ...]:
+        return tuple(Path(root).resolve() for root in (project_folder, *shared) if root is not None)
+
+    @staticmethod
+    def directive_roots(project_folder: Path | None) -> tuple[Path, ...]:
+        """Return the folders that ``@include:`` and ``@load:`` may read from."""
+        return ProjectMapper._with_project_folder(
+            project_folder, settings.GLOBAL_DATA_DIR, settings.GLOBAL_DATA_SOURCE_DIR, settings.GLOBAL_TARGET_MODEL_DIR
+        )
 
     @staticmethod
     def to_core_config(api_config: Project) -> ShapeShiftProject:

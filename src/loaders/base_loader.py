@@ -1,6 +1,7 @@
 import abc
 from dataclasses import dataclass
 from enum import StrEnum
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import pandas as pd
@@ -51,6 +52,13 @@ class DataLoader(abc.ABC):
     Subclasses should define a 'schema' class variable to describe
     their configuration fields for dynamic form generation.
     """
+
+    def require_allowed_files(self, table_cfg: "TableConfig", roots: tuple[Path, ...] | None) -> None:
+        """Raise ``ValueError`` when loading ``table_cfg`` would open a file outside ``roots``.
+
+        ``roots`` is None when no limit applies, as in the command-line tool. Loaders that
+        open a file override this. Other loaders open no local file.
+        """
 
     @classmethod
     def loader_type(cls) -> LoaderType:

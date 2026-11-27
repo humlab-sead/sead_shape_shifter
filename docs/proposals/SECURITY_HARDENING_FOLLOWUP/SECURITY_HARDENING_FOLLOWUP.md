@@ -37,6 +37,23 @@ The completed [deployment handoff](../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEP
 
 Issue [#569](https://github.com/humlab-sead/sead_shape_shifter/issues/569) is closed, and the `ingesters/sead` package has been removed. The only ingester implementation currently present is `sead_change_request`. Its generic file-input routes reject the key; its dedicated project-only routes use `project:execute` and do not accept caller-selected source or output paths. The generic routes remain available, so adding another ingester to them could reintroduce the path and destination risks described below.
 
+## Findings Added 2026-11-27
+
+These findings are not in the September 2026 ledger. The phase plan does not sequence them yet. "Fix prepared" means the change and its tests exist but are not yet deployed.
+
+| ID | Finding | Status |
+|---|---|---|
+| N-1 | The approved-folder rule for file reads was not applied to every way project settings can name a file, including during validation. Validation also did not limit environment variable expansion as project mapping does. This reopens part of `P-AC-1` and ledger item A2, which chose the path check by top-level entity type. | Fix prepared: [#842](https://github.com/humlab-sead/sead_shape_shifter/issues/842) |
+| N-2 | The backend relied on the network setup to ensure that sign-in headers came from the reverse proxy. [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md) recorded this as residual risk. | Fix prepared: [#843](https://github.com/humlab-sead/sead_shape_shifter/issues/843) |
+| N-3 | The rule for server-managed data sources allows a wider part of the application folder than the data folders. It also checks the declared path fields, while a loader can read its path from another key. Using these data sources requires rights on shared sources. Found by reading the code; not tested. | Open. Allow only the data folders and check the keys each loader reads. |
+| N-4 | Access data source settings can name the folder that supplies Java libraries. The folder is used only when Java is not already running, which it normally is from application startup. No upload route that accepts Java libraries was found. Found by reading the code; not tested. | Open. The backend should ignore this project setting. |
+| N-5 | Paths that the application writes to were not rechecked during the N-1 work. | Open. Review under `P-AC-1`. |
+| N-6 | When `nginx -t` fails, `install_nginx_reverse_proxy.sh` removes the site's enabled link even if the site was enabled before, and leaves the new files. The N-2 fix stops early for a missing secret file, but not for other failures. This is an availability risk. | Open. |
+
+Related defects found during this work, without a security effect: the SQLite loader reads its database path only from the top level of a data source and otherwise uses an empty in-memory database, and the reconciliation custom-query source fails before it loads data. The N-1 file check is already in place for the latter.
+
+The non-goal below about `read_logs` is out of date: log routes have required it since pull request [#840](https://github.com/humlab-sead/sead_shape_shifter/pull/840).
+
 ## Proposed Design
 
 ### Protect request-controlled data and files

@@ -4,6 +4,7 @@ These helpers are intentionally framework-neutral so both Core and Backend
 can reuse the same path-joining semantics without crossing layer boundaries.
 """
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal
 
@@ -59,6 +60,25 @@ def resolve_contained_path(path: str | Path, root: str | Path, *, allow_absolute
         raise ValueError(f"Path is outside the managed root: {path}")
 
     return resolved_path
+
+
+def require_path_in_roots(path: object, roots: Sequence[Path]) -> None:
+    """Refuse a file path unless it resolves inside one of the allowed folders.
+
+    Use this just before a library opens ``path``. A relative path is resolved against the
+    working directory, as the file libraries resolve it. URLs, ``~`` shortcuts, values that
+    are not plain paths and an empty folder list are refused.
+
+    Raises:
+        ValueError: If the path is not allowed. The message does not include the path.
+    """
+    if isinstance(path, (str, Path)):
+        text = str(path)
+        if not ("://" in text or text.startswith(("~", "file:")) or "?" in text):
+            resolved = Path(text).resolve()
+            if any(resolved.is_relative_to(Path(root).resolve()) for root in roots):
+                return
+    raise ValueError("File path is outside the allowed folders")
 
 
 def resolve_managed_file_path(

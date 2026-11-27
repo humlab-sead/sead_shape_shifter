@@ -134,6 +134,7 @@ class ShapeShifter:
         loader: DataLoader | None = self.loaders.resolve_loader(table_cfg=table_cfg)
         if loader:
             self.loaders.apply_local_file_options(table_cfg, loader)
+            loader.require_allowed_files(table_cfg, self.project.file_roots)
             logger.trace(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
 

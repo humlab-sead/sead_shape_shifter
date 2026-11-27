@@ -314,13 +314,33 @@ class ValidationService:
 
         try:
             settings = get_settings()
+            project_name: str = str(((project_cfg or {}).get("metadata") or {}).get("name") or "")
 
+            # Same folder and environment variable limits as when the project is mapped to run.
             project_cfg = resolve_directives(
                 project_cfg,
                 source_path=source_path,
                 env_prefix=settings.env_prefix,
                 runtime_root=settings.application_root,
                 try_without_prefix=True,
+                allowed_roots=ProjectMapper.directive_roots(ProjectMapper.project_folder(project_name, source_path)),
+                allowed_vars=settings.resolver_allowed_env_vars,
+            )
+        except ValueError as e:
+            return ValidationResult(
+                is_valid=False,
+                errors=provider_errors
+                + [
+                    ValidationError(
+                        severity="error",
+                        entity=None,
+                        field=None,
+                        message=str(e),
+                        code="CONFIG_DIRECTIVE_REFUSED",
+                        suggestion="Use files in the project folder or a shared data folder.",
+                    )
+                ],
+                error_count=len(provider_errors) + 1,
             )
         except FileNotFoundError as e:
             # Missing /@load file should be reported as a normal validation error,
