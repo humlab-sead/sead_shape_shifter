@@ -3,6 +3,7 @@
 Tests the strict policy matrix, edge cases, and error handling.
 """
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -61,9 +62,15 @@ class TestCoerceValue:
         assert FixedEntityTypeCoercer.coerce_value("0", int) == (0, None)
         assert FixedEntityTypeCoercer.coerce_value("-42", int) == (-42, None)
 
-        # Float (type) → Error
-        result, error = FixedEntityTypeCoercer.coerce_value(53.0, int)
-        assert error == "invalid_integer_float_not_allowed"
+        # Whole-number float → Integer. Parquet and pandas store an integer column with empty cells as floats.
+        for value in (53.0, np.float64(53.0)):
+            result, error = FixedEntityTypeCoercer.coerce_value(value, int)
+            assert (result, type(result), error) == (53, int, None)
+
+        # A float that is not a whole number, or too large to be exact, → Error
+        for value in (53.5, float("inf"), float("-inf"), 2.0**53 + 2):
+            result, error = FixedEntityTypeCoercer.coerce_value(value, int)
+            assert error == "invalid_integer_float_not_allowed", value
 
         # String float → Error (reject float-like strings)
         result, error = FixedEntityTypeCoercer.coerce_value("53.0", int)

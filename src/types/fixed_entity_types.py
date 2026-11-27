@@ -18,6 +18,8 @@ from typing import Any
 from pandas import isna
 
 FixedEntityColumnTypeName = str
+# Above this, a float can no longer hold every integer, so its value cannot be trusted as an ID.
+MAX_EXACT_FLOAT_INTEGER: int = 2**53
 ALLOWED_FIXED_ENTITY_COLUMN_TYPES: frozenset[str] = frozenset({"int", "string", "float", "bool", "date"})
 
 
@@ -407,7 +409,9 @@ class FixedEntityTypeCoercer:
         - String `"53.0"` → error (reject float-like strings)
         - String `"abc"` → error (invalid format)
         - Boolean `True` or `False` → error (reject bool, even though bool is subclass of int)
-        - Float `53.0` → error (reject floats)
+        - Whole-number float `53.0` → `53` with normalization warning possible. Parquet and
+          pandas store an integer column that has empty cells as floats.
+        - Other floats (`53.5`, infinity, or larger than 2**53) → error
 
         For target_type=str:
         - Any value is converted to string
@@ -437,8 +441,10 @@ class FixedEntityTypeCoercer:
                     return value, "invalid_integer_float_format"
                 return value, "invalid_integer_format"
 
-            # Reject floats explicitly
+            # Accept a float only when it holds a whole number exactly
             if isinstance(value, float):
+                if value.is_integer() and abs(value) <= MAX_EXACT_FLOAT_INTEGER:
+                    return int(value), None
                 return value, "invalid_integer_float_not_allowed"
 
             # Try generic conversion for other numeric types
