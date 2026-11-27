@@ -2627,6 +2627,23 @@ options:
 # Mapping sidecar is auto-loaded from shapeshifter.mapping.yml; no @include needed
 ```
 
+### Where Files May Be Read From
+
+In the web application, a project can read data only from:
+
+- its own project folder, and
+- the shared data folder.
+
+This covers CSV, Excel, SQLite and Access files, however the path is set: entity
+options, `append` items, project data sources, or values supplied by directives.
+`@include:` and `@load:` may also read from the shared data source and target
+model folders. Symlinks and `..` are followed before the check, and URLs are not
+accepted as file paths. A refused path gives the error
+`File path is outside the allowed folders`, or, for a directive,
+`Directive file path is outside the approved data roots`.
+
+The command-line tool does not apply these limits.
+
 ### `@load:` Load Syntax
 
 The `@load:` syntax loads external data files (e.g. for translations) without resolving directives or references.

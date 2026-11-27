@@ -3,6 +3,7 @@ import os
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, ClassVar, Generator, Optional
 
 import jaydebeapi
@@ -15,6 +16,7 @@ from sqlparse.tokens import Comment, Keyword, Literal
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.model import DataSourceConfig, TableConfig
+from src.path_resolution import require_path_in_roots
 from src.sql_policy import ensure_read_only_sql, validate_read_only_sql
 from src.transforms.utility import add_system_id
 from src.utility import create_db_uri as create_pg_uri
@@ -402,18 +404,27 @@ class SqliteLoader(SqlLoader):
         ],
     )
 
-    def create_db_uri(self) -> str:
+    def _database_path(self) -> str:
         if not self.data_source:
             raise ValueError("Data source configuration is required for SqliteLoader")
 
-        filename: str = (
+        return (
             dotget(self.data_source.data_source_cfg or {}, "database,filename,dbname", ":memory:")
             or dotget(self.data_source.options or {}, "database,filename,dbname", ":memory:")
             or ":memory:"
         )
 
-        db_uri: str = f"sqlite:///{filename}"
+    def create_db_uri(self) -> str:
+        db_uri: str = f"sqlite:///{self._database_path()}"
         return db_uri
+
+    def require_allowed_files(self, table_cfg: TableConfig, roots: tuple[Path, ...] | None) -> None:
+        """Check the database file this loader will open. ``:memory:`` opens no file."""
+        if roots is None:
+            return
+        database: str = self._database_path()
+        if database != ":memory:":
+            require_path_in_roots(database, roots)
 
     async def get_table_schema(self, table_name: str, **kwargs) -> CoreSchema.TableSchema:
         """Get detailed schema for MS Access table."""
@@ -741,6 +752,14 @@ class UCanAccessSqlLoader(SqlLoader):
         if not self.data_source:
             raise ValueError("Data source configuration is required for UCanAccessSqlLoader")
         return f"jdbc:ucanaccess://{self.filename}"
+
+    def require_allowed_files(self, table_cfg: TableConfig, roots: tuple[Path, ...] | None) -> None:
+        """Check the Access database file. Connection settings after ``;`` are refused."""
+        if roots is None:
+            return
+        if ";" in str(self.filename):
+            raise ValueError("File path is outside the allowed folders")
+        require_path_in_roots(self.filename or None, roots)
 
     @staticmethod
     def _configured_query_columns(table_cfg: TableConfig) -> list[str]:
