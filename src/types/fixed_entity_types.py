@@ -55,6 +55,36 @@ def build_fixed_entity_full_columns(columns: list[str], public_id: str | None) -
     return full_columns
 
 
+def include_stored_fixed_identity_columns(columns: list[str], public_id: str | None, values: Any) -> list[str]:
+    """Return `columns` plus the identity columns that the stored rows hold but `columns` does not list.
+
+    The backend saves fixed entities with only data columns in `columns`, while the rows still hold `system_id` and
+    the public ID. Rows loaded from a file are matched by name. Inline rows hold the identity columns when they have
+    one value for each column of the full fixed order. Returns `columns` unchanged when the rows hold no unlisted
+    identity column, or when `values` is empty or an unresolved directive.
+    """
+    full_columns: list[str] = build_fixed_entity_full_columns(columns, public_id)
+    unlisted: set[str] = {column for column in ("system_id", public_id) if column and column not in columns}
+
+    if not unlisted or not isinstance(values, list) or not values:
+        return columns
+
+    first_row: Any = values[0]
+    # Without configured columns, inline rows stay invalid, and rows from a file are changed only
+    # when they hold nothing but identity columns.
+    if not columns and not (isinstance(first_row, dict) and set(first_row) <= unlisted):
+        return columns
+
+    if isinstance(first_row, dict):
+        stored: set[str] = unlisted.intersection(first_row)
+        return [column for column in full_columns if column in columns or column in stored] if stored else columns
+
+    if isinstance(first_row, list) and len(first_row) == len(full_columns):
+        return full_columns
+
+    return columns
+
+
 def build_fixed_entity_legacy_columns(columns: list[str], key_columns: list[str], public_id: str | None) -> list[str]:
     """Rebuild the historical identity/keys/data order used by legacy values requests.
 
@@ -547,9 +577,10 @@ class FixedEntityTypeCoercer:
                         f"Entity '{entity_name}' row {row_idx} has {len(row)} values; expected consistent row length {row_length}"
                     )
 
+        # Types may name an identity column that these rows do not hold.
         normalized_column_types = normalize_fixed_entity_column_types(
             entity_name,
-            row_columns,
+            build_fixed_entity_full_columns(row_columns, public_id if isinstance(public_id, str) else None),
             entity_data.get("column_types"),
         )
 

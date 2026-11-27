@@ -225,8 +225,11 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         dict_rows = raw_values is not None and len(raw_values) > 0 and all(isinstance(row, dict) for row in raw_values)
         values: list[Any] = raw_values if dict_rows and raw_values is not None else table.safe_values
 
+        # `column_types` may name the identity columns even when `columns` does not list them. Entities with
+        # `append` do not keep unlisted identity values, so their types must name configured columns only.
+        typed_columns: list[str] = columns if table.has_append or not columns else build_fixed_entity_full_columns(columns, public_id)
         try:
-            column_types = normalize_fixed_entity_column_types(entity_name, columns, table.column_types)
+            column_types = normalize_fixed_entity_column_types(entity_name, typed_columns, table.column_types)
         except FixedEntityColumnTypeDeclarationError as exc:
             self.add_error(str(exc), entity=entity_name, field="column_types")
             return not self.has_errors()

@@ -73,6 +73,7 @@ class FixedLoader(DataLoader):
             {
                 "values": values,
                 "column_types": table_cfg.column_types,
+                "public_id": table_cfg.public_id,
             },
             columns,
             entity_name,
