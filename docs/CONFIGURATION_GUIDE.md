@@ -662,6 +662,7 @@ method:
     - Columns ending with `_id` default to integer semantics when `type: fixed`
     - Empty string values in fixed entities normalize to `null`
     - Coercible integer strings such as `"53"` normalize in memory to `53` during project load
+    - Whole-number floats such as `53.0` normalize to `53`. Saved data files can hold IDs this way, because an integer column with empty cells is stored as floats. Floats such as `53.5` are rejected
     - Invalid non-empty `_id` values such as `"53.0"`, `"abc"`, or booleans are rejected rather than coerced to `null`
     - Successful load-time normalizations are surfaced in the UI and are only written back to YAML on explicit save
   - **Append Configurations**: Also validated for append items with `type: fixed`
