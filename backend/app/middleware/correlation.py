@@ -39,6 +39,8 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         req_id: str = request.headers.get("X-Correlation-ID", str(uuid.uuid4())[:8])
+        # The app-wide exception handler runs after the context variable is reset, so it reads the ID from here.
+        request.state.correlation_id = req_id
         token = correlation_id_var.set(req_id)
         try:
             response: Response = await call_next(request)

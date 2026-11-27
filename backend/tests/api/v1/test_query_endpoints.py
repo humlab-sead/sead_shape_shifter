@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from loguru import logger
 
 from backend.app.api.dependencies import get_data_source_service
 from backend.app.api.v1.endpoints import query as query_endpoint
@@ -14,6 +15,7 @@ from backend.app.authorization.dependencies import get_authorization_service
 from backend.app.authorization.models import Grant, ResourceRecord, ResourceType
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
 from backend.app.authorization.service import AuthorizationService
+from backend.app.exceptions import QueryExecutionError
 from backend.app.main import app
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.models.query import QueryResult, QueryValidation
@@ -246,3 +248,44 @@ async def test_introspect_query_columns_conceals_unreadable_project(
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Resource not found"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("path", "service_method", "operation"),
+    [
+        ("execute", "execute_query", "Query execution failed"),
+        ("columns", "introspect_query_columns", "Column introspection failed"),
+    ],
+)
+@pytest.mark.parametrize("wrapped", [True, False])
+async def test_failed_query_requests_log_the_cause_without_the_query(
+    query_dependencies, mock_query_service, path, service_method, operation, wrapped  # pylint: disable=unused-argument
+):
+    """The log names the data source and cause, but not the SQL text or credentials."""
+    cause = OSError("fe_sendauth: no password supplied password=hunter2\n[SQL: select private_column]")
+    if wrapped:
+        error: Exception = QueryExecutionError(message="Query execution failed.", data_source="authorized-source")
+        error.__context__ = cause
+    else:
+        error = cause
+    getattr(mock_query_service, service_method).side_effect = error
+    lines: list[str] = []
+    sink_id = logger.add(lines.append, format="{level} {message}")
+
+    try:
+        async with _client_for_principal("alice") as client:
+            response = await client.post(
+                f"/api/v1/data-sources/authorized-source/query/{path}",
+                json={"query": "select private_column"},
+            )
+    finally:
+        logger.remove(sink_id)
+
+    output = "".join(lines)
+    assert response.status_code == 500
+    assert response.json()["detail"].startswith(f"{operation}. Correlation ID: ")
+    assert f"ERROR {operation} for data source 'authorized-source'" in output
+    assert "OSError: fe_sendauth: no password supplied" in output
+    assert "private_column" not in output
+    assert "hunter2" not in output

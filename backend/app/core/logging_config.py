@@ -7,6 +7,8 @@ from pathlib import Path
 
 from loguru import logger
 
+from backend.app.middleware.correlation import get_correlation_id
+
 
 def format_exception_with_filtered_frames(record: dict) -> str:
     """Format exception with filtered stack frames (removes framework noise).
@@ -68,6 +70,11 @@ def format_exception_with_filtered_frames(record: dict) -> str:
     return "".join(lines)
 
 
+def add_correlation_id(record) -> None:
+    """Adds the current request's correlation ID to a log record, or 'no-corr' outside a request."""
+    record["extra"]["correlation_id"] = get_correlation_id()
+
+
 def configure_logging(
     log_dir: Path | str = "logs",
     log_level: str = "INFO",
@@ -92,6 +99,7 @@ def configure_logging(
     """
     # Remove default handler
     logger.remove()
+    logger.configure(patcher=add_correlation_id)
 
     log_path = Path(log_dir)
     log_path.mkdir(exist_ok=True, parents=True)
@@ -101,7 +109,7 @@ def configure_logging(
         logger.add(
             sys.stderr,
             level=log_level,
-            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | "
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | {extra[correlation_id]} | "
             "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
             colorize=True,
             backtrace=not filter_framework_frames,  # Disable full backtrace if filtering
@@ -114,7 +122,7 @@ def configure_logging(
         logger.add(
             log_path / "app.log",
             level=log_level,
-            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
+            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {extra[correlation_id]} | {name}:{function}:{line} - {message}",
             rotation=rotation,
             retention=retention,
             compression=compression,
@@ -127,7 +135,7 @@ def configure_logging(
         logger.add(
             log_path / "error.log",
             level="ERROR",
-            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
+            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {extra[correlation_id]} | {name}:{function}:{line} - {message}",
             rotation=rotation,
             retention=retention,
             compression=compression,
