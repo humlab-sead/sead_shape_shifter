@@ -3,6 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
+from loguru import logger
 
 import backend.app.models.data_source as api
 from backend.app.api.dependencies import get_data_source_service
@@ -15,6 +16,7 @@ from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService, is_internal_data_source
 from backend.app.utils.public_errors import public_error_detail
+from backend.app.utils.safe_logging import describe_exception, sanitize_log_value
 from src.model import DataSourceConfig, ShapeShiftProject
 
 router = APIRouter()
@@ -25,6 +27,16 @@ query_columns_reader_dependency = require_project_or_shared_data_source(Action.R
 def get_query_service() -> QueryService:
     """Dependency to get query service instance."""
     return QueryService()
+
+
+def _query_failure(action: str, data_source_name: str, error: Exception) -> HTTPException:
+    """Logs why a query request failed and returns the 500 error shown to the user.
+
+    The log line leaves out the query text.
+    """
+    reason = f"{error.message} " if isinstance(error, QueryExecutionError) else ""
+    logger.error("{} for data source '{}': {}[{}]", action, sanitize_log_value(data_source_name), reason, describe_exception(error))
+    return HTTPException(status_code=500, detail=public_error_detail(action))
 
 
 def _resolve_data_source_config(
@@ -133,12 +145,10 @@ async def execute_query(
         return result
     except QuerySecurityError as e:
         raise HTTPException(status_code=400, detail="Query rejected by the SQL safety policy.") from e
-    except QueryExecutionError as e:
-        raise HTTPException(status_code=500, detail=public_error_detail("Query execution failed")) from e
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=public_error_detail("Query execution failed")) from e
+        raise _query_failure("Query execution failed", authorized_data_source.resource.locator, e) from e
 
 
 @router.post(
@@ -253,9 +263,7 @@ async def introspect_query_columns(
         return {"columns": columns}
     except QuerySecurityError as e:
         raise HTTPException(status_code=400, detail="Query rejected by the SQL safety policy.") from e
-    except QueryExecutionError as e:
-        raise HTTPException(status_code=500, detail=public_error_detail("Column introspection failed")) from e
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=public_error_detail("Column introspection failed")) from e
+        raise _query_failure("Column introspection failed", data_source_name, e) from e

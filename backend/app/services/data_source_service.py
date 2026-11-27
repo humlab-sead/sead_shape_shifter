@@ -13,6 +13,7 @@ from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.data_source import DataSourceConfig, DataSourceStatus, DataSourceTestResult
 from backend.app.services.data_source_policy import validate_server_managed_data_source
+from backend.app.utils.safe_logging import describe_exception, sanitize_log_value, summarize_error_text
 from src.loaders.base_loader import ConnectTestResult, DataLoader, DataLoaders
 from src.model import DataSourceConfig as CoreDataSourceConfig
 
@@ -283,10 +284,12 @@ class DataSourceService:
             loader_cls: type[DataLoader] = DataLoaders.get(core_ds_cfg.driver)
             loader: DataLoader = loader_cls(core_ds_cfg)
             result: ConnectTestResult = await loader.test_connection()
+            if not result.success:
+                logger.error("Connection test failed for '{}': {}", sanitize_log_value(config.name), summarize_error_text(result.message))
             return DataSourceTestResult.from_core_result(result)
         except Exception as e:  # pylint: disable=broad-except
             elapsed_ms = int((time.time() - start_time) * 1000)
-            logger.error(f"Connection test failed for '{config.name}' [corr={get_correlation_id()}] [{e.__class__.__name__}]")
+            logger.error("Connection test failed for '{}': [{}]", sanitize_log_value(config.name), describe_exception(e))
             return DataSourceTestResult.create_failure(
                 message=f"Connection failed. Correlation ID: {get_correlation_id()}", connection_time_ms=elapsed_ms
             )

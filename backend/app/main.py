@@ -20,7 +20,7 @@ from backend.app.core.config import settings
 from backend.app.core.logging_config import configure_logging
 from backend.app.core.state_manager import ApplicationState, init_app_state
 from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
-from backend.app.middleware.correlation import CorrelationMiddleware
+from backend.app.middleware.correlation import CorrelationMiddleware, correlation_id_var, get_correlation_id
 from backend.app.middleware.proxy_auth import ProxyAuthenticationMiddleware
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.integrity_troubleshooter_context_store import (
@@ -181,18 +181,26 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     This is a last-resort handler. Most errors should be caught by the
     @handle_endpoint_errors decorator which provides better context.
     """
-    logger.error(
-        "Unhandled exception during {} {}: type={} details={}",
-        request.method,
-        request.url.path,
-        type(exc).__name__,
-        sanitize_log_value(exc),
-    )
+    # This handler runs outside CorrelationMiddleware, so restore the request's ID for the log line and response.
+    request_id: str | None = getattr(request.state, "correlation_id", None)
+    token = correlation_id_var.set(request_id or get_correlation_id())
+    try:
+        logger.error(
+            "Unhandled exception during {} {}: type={} details={}",
+            request.method,
+            request.url.path,
+            type(exc).__name__,
+            sanitize_log_value(exc),
+        )
+        detail = public_error_detail("An unexpected error occurred")
+    finally:
+        correlation_id_var.reset(token)
 
     return JSONResponse(
         status_code=500,
+        headers={"X-Correlation-ID": request_id} if request_id else None,
         content={
-            "detail": public_error_detail("An unexpected error occurred"),
+            "detail": detail,
             "error_type": "InternalServerError",
             "message": "An unexpected error occurred. The error has been logged.",
         },
