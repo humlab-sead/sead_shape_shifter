@@ -198,8 +198,14 @@ bootstrap vhost first and obtain the certificate with it:
 ```bash
 sudo deployment/container-host/deploy/install_nginx_reverse_proxy.sh --bootstrap test-shape-shifter.sead.se
 sudo certbot certonly --webroot -w /var/www/html -d test-shape-shifter.sead.se
+sudo deployment/container-host/deploy/bootstrap-proxy-secret.sh test-shape-shifter.sead.se
 sudo deployment/container-host/deploy/install_nginx_reverse_proxy.sh test-shape-shifter.sead.se 8012
 ```
+
+The HTTPS template includes a secret file that
+`bootstrap-proxy-secret.sh` creates, so run it before the last command, also
+before reinstalling an existing site. See
+[Create the proxy secret](../container-host/README.md#create-the-proxy-secret).
 
 Issuing the certificate requires the domain to already resolve to this host
 (or to its NAT address). While the DNS record still points at another
@@ -398,6 +404,12 @@ daemon-reload`, so no separate reload is needed.
 ---
 
 ## Updating a deployment
+
+The container mounts the site's proxy secret, and the production backend does not
+start without it. Before the first update that includes this check, create the
+secret and add the NGINX include; see
+[Proxy Secret](../../docs/OPERATIONS.md#proxy-secret). Update the files in
+`~/container` too, because a rebuild does not change them.
 
 To refresh an environment's deployment files, sync the reviewed tree from a
 repository checkout (see [Place the deployment files](#place-the-deployment-files)):

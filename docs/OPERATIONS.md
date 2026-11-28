@@ -169,6 +169,31 @@ Notes:
 - `list-grants --effective` expands group members only when `SHAPE_SHIFTER_AUTHORIZATION_MEMBERSHIP_LOOKUP_URL` points at a membership endpoint. NGINX does not provide one, so grant reviews on a Basic-auth site read membership from this file.
 - Group subjects cannot hold `owner`; keep a named principal as the project owner.
 
+### Proxy Secret
+
+With trusted-proxy sign-in, NGINX adds a secret in the `X-Proxy-Secret` header,
+and the backend rejects a request without it before reading the user or group
+headers. In production the application does not start without the secret file.
+
+Set it up in this order. The files and commands are described in
+[Create the proxy secret](../deployment/container-host/README.md#create-the-proxy-secret).
+
+1. Create the secret for the site with `bootstrap-proxy-secret.sh`.
+2. Make sure the NGINX site includes the generated file, then test and reload
+   NGINX. A backend without the check ignores the header, so this step is safe to
+   do first.
+3. When upgrading, update the deployment files in `~/container` as well as the
+   image. A rebuild alone does not add the secret mount.
+4. Run `make restart`. It checks for the secret before it stops the container.
+
+If every request returns `401`:
+
+- The log line `Rejected a request without a valid proxy secret` means NGINX
+  sent no secret or another one. Check the include, reload NGINX and recreate the
+  container.
+- Without that line, the sign-in header is missing; check the NGINX
+  authentication settings.
+
 ## Data Layout And Backups
 
 `deployment/container/podman-compose.yml` mounts the following paths. Runtime configuration

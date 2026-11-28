@@ -94,7 +94,12 @@ case "$_shapeshifter_container_data_input" in
     *) CONTAINER_DATA_DIR="$HOME/${_shapeshifter_container_data_input#./}" ;;
 esac
 
-export CONFIG_DIR DATA_DIR CONTAINER_DATA_DIR
+# The proxy secret that podman-compose.yml mounts. An administrator creates it
+# with bootstrap-proxy-secret.sh, outside the deployment user's home. The default
+# fits a deployment whose user is named after its domain.
+PROXY_SECRET_FILE="${PROXY_SECRET_FILE:-/etc/shape-shifter/$(id -un)/proxy-secret}"
+
+export CONFIG_DIR DATA_DIR CONTAINER_DATA_DIR PROXY_SECRET_FILE
 
 unset -f _shapeshifter_read_env_file
 unset _shapeshifter_script_dir _shapeshifter_env_template _shapeshifter_config_input _shapeshifter_config_file_dir _shapeshifter_env_file _shapeshifter_container_data_input

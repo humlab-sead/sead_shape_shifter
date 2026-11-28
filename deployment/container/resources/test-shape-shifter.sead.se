@@ -109,6 +109,9 @@ server {
         # Authorization groups for this user; empty when the user is in none.
         proxy_set_header X-Authenticated-Groups $authz_groups;
 
+        # Adds the X-Proxy-Secret header. bootstrap-proxy-secret.sh creates this file.
+        include /etc/nginx/shape-shifter-secrets/test-shape-shifter.sead.se.conf;
+
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
 

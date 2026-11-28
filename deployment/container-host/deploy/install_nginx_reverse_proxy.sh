@@ -31,6 +31,7 @@ install the HTTP-only bootstrap vhost, obtain the certificate, then re-run
 without --bootstrap:
   sudo install_nginx_reverse_proxy.sh --bootstrap <DOMAIN>
   sudo certbot certonly --webroot -w /var/www/html -d <DOMAIN>
+  sudo bootstrap-proxy-secret.sh <DOMAIN> [DEPLOY_USER]
   sudo install_nginx_reverse_proxy.sh <DOMAIN> <port>
 
 Examples:
@@ -143,6 +144,15 @@ if [[ ! -f "$CERT_PATH" ]]; then
   echo "Install the bootstrap vhost and obtain the certificate first:" >&2
   echo "  sudo $0 --bootstrap $DOMAIN" >&2
   echo "  sudo certbot certonly --webroot -w /var/www/html -d $DOMAIN" >&2
+  exit 1
+fi
+
+# The HTTPS site includes this file. Stop before changing anything when it is
+# missing: a failed 'nginx -t' would leave the site disabled.
+SECRET_CONF="/etc/nginx/shape-shifter-secrets/$DOMAIN.conf"
+if [[ ! -f "$SECRET_CONF" ]]; then
+  echo "Missing $SECRET_CONF." >&2
+  echo "Create it first: sudo $SCRIPT_DIR/bootstrap-proxy-secret.sh $DOMAIN [DEPLOY_USER]" >&2
   exit 1
 fi
 

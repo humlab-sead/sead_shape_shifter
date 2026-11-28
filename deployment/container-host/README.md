@@ -17,6 +17,40 @@ Runtime verification is owned by SEAD operations. The
 [SEAD Runtime Verification Handoff](../../docs/proposals/done/CONTAINER_SETUP_SIMPLIFICATION/OPERATIONS_VERIFICATION_HANDOFF.md)
 lists the required operational outcomes without prescribing tools.
 
+## Create the proxy secret
+
+NGINX sends this secret with each request, and the backend rejects requests
+without it. The compose file mounts the app file into the container. See
+[Proxy Secret](../../docs/OPERATIONS.md#proxy-secret) for the setup order.
+
+Run once for each site. `DEPLOY_USER` is the host user that runs the site's
+container; that user's primary group can read the app file. It defaults to
+`DOMAIN`, so leave it out when the user is named after the domain:
+
+```bash
+sudo deployment/container-host/deploy/bootstrap-proxy-secret.sh <DOMAIN> [DEPLOY_USER]
+```
+
+It writes `/etc/shape-shifter/<DOMAIN>/proxy-secret` for the app and
+`/etc/nginx/shape-shifter-secrets/<DOMAIN>.conf` for NGINX.
+
+- **New or reinstalled site:** the installer's HTTPS template has the include.
+  Run this script before the installer. If the secret file is missing,
+  `nginx -t` fails and the installer removes the site's enabled link, even if the
+  site was enabled before.
+- **Existing site file:** to add the header without running the installer, add
+  `include /etc/nginx/shape-shifter-secrets/<DOMAIN>.conf;` in the `location`
+  block that has `proxy_pass`, then run
+  `sudo nginx -t && sudo systemctl reload nginx`. `nginx -t` also passes when the
+  line is missing.
+- **Replace the secret:** delete the app file, run the script again, then right
+  away reload NGINX and, as the deploy user, run `make restart` in `~/container`.
+  Requests get `401` between the two steps.
+- **If `nginx -t` or the reload fails:** the new files stay. Fix the problem
+  before NGINX is reloaded or the container is recreated.
+- **Keep it private:** `nginx -T` prints the secret. Do not paste or log its
+  output, and do not commit or back up either file.
+
 ## Copy projects between deployments on one host
 
 `sync_projects.py` copies projects in one direction between two deployment users

@@ -166,6 +166,9 @@ echo -e "${BLUE}Next steps:${NC}"
 echo "1. Review deployment settings:    nano $CONFIG_DIR/deployment.env"
 echo "2. Edit the runtime environment:  nano $CONFIG_DIR/backend.env"
 echo "3. Edit PostgreSQL credentials:   nano $CONFIG_DIR/.pgpass/.pgpass"
+if [ ! -s "$PROXY_SECRET_FILE" ]; then
+  echo "   Ask an administrator to run bootstrap-proxy-secret.sh <DOMAIN>; the container needs $PROXY_SECRET_FILE"
+fi
 echo "4. Provision authorization:       $CONFIG_DIR/authorization.env"
 echo "                                   $CONFIG_DIR/authorization-manifest.yaml"
 echo "                                   $CONFIG_DIR/groups.d/shape-shifter.conf"
