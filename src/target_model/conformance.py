@@ -456,49 +456,6 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
         return issues
 
 
-@CONFORMANCE_VALIDATORS.register(key="conditional_foreign_key")
-class ConditionalForeignKeyConformanceValidator(GlobalConformanceValidator):
-    """Report conditional FKs that project conformance cannot evaluate before reconciliation."""
-
-    allow_severity_override = False
-
-    def get_default_severity(
-        self, target_model: TargetModel, project: ShapeShiftProject  # pylint: disable=unused-argument
-    ) -> SeverityLevel:
-        """Return info because final insert decisions are not available during project conformance."""
-        return "info"
-
-    def validate_global(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
-        """Report conditional FKs for source entities present in the project."""
-        issues: list[ConformanceIssue] = []
-        for entity_name, entity_spec in target_model.entities.items():
-            if not project.has_table(entity_name):
-                continue
-
-            for foreign_key in entity_spec.foreign_keys:
-                if foreign_key.required_when is None:
-                    continue
-
-                # A valid direct target-ID declaration satisfies this relationship without a
-                # project lookup entity or Core link, so reconciliation cannot change its status.
-                if is_valid_direct_public_id_foreign_key(entity_name, foreign_key.entity, target_model, project):
-                    continue
-
-                issues.append(
-                    ConformanceIssue(
-                        severity="info",
-                        code="CONDITIONAL_FK_AWAITING_RECONCILIATION",
-                        message=(
-                            f"Conditional foreign key from '{entity_name}' to '{foreign_key.entity}' is awaiting "
-                            "reconciliation; project conformance cannot determine whether rows will be inserted."
-                        ),
-                        entity=entity_name,
-                    )
-                )
-
-        return issues
-
-
 @CONFORMANCE_VALIDATORS.register(key="no_orphan_facts")
 class NoOrphanFactsConformanceValidator(GlobalConformanceValidator):
     """Fact entities must reach at least one required lookup or classifier when the constraint is declared."""

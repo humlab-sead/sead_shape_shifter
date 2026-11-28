@@ -69,11 +69,10 @@ class TestTargetModelValidatorHappyPaths:
 
         assert errors == []
 
-    def test_conditional_foreign_key_returns_information_without_requirement_errors(self):
-        """A project-only check reports a condition awaiting reconciliation without failing the project."""
+    def test_conditional_foreign_key_returns_no_project_only_issues(self):
+        """A project-only check reports nothing for a conditional FK."""
         project = _make_project(
             {"location": _minimal_entity(public_id="location_id", columns=["location_name"])},
-            options={"validation": {"severity_overrides": {"conditional_foreign_key": "error"}}},
         )
         target_model_data = _minimal_target_model(
             entities={
@@ -87,9 +86,7 @@ class TestTargetModelValidatorHappyPaths:
 
         issues = TargetModelValidator().validate(target_model_data, project)
 
-        assert [(issue.code, issue.severity, issue.category) for issue in issues] == [
-            ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "info", ValidationCategory.CONFORMANCE)
-        ]
+        assert issues == []
 
     def test_direct_target_id_fk_pending_check_keeps_code_and_info_severity(self):
         project = _make_project(

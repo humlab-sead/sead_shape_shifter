@@ -766,7 +766,7 @@ class TestValidateTargetModel:
         assert result.errors[0].suggestion
 
     @pytest.mark.parametrize("include_static_error", [False, True])
-    def test_conditional_foreign_key_is_returned_as_info(self, validation_service: ValidationService, include_static_error: bool):
+    def test_conditional_foreign_key_adds_no_findings(self, validation_service: ValidationService, include_static_error: bool):
         target_model_data = {
             "model": {"name": "Test Model", "version": "1.0.0"},
             "entities": {
@@ -796,7 +796,6 @@ class TestValidateTargetModel:
                         "columns": ["location_name"],
                     }
                 },
-                "options": {"validation": {"severity_overrides": {"conditional_foreign_key": "error"}}},
             },
             filename="test.yml",
         )
@@ -812,7 +811,7 @@ class TestValidateTargetModel:
         assert result.is_valid is (not include_static_error)
         assert [issue.code for issue in result.errors] == (["MISSING_REQUIRED_ENTITY"] if include_static_error else [])
         assert result.warnings == []
-        assert [issue.code for issue in result.info] == ["CONDITIONAL_FK_AWAITING_RECONCILIATION"]
+        assert result.info == []
 
     def test_target_model_validation_groups_warnings_by_severity(self, validation_service: ValidationService):
         """Target-model validation should keep conformance warnings out of the error bucket."""
