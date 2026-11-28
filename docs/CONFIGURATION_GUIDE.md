@@ -4407,6 +4407,14 @@ When testing data source connections via the API, the `DataSourceService` now au
 
 For PostgreSQL connections, the recommended approach is to use `.pgpass` file for password management rather than storing passwords in configuration or environment variables.
 
+Host, user and database names may hold only these characters, otherwise the connection is refused with `Invalid database connection value`:
+
+| Value | Allowed |
+|---|---|
+| Host | `A-Z a-z 0-9 . _ -` (no IPv6 address or socket path) |
+| User and database | `A-Z a-z 0-9 . _ $ -` |
+| Port | A whole number from 1 to 65535 |
+
 ### Setting up .pgpass
 
 1. Create `~/.pgpass` file:
