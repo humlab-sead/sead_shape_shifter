@@ -688,6 +688,49 @@ class TestCreateDbUri:
         assert "127.0.0.1" in uri1
         assert "remote.server.com" in uri2
 
+    @pytest.mark.parametrize(
+        ("name", "value"),
+        [
+            ("dbname", "sead?hostaddr=127.0.0.1"),
+            ("dbname", "sead&passfile=x"),
+            ("dbname", "sead#x"),
+            ("dbname", "a/b"),
+            ("dbname", "a%3Fhostaddr"),
+            ("dbname", "sead hostaddr=127.0.0.1"),
+            ("dbname", ""),
+            ("dbname", "sead\n"),
+            ("user", "admin@other.example.org"),
+            ("user", "admin:secret"),
+            ("user", "admin?hostaddr=127.0.0.1"),
+            ("host", "db.example.org/other"),
+            ("host", "db.example.org?hostaddr=127.0.0.1"),
+            ("host", "a.example.org,b.example.org"),
+            ("host", "user@db.example.org"),
+            ("host", ""),
+            ("port", "5432/sead?hostaddr=127.0.0.1"),
+            ("port", 0),
+            ("port", 65536),
+            ("port", "abc"),
+            ("driver", "postgresql+psycopg://x@other.example.org/db?hostaddr=127.0.0.1#"),
+            ("driver", "postgresql psycopg"),
+        ],
+    )
+    def test_create_db_uri_refuses_invalid_values(self, name: str, value: Any):
+        """A value outside its allowed set is refused, and the error does not repeat it."""
+        options: dict[str, Any] = {"host": "db.example.org", "port": 5432, "user": "reader", "dbname": "sead", name: value}
+
+        with pytest.raises(ValueError, match=f"Invalid database connection value: {name}") as error:
+            create_db_uri(**options)
+
+        if str(value).strip():
+            assert str(value) not in str(error.value)
+
+    def test_create_db_uri_accepts_ordinary_names(self):
+        """Names with the allowed punctuation keep working."""
+        uri = create_db_uri(host="db-1.internal_net.example.org", port="65535", user="sead_ro.v2", dbname="sead_staging-2026$")
+
+        assert uri == "postgresql+psycopg://sead_ro.v2@db-1.internal_net.example.org:65535/sead_staging-2026$"
+
 
 class TestResolveSpecification:
     """Tests for resolve_specification function."""

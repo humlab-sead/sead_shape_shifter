@@ -643,11 +643,30 @@ class Registry(Generic[T]):
         return set(getattr(item, "key") for item in self.items.values())
 
 
+# What each part of a database URI may hold. The parts come from project and data source
+# settings, so each one is checked before it is put into the URI.
+_DB_URI_PARTS: dict[str, re.Pattern[str]] = {
+    "driver": re.compile(r"[a-z0-9]+(\+[a-z0-9_]+)?"),
+    "user": re.compile(r"[A-Za-z0-9_.$-]+"),
+    "host": re.compile(r"[A-Za-z0-9_.-]+"),
+    "port": re.compile(r"[0-9]{1,5}"),
+    "dbname": re.compile(r"[A-Za-z0-9_.$-]+"),
+}
+
+
 def create_db_uri(*, host: str, port: int | str, user: str, dbname: str, driver: str = "postgresql+psycopg") -> str:
     """
     Builds database URI from the individual config elements.
+
+    Raises:
+        ValueError: If a part holds a character outside its allowed set, or the port is not
+            from 1 to 65535. The message names the part but does not include its value.
     """
-    return f"{driver}://{user}@{host}:{port}/{dbname}"
+    parts: dict[str, str] = {"driver": str(driver), "user": str(user), "host": str(host), "port": str(port), "dbname": str(dbname)}
+    for name, value in parts.items():
+        if not _DB_URI_PARTS[name].fullmatch(value) or (name == "port" and not 1 <= int(value) <= 65535):
+            raise ValueError(f"Invalid database connection value: {name}")
+    return "{driver}://{user}@{host}:{port}/{dbname}".format(**parts)
 
 
 def get_connection_uri(connection: Any) -> str:
