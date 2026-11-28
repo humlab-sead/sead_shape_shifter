@@ -22,7 +22,7 @@ authentication_provider
 authenticated_at
 ```
 
-In the current deployment model, nginx supplies a verified identity header and FastAPI validates it before placing the trimmed value in `request.state.authenticated_user`. The header must be non-empty, contain no control characters, and contain at most 255 characters. The resulting value is used as the case-sensitive `principal_id` for grant lookup. The authentication provider and authentication time provide request context; they do not affect grants.
+In the current deployment model, nginx supplies a verified identity header. FastAPI first requires the [proxy secret](OPERATIONS.md#proxy-secret) that only nginx adds, so that it does not accept the header from other senders. It then validates the header before placing the trimmed value in `request.state.authenticated_user`. The header must be non-empty, contain no control characters, and contain at most 255 characters. The resulting value is used as the case-sensitive `principal_id` for grant lookup. The authentication provider and authentication time provide request context; they do not affect grants.
 
 When trusted-proxy authentication is disabled, only `development` and `test` environments may use `DEVELOPMENT_PRINCIPAL_ID`. Requests without a valid principal receive `401 Authentication required`.
 

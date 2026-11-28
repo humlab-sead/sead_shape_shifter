@@ -237,9 +237,10 @@ shell:
 healthcheck:
 	@CONTAINER_NAME="$(CONTAINER_NAME)" HOST_PORT="$(HOST_PORT)" $(SCRIPTS_DIR)/healthcheck.sh
 
+# Through the dispatcher, so compose gets the same settings as 'up'.
 .PHONY: config
 config:
-	@CONFIG_DIR="$(CONFIG_DIR)" CONTAINER_DATA_DIR="$(CONTAINER_DATA_DIR)" podman-compose -f $(COMPOSE_FILE) config
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh config
 
 # ===========================================================================
 # Validation
@@ -250,7 +251,7 @@ validate: check-podman
 	@echo "$(BLUE)Validating setup...$(NC)"
 	@test -f Containerfile && echo "$(GREEN)+ Containerfile present$(NC)" || { echo "$(RED)x Containerfile missing$(NC)"; exit 1; }
 	@test -f $(COMPOSE_FILE) && echo "$(GREEN)+ $(COMPOSE_FILE) present$(NC)" || { echo "$(RED)x $(COMPOSE_FILE) missing$(NC)"; exit 1; }
-	@CONFIG_DIR="$(CONFIG_DIR)" CONTAINER_DATA_DIR="$(CONTAINER_DATA_DIR)" podman-compose -f $(COMPOSE_FILE) config >/dev/null && echo "$(GREEN)+ Compose configuration is valid$(NC)"
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh config >/dev/null && echo "$(GREEN)+ Compose configuration is valid$(NC)"
 	@test -d "$(CONFIG_DIR)" && echo "$(GREEN)+ Config directory exists$(NC)" || echo "$(YELLOW)! Config directory missing (run make setup)$(NC)"
 	@mode=$$(stat -c '%a' "$(CONFIG_DIR)" 2>/dev/null || true); \
 	if [ "$$mode" = "700" ]; then \

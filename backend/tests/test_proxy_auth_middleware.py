@@ -3,6 +3,8 @@
 import json
 
 import pytest
+from loguru import logger
+from pydantic import SecretStr
 from starlette.types import Message, Receive, Scope, Send
 
 from backend.app.middleware.proxy_auth import ProxyAuthenticationMiddleware
@@ -14,6 +16,7 @@ async def _call_middleware(
     *,
     enabled: bool = True,
     groups_enabled: bool = False,
+    secret: str | None = None,
 ) -> list[Message]:
     """Run the middleware with a minimal ASGI request and collect response messages."""
     messages: list[Message] = []
@@ -35,6 +38,7 @@ async def _call_middleware(
         groups_enabled=groups_enabled,
         groups_header_name="X-Authenticated-Groups",
         public_paths={"/health"},
+        secret=SecretStr(secret) if secret is not None else None,
     )
 
     request_headers = [(name.lower().encode(), value.encode()) for name, value in headers.items()]
@@ -122,3 +126,58 @@ async def test_proxy_auth_can_be_disabled_for_local_development() -> None:
 
     assert _response_status(messages) == 200
     assert json.loads(_response_body(messages)) == {"user": None, "groups": []}
+
+
+SECRET = "a1" * 32
+SIGNED_IN = {"X-Authenticated-User": "alice"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "secret_headers",
+    [{}, {"X-Proxy-Secret": ""}, {"X-Proxy-Secret": "wrong" * 13}, {"X-Proxy-Secret": SECRET + "x"}, {"X-Proxy-Secret": "é" * 64}],
+    ids=["missing", "empty", "wrong", "one-character-more", "non-ascii"],
+)
+async def test_proxy_auth_rejects_identity_without_the_proxy_secret(secret_headers: dict[str, str]) -> None:
+    messages = await _call_middleware("/private", {**SIGNED_IN, **secret_headers}, secret=SECRET)
+
+    assert _response_status(messages) == 401
+    assert json.loads(_response_body(messages)) == {"detail": "Authentication required"}
+
+
+@pytest.mark.asyncio
+async def test_proxy_auth_accepts_identity_with_the_proxy_secret() -> None:
+    messages = await _call_middleware("/private", {**SIGNED_IN, "X-Proxy-Secret": SECRET}, secret=SECRET)
+
+    assert _response_status(messages) == 200
+    assert json.loads(_response_body(messages))["user"] == "alice"
+
+
+@pytest.mark.asyncio
+async def test_proxy_auth_still_requires_an_identity_with_the_proxy_secret() -> None:
+    messages = await _call_middleware("/private", {"X-Proxy-Secret": SECRET}, secret=SECRET)
+
+    assert _response_status(messages) == 401
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("path", "enabled"), [("/health", True), ("/private", False)])
+async def test_proxy_auth_needs_no_secret_on_public_paths_or_when_disabled(path: str, enabled: bool) -> None:
+    messages = await _call_middleware(path, {}, enabled=enabled, secret=SECRET)
+
+    assert _response_status(messages) == 200
+
+
+@pytest.mark.asyncio
+async def test_proxy_auth_logs_a_rejection_without_either_value() -> None:
+    lines: list[str] = []
+    handler = logger.add(lines.append, level="WARNING")
+    try:
+        await _call_middleware("/private", {**SIGNED_IN, "X-Proxy-Secret": "sent-" * 10}, secret=SECRET)
+    finally:
+        logger.remove(handler)
+
+    output = "".join(lines)
+    assert "proxy secret" in output
+    assert SECRET not in output
+    assert "sent-" not in output

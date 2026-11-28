@@ -49,6 +49,9 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Authenticated-User $remote_user;
 
+        # Adds the X-Proxy-Secret header. bootstrap-proxy-secret.sh creates this file.
+        include /etc/nginx/shape-shifter-secrets/test-shape-shifter.sead.se.conf;
+
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
     }

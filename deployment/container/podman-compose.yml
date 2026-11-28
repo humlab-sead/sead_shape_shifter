@@ -100,6 +100,10 @@ services:
       # because libpq expects PGPASSFILE to point at a file.
       - ${CONFIG_DIR}/.pgpass/.pgpass:/app/.pgpass:ro
 
+      # Secret that the reverse proxy sends with each request. Mounted outside
+      # /app, so project files and data sources cannot read it.
+      - ${PROXY_SECRET_FILE}:/run/secrets/shape-shifter-proxy-secret:ro
+
     restart: unless-stopped
 
     logging:

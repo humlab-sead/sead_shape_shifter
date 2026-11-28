@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     TRUSTED_PROXY_AUTH_HEADER: str = "X-Authenticated-User"
     TRUSTED_PROXY_GROUPS_ENABLED: bool = False
     TRUSTED_PROXY_GROUPS_HEADER: str = "X-Authenticated-Groups"
+    # File with the secret that the proxy sends. The path is not secret. Keep the file outside APPLICATION_ROOT.
+    TRUSTED_PROXY_SECRET_FILE: Path = Path("/run/secrets/shape-shifter-proxy-secret")
     DEVELOPMENT_PRINCIPAL_ID: str | None = None
 
     # Authorization storage and bootstrap

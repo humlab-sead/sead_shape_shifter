@@ -21,7 +21,10 @@
 # certbot webroot method first:
 #   sudo install_nginx_reverse_proxy.sh --bootstrap __DOMAIN__
 #   sudo certbot certonly --webroot -w /var/www/html -d __DOMAIN__
+#   sudo bootstrap-proxy-secret.sh __DOMAIN__ [DEPLOY_USER]
 #   sudo install_nginx_reverse_proxy.sh __DOMAIN__ <port>
+#
+# nginx -t fails if the included secret file is missing.
 
 upstream __UPSTREAM_NAME__ {
     server 127.0.0.1:__UPSTREAM_PORT__;
@@ -89,6 +92,9 @@ server {
         # Authorization groups for this user; empty when the user is in none.
         # $authz_groups is defined in /etc/nginx/conf.d/shape-shifter-maps.conf.
         proxy_set_header X-Authenticated-Groups $authz_groups;
+
+        # Adds the X-Proxy-Secret header. bootstrap-proxy-secret.sh creates this file.
+        include /etc/nginx/shape-shifter-secrets/__DOMAIN__.conf;
 
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;

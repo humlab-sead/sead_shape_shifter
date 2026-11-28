@@ -18,6 +18,7 @@ from backend.app.authorization.dependencies import declare_authenticated_route
 from backend.app.authorization.operations import development_bootstrap_required
 from backend.app.core.config import settings
 from backend.app.core.logging_config import configure_logging
+from backend.app.core.proxy_secret import load_proxy_secret
 from backend.app.core.state_manager import ApplicationState, init_app_state
 from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
 from backend.app.middleware.correlation import CorrelationMiddleware, correlation_id_var, get_correlation_id
@@ -212,6 +213,12 @@ app.add_middleware(CorrelationMiddleware)
 
 # Require the identity authenticated by nginx when enabled for the deployment.
 # Health checks remain available without authentication for container orchestration.
+# The secret is loaded here, not in Settings, so command-line tools run without the file.
+PROXY_SECRET = (
+    load_proxy_secret(settings.TRUSTED_PROXY_SECRET_FILE, required=settings.ENVIRONMENT == "production")
+    if settings.TRUSTED_PROXY_AUTH_ENABLED
+    else None
+)
 app.add_middleware(
     ProxyAuthenticationMiddleware,
     enabled=settings.TRUSTED_PROXY_AUTH_ENABLED,
@@ -219,6 +226,7 @@ app.add_middleware(
     groups_enabled=settings.TRUSTED_PROXY_GROUPS_ENABLED,
     groups_header_name=settings.TRUSTED_PROXY_GROUPS_HEADER,
     public_paths={f"{settings.API_V1_PREFIX}/health"},
+    secret=PROXY_SECRET,
 )
 
 # Configure CORS

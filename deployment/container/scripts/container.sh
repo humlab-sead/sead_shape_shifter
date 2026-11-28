@@ -44,6 +44,7 @@ Actions:
   restart          Stop the container, then start it again
   logs             Follow the container log
   status           Show container status and health
+  config           Print the compose file with the deployment settings filled in
   service ACTION   Control the systemd user service (see 'service help')
   help             Show this help
 
@@ -88,6 +89,13 @@ check_deployment() {
     fi
   done
 
+  if [ ! -f "$PROXY_SECRET_FILE" ] || [ ! -r "$PROXY_SECRET_FILE" ] || [ ! -s "$PROXY_SECRET_FILE" ]; then
+    echo "error: proxy secret is missing, empty or not readable: $PROXY_SECRET_FILE" >&2
+    echo "       An administrator creates it with bootstrap-proxy-secret.sh <DOMAIN>. If the file" >&2
+    echo "       has another path, set PROXY_SECRET_FILE in $CONFIG_DIR/deployment.env." >&2
+    exit 1
+  fi
+
   if ! podman image exists "$IMAGE_NAME"; then
     echo "error: image $IMAGE_NAME not found. Run 'make build' first." >&2
     exit 1
@@ -114,8 +122,14 @@ down() {
 }
 
 restart() {
+  # Check before stopping, so a missing input leaves the running container up.
+  check_deployment
   down
   up
+}
+
+config() {
+  "${compose[@]}" config
 }
 
 logs() {
@@ -250,6 +264,9 @@ logs)
   ;;
 status)
   status
+  ;;
+config)
+  config
   ;;
 service)
   service "${2:-}"

@@ -84,6 +84,9 @@ ln -sfn "$g_release" "$g_home/container"
 mkdir -p "$g_home/config"
 printf 'SHAPE_SHIFTER_ENVIRONMENT=production\n' > "$g_home/config/backend.env"
 mkdir -p "$g_home/container-data"/{projects,shared,logs,output,backups,tmp,state}
+# Stands in for the proxy secret, which an administrator creates outside the home.
+g_proxy_secret="$g_tmp/proxy-secret"
+printf 'stand-in-not-a-real-secret-0123456789\n' > "$g_proxy_secret"
 
 cat > "$g_stub_bin/podman" <<'STUB'
 #!/usr/bin/env bash
@@ -100,6 +103,9 @@ STUB
 cat > "$g_stub_bin/podman-compose" <<'STUB'
 #!/usr/bin/env bash
 printf 'podman-compose %s\n' "$*" >> "${STUB_LOG}"
+# The compose file takes the secret's host path from the environment. It is
+# recorded apart from the invocation log, which other cases read line by line.
+printf 'PROXY_SECRET_FILE=%s\n' "${PROXY_SECRET_FILE:-}" >> "${STUB_LOG}.env"
 case "$1" in
   --version) echo "podman-compose version 1.0.6"; exit 0 ;;
 esac
@@ -136,6 +142,7 @@ dsn() {
   env -u BASH_ENV -u ENV -u XDG_CONFIG_HOME \
     HOME="$g_home" PATH="$g_stub_bin:$PATH" \
     STUB_LOG="$g_stub_log" STUB_PID="$g_stub_pid" \
+    PROXY_SECRET_FILE="$g_proxy_secret" \
     STUB_LOGS_MARKER="$g_logs_marker" STUB_INT_MARKER="$g_int_marker" \
     "$@"
 }
@@ -331,6 +338,32 @@ assert_contains "$g_last_output" "under your home directory" "the failure explai
 mv "$g_home/container-data.moved" "$g_home/container-data"
 
 echo
+echo "== a missing proxy secret is reported before anything is stopped =="
+mv "$g_proxy_secret" "$g_proxy_secret.away"
+for action in up restart; do
+  reset_log
+  run_dispatcher "$action"
+  assert_eq "1" "$g_last_status" "$action fails without the proxy secret"
+  assert_contains "$g_last_output" "$g_proxy_secret" "$action names the missing proxy secret file"
+  assert_contains "$g_last_output" "bootstrap-proxy-secret.sh" "$action names the script that creates it"
+  if log_has "podman-compose -f podman-compose.yml -p shapeshifter down" || log_has " up -d"; then
+    fail "$action changed the container although the proxy secret is missing"
+  else
+    pass "$action leaves the container as it was"
+  fi
+done
+: > "$g_proxy_secret"
+reset_log
+run_dispatcher restart
+assert_eq "1" "$g_last_status" "restart fails with an empty proxy secret"
+mv -f "$g_proxy_secret.away" "$g_proxy_secret"
+
+echo
+echo "== the proxy secret path defaults to the deployment user's name =="
+run_with_stubs env -u PROXY_SECRET_FILE bash -c '. "$1/scripts/_load-env.sh" && printf %s "$PROXY_SECRET_FILE"' _ "$g_release"
+assert_eq "/etc/shape-shifter/$(id -un)/proxy-secret" "$g_last_output" "default proxy secret path"
+
+echo
 echo "== Make targets operate through the symlinked selection =="
 reset_log
 run_make status
@@ -366,6 +399,37 @@ else
 fi
 assert_contains "$g_last_output" "data directory does not exist" "make up surfaces the dispatcher diagnostic"
 mv "$g_home/container-data.moved" "$g_home/container-data"
+
+echo
+echo "== make config and make validate give compose the proxy secret path =="
+g_default_secret="/etc/shape-shifter/$(id -un)/proxy-secret"
+for target in config validate; do
+  reset_log
+  : >"$g_stub_log.env"
+  run_with_stubs env -u PROXY_SECRET_FILE make --no-print-directory -C "$g_home/container" "$target"
+  assert_eq "0" "$g_last_status" "make $target exits 0"
+  if grep -qxF -- "PROXY_SECRET_FILE=$g_default_secret" "$g_stub_log.env"; then
+    pass "make $target uses the default proxy secret path"
+  else
+    fail "make $target did not pass the default proxy secret path to compose"
+    cat "$g_stub_log" >&2
+  fi
+  if grep -qE 'podman-compose -f podman-compose.yml .*config' "$g_stub_log"; then
+    pass "make $target renders the compose file"
+  else
+    fail "make $target did not render the compose file"
+  fi
+done
+
+printf 'PROXY_SECRET_FILE=/etc/shape-shifter/other.example.org/proxy-secret\n' > "$g_home/config/deployment.env"
+: >"$g_stub_log.env"
+run_with_stubs env -u PROXY_SECRET_FILE make --no-print-directory -C "$g_home/container" config
+if grep -qxF -- "PROXY_SECRET_FILE=/etc/shape-shifter/other.example.org/proxy-secret" "$g_stub_log.env"; then
+  pass "make config reads the proxy secret path from deployment.env"
+else
+  fail "make config ignored the proxy secret path in deployment.env"
+fi
+rm "$g_home/config/deployment.env"
 
 echo
 echo "== service actions dispatch through the single entry point =="
