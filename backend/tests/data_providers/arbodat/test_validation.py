@@ -161,14 +161,6 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project(project: S
         "MISSING_REQUIRED_FOREIGN_KEY_TARGET;analysis_entity;Entity 'analysis_entity' is missing required foreign key target 'dataset'",
         "MISSING_REQUIRED_FOREIGN_KEY_TARGET;property_type;Entity 'property_type' is missing required foreign key target 'property_type_group'",
         "MISSING_REQUIRED_FOREIGN_KEY_TARGET;relative_dating;Entity 'relative_dating' is missing required foreign key target 'analysis_entity'",
-        "CONDITIONAL_FK_AWAITING_RECONCILIATION;location;Conditional foreign key from 'location' to 'location_type' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
-        "CONDITIONAL_FK_AWAITING_RECONCILIATION;method;Conditional foreign key from 'method' to 'record_type' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
-        "CONDITIONAL_FK_AWAITING_RECONCILIATION;dataset_submission;Conditional foreign key from 'dataset_submission' to 'dataset' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
-        "CONDITIONAL_FK_AWAITING_RECONCILIATION;dataset_submission;Conditional foreign key from 'dataset_submission' to 'dataset_submission_type' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
-        "CONDITIONAL_FK_AWAITING_RECONCILIATION;dataset_submission;Conditional foreign key from 'dataset_submission' to 'contact' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
-        "CONDITIONAL_FK_AWAITING_RECONCILIATION;abundance_element;Conditional foreign key from 'abundance_element' to 'record_type' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
-        "CONDITIONAL_FK_AWAITING_RECONCILIATION;taxa;Conditional foreign key from 'taxa' to 'taxa_tree_genus' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
-        "CONDITIONAL_FK_AWAITING_RECONCILIATION;taxa;Conditional foreign key from 'taxa' to 'taxa_tree_author' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
         "MISSING_REQUIRED_COLUMN;dataset_submission_type;Entity 'dataset_submission_type' is missing required target column 'submission_type'",
         "MISSING_REQUIRED_COLUMN;dataset_submission;Entity 'dataset_submission' is missing required target column 'contact_id'",
         "MISSING_REQUIRED_COLUMN;analysis_entity;Entity 'analysis_entity' is missing required target column 'dataset_id'",
@@ -185,7 +177,6 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project(project: S
 
     assert issue_summary == Counter(
         {
-            "CONDITIONAL_FK_AWAITING_RECONCILIATION": 8,
             "MISSING_REQUIRED_COLUMN": 5,
             "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
             "DIRECT_FK_TARGET_CHECK_PENDING": 2,

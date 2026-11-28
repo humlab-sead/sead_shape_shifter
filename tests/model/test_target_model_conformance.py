@@ -663,7 +663,6 @@ def test_core_conformance_keeps_alias_like_names_strict() -> None:
                 "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 6,
                 "UNEXPECTED_PUBLIC_ID": 1,
                 "MISSING_BRIDGE_ENTITY": 1,
-                "CONDITIONAL_FK_AWAITING_RECONCILIATION": 2,
             },
         ),
     ],
@@ -687,7 +686,7 @@ def _minimal_project(entities: dict, options: dict | None = None) -> ShapeShiftP
     )
 
 
-def test_conditional_foreign_key_awaits_reconciliation_without_project_only_errors() -> None:
+def test_conditional_foreign_key_adds_no_project_only_issues() -> None:
     target_model = _minimal_target_model(
         {
             "location": {
@@ -700,43 +699,6 @@ def test_conditional_foreign_key_awaits_reconciliation_without_project_only_erro
     project: ShapeShiftProject = _minimal_project({"location": {"public_id": "location_id", "columns": ["location_name"]}})
 
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
-
-    assert [(issue.code, issue.severity, issue.entity) for issue in issues] == [
-        ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "info", "location")
-    ]
-
-
-def test_conditional_foreign_key_status_is_not_promoted_by_severity_override() -> None:
-    target_model = _minimal_target_model(
-        {
-            "location": {
-                "public_id": "location_id",
-                "foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}],
-            },
-            "location_type": {"public_id": "location_type_id"},
-        }
-    )
-    project = _minimal_project(
-        {"location": {"public_id": "location_id", "columns": ["location_name"]}},
-        options={"validation": {"severity_overrides": {"conditional_foreign_key": "error"}}},
-    )
-
-    issues = TargetModelConformanceValidator().validate(target_model, project)
-
-    assert [(issue.code, issue.severity) for issue in issues] == [("CONDITIONAL_FK_AWAITING_RECONCILIATION", "info")]
-
-
-def test_conditional_foreign_key_status_is_omitted_when_source_is_absent() -> None:
-    target_model = _minimal_target_model(
-        {
-            "location": {
-                "foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}],
-            },
-            "location_type": {"public_id": "location_type_id"},
-        }
-    )
-
-    issues = TargetModelConformanceValidator().validate(target_model, _minimal_project({}))
 
     assert issues == []
 
@@ -761,7 +723,7 @@ def test_conditional_foreign_key_does_not_change_static_requirements() -> None:
     issues = TargetModelConformanceValidator().validate(target_model, project)
     issue_pairs_with_severity = {(issue.code, issue.entity, issue.severity) for issue in issues}
 
-    assert ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "location", "info") in issue_pairs_with_severity
+    assert not any("location_type" in issue.message for issue in issues)
     assert ("MISSING_REQUIRED_COLUMN", "location", "error") in issue_pairs_with_severity
     assert ("MISSING_REQUIRED_ENTITY", "site", "error") in issue_pairs_with_severity
     assert ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "location", "error") in issue_pairs_with_severity
@@ -1052,36 +1014,9 @@ def test_direct_public_id_fks_allow_missing_targets_and_report_pending_checks() 
     assert {issue.severity for issue in pending} == {"info"}
     assert "MISSING_REQUIRED_FOREIGN_KEY_TARGET" not in codes
     assert "MISSING_INDUCED_REQUIRED_ENTITY" not in codes
-    # A valid conditional direct-ID FK needs no project lookup entity or Core link, so it does not await reconciliation.
-    assert "CONDITIONAL_FK_AWAITING_RECONCILIATION" not in codes
 
 
-def test_conditional_foreign_key_with_valid_direct_public_id_fk_skips_awaiting_reconciliation() -> None:
-    target_model = _minimal_target_model(
-        {
-            "sample": {
-                "foreign_keys": [
-                    {"entity": "dataset", "required_when": {"has_new_rows": "sample"}},
-                    {"entity": "location", "required_when": {"has_new_rows": "sample"}},
-                ]
-            },
-            "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
-            "location": {"public_id": "location_id"},
-        }
-    )
-    project = _minimal_project({"sample": {"columns": ["dataset_id"], "foreign_key_value_sources": {"dataset": "public_id"}}})
-
-    issues = TargetModelConformanceValidator().validate(target_model, project)
-    conditional = [issue for issue in issues if issue.code == "CONDITIONAL_FK_AWAITING_RECONCILIATION"]
-
-    # Only the local/default conditional FK to 'location' awaits reconciliation; the valid direct-ID FK to 'dataset' does not.
-    assert len(conditional) == 1
-    assert "'location'" in conditional[0].message
-    assert "'dataset'" not in conditional[0].message
-    assert any(issue.code == "DIRECT_FK_TARGET_CHECK_PENDING" and issue.column == "dataset_id" for issue in issues)
-
-
-def test_conditional_foreign_key_with_invalid_direct_public_id_fk_still_awaits_reconciliation() -> None:
+def test_conditional_foreign_key_with_invalid_direct_public_id_fk_reports_error() -> None:
     target_model = _minimal_target_model(
         {
             "sample": {"foreign_keys": [{"entity": "dataset", "required_when": {"has_new_rows": "sample"}}]},
@@ -1093,32 +1028,7 @@ def test_conditional_foreign_key_with_invalid_direct_public_id_fk_still_awaits_r
     issues = TargetModelConformanceValidator().validate(target_model, project)
     codes = [issue.code for issue in issues]
 
-    # An invalid direct-ID declaration is not an exemption: the specific error and the awaiting-reconciliation status both remain.
     assert "DIRECT_FK_TARGET_TABLE_MISSING" in codes
-    assert "CONDITIONAL_FK_AWAITING_RECONCILIATION" in codes
-
-
-def test_conditional_foreign_key_two_sources_different_modes_same_target() -> None:
-    target_model = _minimal_target_model(
-        {
-            "sample_a": {"foreign_keys": [{"entity": "dataset", "required_when": {"has_new_rows": "sample_a"}}]},
-            "sample_b": {"foreign_keys": [{"entity": "dataset", "required_when": {"has_new_rows": "sample_b"}}]},
-            "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
-        }
-    )
-    project = _minimal_project(
-        {
-            "sample_a": {"columns": ["dataset_id"], "foreign_key_value_sources": {"dataset": "public_id"}},
-            "sample_b": {"columns": ["dataset_id"]},
-        }
-    )
-
-    issues = TargetModelConformanceValidator().validate(target_model, project)
-    conditional_entities = {issue.entity for issue in issues if issue.code == "CONDITIONAL_FK_AWAITING_RECONCILIATION"}
-
-    # The direct-ID source is suppressed; the local-link source to the same target keeps its own conditional status.
-    assert conditional_entities == {"sample_b"}
-    assert any(issue.code == "DIRECT_FK_TARGET_CHECK_PENDING" and issue.entity == "sample_a" for issue in issues)
 
 
 def test_conditional_foreign_key_valid_direct_public_id_fk_keeps_globally_required_target() -> None:
@@ -1133,10 +1043,9 @@ def test_conditional_foreign_key_valid_direct_public_id_fk_keeps_globally_requir
     issues = TargetModelConformanceValidator().validate(target_model, project)
     codes = [issue.code for issue in issues]
 
-    # The valid direct-ID FK suppresses awaiting reconciliation, but the globally required target entity stays required.
+    # A valid direct-ID FK does not remove the requirement for a globally required target entity.
     assert "MISSING_REQUIRED_ENTITY" in codes
     assert any(issue.code == "MISSING_REQUIRED_ENTITY" and issue.entity == "dataset" for issue in issues)
-    assert "CONDITIONAL_FK_AWAITING_RECONCILIATION" not in codes
     assert "DIRECT_FK_TARGET_CHECK_PENDING" in codes
 
 

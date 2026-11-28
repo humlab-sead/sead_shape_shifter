@@ -456,10 +456,6 @@ const dataValidationStatusColor = computed(() => {
   }
 })
 const entityScopedIssues = computed(() => groupByEntityScope(allMessages.value))
-const hasConditionalChecksAwaitingReconciliation = computed(() =>
-  infoMessages.value.some((message) => message.code === 'CONDITIONAL_FK_AWAITING_RECONCILIATION')
-)
-
 const summaryColor = computed(() => {
   if (errorCount.value > 0) return 'error'
   if (warningCount.value > 0) return 'warning'
@@ -479,7 +475,6 @@ const summaryTitle = computed(() => {
     return 'Data quality checks incomplete'
   }
   if (errorCount.value > 0) return 'Validation Failed'
-  if (hasConditionalChecksAwaitingReconciliation.value) return 'Conditional checks await reconciliation'
   if (warningCount.value > 0) return 'Validation Passed with Warnings'
   if (infoCount.value > 0) return 'Validation Passed with Information'
   return 'Validation Passed'

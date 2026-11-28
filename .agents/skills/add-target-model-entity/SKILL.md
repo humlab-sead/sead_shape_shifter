@@ -112,7 +112,6 @@ for ad-hoc scripts in this repository.
    | Location | What to update |
    |---|---|
    | `tests/target_model/test_spec_files.py` | `assert len(target_model.entities) == N` |
-   | `tests/model/test_target_model_conformance.py` | the `sead_missing_sample_group` baseline dict: `CONDITIONAL_FK_AWAITING_RECONCILIATION` rises by one per new conditional FK owned by an entity the fixture declares |
    | `resources/target_models/README.md` | entity count, mapped/unmapped, model version |
    | `docs/proposals/TARGET_MODEL_PROJECT_REQUIREMENTS/TARGET_MODEL_COVERAGE_REVIEW.md` | the coverage counts and any remaining-gap note; the archived gap triage is frozen |
 
@@ -137,10 +136,6 @@ for ad-hoc scripts in this repository.
 
 ## Verification meaning
 
-- `CONDITIONAL_FK_AWAITING_RECONCILIATION` is an **info** finding, not an error.
-  Conformance cannot know whether rows will be inserted before reconciliation.
-  A rise in that count is expected when you add a conditional FK whose owner is in
-  a fixture, and it is the baseline to update.
 - `MISSING_REQUIRED_COLUMN` / `MISSING_REQUIRED_FOREIGN_KEY_TARGET` count existing
   fixture gaps. Do not "fix" them by weakening the model.
 - Insert ordering follows the FKs automatically: `src/target_model/insert_dependencies.py`
